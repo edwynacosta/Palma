@@ -10,7 +10,7 @@ VERDE_TEXTO = "#385723"     # Títulos (FACTURACIÓN)
 GRIS_NUMEROS = "#595959"    # Color de las cifras grandes
 
 class POSCajaPalma(ctk.CTk): # CLASES Y OBJETOS POO 77777
-    def __init__(self):
+    def __init__(self): # ATRIBUTOS DE LOS OBJETOS
         super().__init__()
 
         self.title("Caja Palma POS")
