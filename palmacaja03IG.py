@@ -9,7 +9,7 @@ ROJO_PANEL = "#F8CECC"      # Fondo Cambio
 VERDE_TEXTO = "#385723"     # Títulos (FACTURACIÓN)
 GRIS_NUMEROS = "#595959"    # Color de las cifras grandes
 
-class POSCajaPalma(ctk.CTk): # CLASES Y OBJETOS POO
+class POSCajaPalma(ctk.CTk): # CLASES Y OBJETOS POO 77777
     def __init__(self):
         super().__init__()
 
