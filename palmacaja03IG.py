@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 
-# --- PALETA DE COLORES EXACTA (Extraída de tus imágenes) ---
+# --- PALETA DE COLORES EXACTA ---
 COLOR_FONDO = "#FFFFFF"
 VERDE_PANELES = "#E2EFDA"   # Fondos de Total y Facturación
 AMARILLO_PANEL = "#FFF2CC"  # Fondo Efectivo
