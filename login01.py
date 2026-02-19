@@ -13,6 +13,16 @@ class App(ctk.CTk):
         self.geometry("1000x700")
         self.configure(fg_color="#008F39") # Verde del fondo exterior
 
+# --- CONFIGURACIÓN DEL ICONO DE LA VENTANA ---
+        try:
+            # Si usas .ico en Windows:
+            self.iconbitmap("logo_palma.ico") 
+            # Si prefieres usar .png, usa estas dos líneas en su lugar:
+            # img_icon = tk.PhotoImage(file="logo_palma.png")
+            # self.iconphoto(False, img_icon)
+        except Exception as e:
+            print(f"No se pudo cargar el icono de la ventana: {e}")
+
         # Base de datos de los 4 usuarios solicitados
         self.usuarios_db = {
             "edwin": {"password": "123", "rol": "admin"},
