@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox
 COLOR_FONDO = "#FFFFFF"
 VERDE_PANELES = "#E2EFDA"   # Fondos de Total y Facturación
 AMARILLO_PANEL = "#FFF2CC"  # Fondo Efectivo
-ROJO_PANEL = "#F8CECC"      # Fondo Cambio
+ROJO_PANEL = "#EB4239"      # Fondo Cambio COLOR ROJO
 VERDE_TEXTO = "#385723"     # Títulos (FACTURACIÓN)
 GRIS_NUMEROS = "#595959"    # Color de las cifras grandes
 
