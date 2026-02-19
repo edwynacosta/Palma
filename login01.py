@@ -15,11 +15,8 @@ class App(ctk.CTk):
 
 # --- CONFIGURACIÓN DEL ICONO DE LA VENTANA ---
         try:
-            # Si usas .ico en Windows:
+            # Si usas .ico
             self.iconbitmap("logo_palma.ico") 
-            # Si prefieres usar .png, usa estas dos líneas en su lugar:
-            # img_icon = tk.PhotoImage(file="logo_palma.png")
-            # self.iconphoto(False, img_icon)
         except Exception as e:
             print(f"No se pudo cargar el icono de la ventana: {e}")
 
