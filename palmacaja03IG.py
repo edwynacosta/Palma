@@ -1,186 +1,217 @@
 import customtkinter as ctk
+import tkinter as tk
 from tkinter import ttk, messagebox
-import datetime
 
-# --- PALETA DE COLORES (Ajustada a tus capturas) ---
-COLOR_FONDO_VERDE = "#008F39" 
-COLOR_BLANCO = "#FFFFFF"
-VERDE_PANELES = "#E2EFDA"   
-AMARILLO_PANEL = "#FFF2CC"  
-ROJO_PANEL = "#F8CECC"      
-VERDE_TEXTO = "#385723"     
-GRIS_NUMEROS = "#595959"    
+# --- CONFIGURACIÓN ESTÉTICA ---
+VERDE_PALMA = "#008F39"
+BLANCO = "#FFFFFF"
+VERDE_TEXTO = "#2A401A"
+GRIS_SUAVE = "#F2F2F2"
+NARANJA_NUEVA_VENTA = "#FFB347" # Color sugerido para resaltar el cambio de botón
 
-class CajaPalmaPOS(ctk.CTk):
+class AppPalma(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Configuración de ventana
-        self.title("Caja Palma POS")
-        self.geometry("1150x750")
-        self.configure(fg_color=COLOR_FONDO_VERDE)
+        self.title("Sistema de Facturación - Palma")
+        self.geometry("1200x800")
+        self.configure(fg_color=VERDE_PALMA)
 
+        # Variables de control
+        self.total_actual = 0
         self.contador_id = 1
+        self.venta_finalizada = False 
 
-        # Estructura principal: 2 columnas
-        self.grid_columnconfigure(0, weight=4) # Panel de Precios
-        self.grid_columnconfigure(1, weight=6) # Panel de Tabla
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=3)
         self.grid_rowconfigure(0, weight=1)
 
         # ==========================================
-        #       PANEL IZQUIERDO (PRECIOS)
+        # PANEL IZQUIERDO: TOTALES
         # ==========================================
-        self.left_panel = ctk.CTkFrame(self, fg_color="transparent")
-        self.left_panel.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        self.panel_izquierdo = ctk.CTkFrame(self, fg_color="transparent")
+        self.panel_izquierdo.grid(row=0, column=0, padx=(20, 10), pady=20, sticky="nsew")
 
-        # Total a pagar (Corregido para evitar AttributeError)
-        self.box_total, self.lbl_total_num = self.crear_caja_info(
-            self.left_panel, "Total a pagar:", "$0", VERDE_PANELES, 80
-        )
+        self.box_total, self.lbl_total_izq = self.crear_panel_valor("Total a pagar:", "$0")
+        self.box_efectivo, self.ent_efectivo = self.crear_panel_input("Efectivo")
+        self.box_cambio, self.lbl_cambio = self.crear_panel_valor("Cambio", "$0")
 
-        # Efectivo (Input)
-        self.box_efectivo = ctk.CTkFrame(self.left_panel, fg_color=AMARILLO_PANEL, corner_radius=20)
-        self.box_efectivo.pack(fill="x", pady=10)
-        ctk.CTkLabel(self.box_efectivo, text="Efectivo", font=("Arial", 18, "bold"), text_color=VERDE_TEXTO).pack(anchor="w", padx=20, pady=(10,0))
-        self.ent_efectivo = ctk.CTkEntry(self.box_efectivo, font=("Arial", 60, "bold"), text_color=GRIS_NUMEROS, 
-                                        fg_color="transparent", border_width=0, justify="center")
-        self.ent_efectivo.pack(fill="x", pady=10)
-        self.ent_efectivo.bind("<KeyRelease>", self.update_cambio)
-
-        # Cambio
-        self.box_cambio, self.lbl_cambio_num = self.crear_caja_info(
-            self.left_panel, "Cambio", "$0", ROJO_PANEL, 60
-        )
-
-        # Footer Identificador
-        ctk.CTkLabel(self.left_panel, text="CAJA 1 EDWIN", font=("Arial Black", 16), text_color="white").pack(side="bottom", anchor="w", pady=10)
 
         # ==========================================
-        #       PANEL DERECHO (FACTURACIÓN)
+        # PANEL DERECHO: FACTURACIÓN
         # ==========================================
-        self.right_panel = ctk.CTkFrame(self, fg_color=COLOR_BLANCO, corner_radius=30)
-        self.right_panel.grid(row=0, column=1, padx=20, pady=(20, 100), sticky="nsew")
+        self.panel_derecho = ctk.CTkFrame(self, fg_color="transparent")
+        self.panel_derecho.grid(row=0, column=1, padx=(10, 20), pady=20, sticky="nsew")
 
-        ctk.CTkLabel(self.right_panel, text="FACTURACIÓN", font=("Arial Black", 30), text_color=VERDE_TEXTO).pack(pady=20)
+        # Botones Superiores
+        self.frame_top_btns = ctk.CTkFrame(self.panel_derecho, fg_color="transparent")
+        self.frame_top_btns.pack(fill="x", pady=(0, 10))
+        for txt in ["CAJA", "FACTURA\nELECTRÓNICA", "DEVOLUCIONES", "RECIBO\nPROVEEDORES"]:
+            ctk.CTkButton(self.frame_top_btns, text=txt, fg_color=BLANCO, text_color="black", font=("Arial Black", 11), height=55, corner_radius=15).pack(side="left", padx=5, expand=True, fill="x")
 
-        # Configuración de Tabla
-        style = ttk.Style()
-        style.theme_use("default")
-        style.configure("Treeview", background=COLOR_BLANCO, fieldbackground=COLOR_BLANCO, 
-                        borderwidth=0, font=("Arial", 12), rowheight=40)
-        style.configure("Treeview.Heading", background=COLOR_BLANCO, font=("Arial", 11, "bold"), 
-                        borderwidth=0, foreground=VERDE_TEXTO)
+        # Cuerpo de Facturación
+        self.frame_tabla_bg = ctk.CTkFrame(self.panel_derecho, fg_color=BLANCO, corner_radius=25)
+        self.frame_tabla_bg.pack(fill="both", expand=True)
 
-        self.tabla = ttk.Treeview(self.right_panel, columns=("id", "nombre", "cant", "precio"), show="headings")
-        self.tabla.heading("id", text="ID")
-        self.tabla.heading("nombre", text="NOMBRE")
-        self.tabla.heading("cant", text="CANTIDAD/ PESO")
-        self.tabla.heading("precio", text="PRECIO")
+        self.lbl_titulo_factura = ctk.CTkLabel(self.frame_tabla_bg, text="FACTURACIÓN", font=("Arial Black", 32), text_color=VERDE_TEXTO)
+        self.lbl_titulo_factura.pack(pady=(20, 10))
+
+        # Tabla
+        self.tabla = ttk.Treeview(self.frame_tabla_bg, columns=("id", "nombre", "cant", "precio"), show="headings")
+        for col, head in zip(("id", "nombre", "cant", "precio"), ("ID", "NOMBRE", "CANTIDAD/ PESO", "PRECIO")):
+            self.tabla.heading(col, text=head)
+            self.tabla.column(col, anchor="center")
         
-        self.tabla.column("id", width=60, anchor="center")
-        self.tabla.column("nombre", width=200)
-        self.tabla.column("cant", width=150, anchor="center")
-        self.tabla.column("precio", width=120, anchor="center")
-        self.tabla.pack(padx=20, pady=10, fill="both", expand=True)
+        self.tabla.tag_configure('total_row', background='#D5E8D4', font=('Arial Black', 12))
+        self.tabla.pack(fill="both", expand=True, padx=40, pady=10)
 
-        # --- BOTONES DE ACCIÓN ---
-        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.btn_frame.place(relx=0.68, rely=0.93, anchor="center")
+        # --- BOTONES INFERIORES ---
+        self.frame_bot_btns = ctk.CTkFrame(self.panel_derecho, fg_color="transparent")
+        self.frame_bot_btns.pack(fill="x", pady=(15, 0))
 
-        self.btn_cobrar = ctk.CTkButton(self.btn_frame, text="COBRAR", fg_color="#E0E0E0", text_color="black", 
-                                        font=("Arial Black", 18), width=180, height=55, corner_radius=15, 
-                                        command=self.finalizar_venta)
-        self.btn_cobrar.pack(side="left", padx=10)
+        # El botón dinámico (Cobrar / Nueva Venta)
+        self.btn_accion_principal = ctk.CTkButton(self.frame_bot_btns, text="COBRAR", fg_color=GRIS_SUAVE, text_color="black", font=("Arial Black", 16), height=65, corner_radius=18, width=280, command=self.gestionar_boton_principal)
+        self.btn_accion_principal.pack(side="left", padx=(0, 10))
 
-        self.btn_add = self.crear_boton_accion("AGREGAR", self.abrir_formulario)
-        self.btn_del = self.crear_boton_accion("ELIMINAR", self.eliminar)
-        self.btn_mod = self.crear_boton_accion("MODIFICAR", None)
+        self.btn_agregar = self.crear_btn_accion("AGREGAR", self.acc_agregar)
+        self.btn_eliminar = self.crear_btn_accion("ELIMINAR", self.acc_eliminar)
+        self.btn_modificar = self.crear_btn_accion("MODIFICAR", self.acc_modificar)
+        self.btn_buscar = self.crear_btn_accion("BUSCAR", self.acc_buscar)
 
-    # --- FUNCIONES DE SOPORTE ---
+    # --- MÉTODOS DE INTERFAZ ---
+    def crear_panel_valor(self, titulo, valor_inicial):
+        frame = ctk.CTkFrame(self.panel_izquierdo, fg_color=BLANCO, corner_radius=25, height=170)
+        frame.pack(fill="x", pady=8); frame.pack_propagate(False)
+        ctk.CTkLabel(frame, text=titulo, font=("Arial Black", 18), text_color=VERDE_TEXTO).pack(anchor="w", padx=25, pady=(15, 0))
+        lbl = ctk.CTkLabel(frame, text=valor_inicial, font=("Arial Black", 68), text_color=VERDE_TEXTO)
+        lbl.pack(expand=True)
+        return frame, lbl
 
-    def crear_caja_info(self, parent, titulo, valor, color, size):
-        """Crea la caja y devuelve la referencia al label del número para evitar errores"""
-        frame = ctk.CTkFrame(parent, fg_color=color, corner_radius=25)
-        frame.pack(fill="x", pady=10)
-        
-        ctk.CTkLabel(frame, text=titulo, font=("Arial", 20, "bold"), text_color=VERDE_TEXTO).pack(anchor="w", padx=25, pady=(15,0))
-        
-        lbl_num = ctk.CTkLabel(frame, text=valor, font=("Arial", size, "bold"), text_color=GRIS_NUMEROS)
-        lbl_num.pack(pady=(0,20))
-        
-        return frame, lbl_num
+    def crear_panel_input(self, titulo):
+        frame = ctk.CTkFrame(self.panel_izquierdo, fg_color=BLANCO, corner_radius=25, height=170)
+        frame.pack(fill="x", pady=8); frame.pack_propagate(False)
+        ctk.CTkLabel(frame, text=titulo, font=("Arial Black", 18), text_color=VERDE_TEXTO).pack(anchor="w", padx=25, pady=(15, 0))
+        ent = ctk.CTkEntry(frame, font=("Arial Black", 60), text_color=VERDE_TEXTO, fg_color="transparent", border_width=0, justify="center")
+        ent.pack(expand=True, fill="x", padx=10)
+        ent.bind("<KeyRelease>", self.formatear_efectivo)
+        return frame, ent
 
-    def crear_boton_accion(self, texto, comando):
-        btn = ctk.CTkButton(self.btn_frame, text=texto, fg_color=VERDE_PANELES, text_color=VERDE_TEXTO, 
-                            font=("Arial Black", 12), width=110, height=55, corner_radius=15, command=comando)
-        btn.pack(side="left", padx=5)
+    def crear_btn_accion(self, texto, comando):
+        btn = ctk.CTkButton(self.frame_bot_btns, text=texto, fg_color=BLANCO, text_color="black", font=("Arial Black", 13), height=65, corner_radius=18, command=comando)
+        btn.pack(side="left", padx=5, expand=True, fill="x")
         return btn
 
-    def update_cambio(self, e=None):
+    # --- LÓGICA DINÁMICA DEL BOTÓN ---
+    def gestionar_boton_principal(self):
+        if not self.venta_finalizada:
+            self.acc_cobrar()
+        else:
+            self.nueva_venta()
+
+    # --- FUNCIONALIDADES ---
+    def formatear_efectivo(self, event=None):
+        texto = self.ent_efectivo.get().replace("$", "").replace(".", "").strip()
+        if texto.isdigit():
+            valor = int(texto)
+            formateado = f"${valor:,.0f}".replace(",", ".")
+            self.ent_efectivo.delete(0, tk.END)
+            self.ent_efectivo.insert(0, formateado)
+        self.calcular_cambio()
+
+    def calcular_cambio(self, event=None):
         try:
-            total = int(self.lbl_total_num.cget("text").replace("$", "").replace(".", ""))
-            val_ent = self.ent_efectivo.get().replace(".", "")
-            efectivo = int(val_ent) if val_ent else 0
-            cambio = efectivo - total
-            self.lbl_cambio_num.configure(text=f"${max(0, cambio):,.0f}".replace(",", "."))
+            efectivo_texto = self.ent_efectivo.get().replace("$", "").replace(".", "").strip()
+            efectivo = int(efectivo_texto) if efectivo_texto else 0
+            cambio = efectivo - self.total_actual
+            self.lbl_cambio.configure(text=f"${max(0, cambio):,.0f}".replace(",", "."))
         except: pass
 
-    def abrir_formulario(self):
-        pop = ctk.CTkToplevel(self)
-        pop.title("Agregar Producto")
-        pop.geometry("350x400")
-        pop.attributes("-topmost", True)
+    def actualizar_totales(self):
+        if self.venta_finalizada: return
+        self.total_actual = 0
+        for item in self.tabla.get_children():
+            if 'total_row' in self.tabla.item(item, 'tags'):
+                self.tabla.delete(item)
+                continue
+            v = self.tabla.item(item, "values")[3].replace("$", "").replace(".", "")
+            self.total_actual += int(v)
         
-        ctk.CTkLabel(pop, text="Nombre del Producto:").pack(pady=(20,5))
-        en = ctk.CTkEntry(pop, width=250); en.pack()
-        
-        ctk.CTkLabel(pop, text="Cantidad / Peso:").pack(pady=5)
-        ec = ctk.CTkEntry(pop, width=250); ec.pack()
-        
-        ctk.CTkLabel(pop, text="Precio Unitario:").pack(pady=5)
-        ep = ctk.CTkEntry(pop, width=250); ep.pack()
+        fmt = f"${self.total_actual:,.0f}".replace(",", ".")
+        self.lbl_total_izq.configure(text=fmt)
+        if self.total_actual > 0:
+            self.tabla.insert("", "end", values=("", "", "TOTAL:", fmt), tags=('total_row',))
+        self.calcular_cambio()
+
+    def acc_cobrar(self):
+        if self.total_actual > 0:
+            res = messagebox.askyesno("Facturación", "¿Finalizar cuenta?")
+            if res:
+                self.venta_finalizada = True
+                self.lbl_titulo_factura.configure(text="FACTURA CERRADA", text_color="red")
+                # Cambio visual del botón
+                self.btn_accion_principal.configure(text="NUEVA VENTA", fg_color=NARANJA_NUEVA_VENTA)
+                messagebox.showinfo("Éxito", "Cobro realizado. Pulse 'NUEVA VENTA' para continuar.")
+        else:
+            messagebox.showwarning("Atención", "No hay productos para cobrar.")
+
+    def nueva_venta(self):
+        self.venta_finalizada = False
+        self.lbl_titulo_factura.configure(text="FACTURACIÓN", text_color=VERDE_TEXTO)
+        # Restaurar botón
+        self.btn_accion_principal.configure(text="COBRAR", fg_color=GRIS_SUAVE)
+        # Limpiar datos
+        for item in self.tabla.get_children(): self.tabla.delete(item)
+        self.ent_efectivo.delete(0, tk.END)
+        self.contador_id = 1
+        self.actualizar_totales()
+
+    def acc_agregar(self):
+        if self.venta_finalizada: return
+        pop = ctk.CTkToplevel(self); pop.geometry("300x400"); pop.attributes("-topmost", True)
+        ctk.CTkLabel(pop, text="Producto:").pack(pady=5)
+        e_nom = ctk.CTkEntry(pop); e_nom.pack()
+        ctk.CTkLabel(pop, text="Cantidad:").pack(pady=5)
+        e_can = ctk.CTkEntry(pop); e_can.pack()
+        ctk.CTkLabel(pop, text="Precio Unit:").pack(pady=5)
+        e_pre = ctk.CTkEntry(pop); e_pre.pack()
 
         def guardar():
             try:
-                subtotal = int(float(ec.get()) * int(ep.get()))
-                self.tabla.insert("", "end", values=(
-                    self.contador_id, en.get(), ec.get(), f"${subtotal:,.0f}".replace(",", ".")
-                ))
+                sub = int(e_can.get()) * int(e_pre.get())
+                self.tabla.insert("", 0, values=(self.contador_id, e_nom.get(), e_can.get(), f"${sub:,.0f}".replace(",", ".")))
                 self.contador_id += 1
-                self.recalc_total()
+                self.actualizar_totales()
                 pop.destroy()
-            except: 
-                messagebox.showerror("Error", "Ingresa valores numéricos válidos")
-        
-        ctk.CTkButton(pop, text="Añadir a Factura", fg_color=COLOR_FONDO_VERDE, command=guardar).pack(pady=30)
+            except: messagebox.showerror("Error", "Datos inválidos")
+        ctk.CTkButton(pop, text="GUARDAR", command=guardar).pack(pady=20)
 
-    def recalc_total(self):
-        t = 0
-        for item in self.tabla.get_children():
-            valor = self.tabla.item(item, "values")[3].replace("$", "").replace(".", "")
-            t += int(valor)
-        self.lbl_total_num.configure(text=f"${t:,.0f}".replace(",", "."))
-        self.update_cambio()
-
-    def eliminar(self):
+    def acc_modificar(self):
+        if self.venta_finalizada: return
         selected = self.tabla.selection()
-        if not selected: return
-        for s in selected:
-            self.tabla.delete(s)
-        self.recalc_total()
+        if not selected or 'total_row' in self.tabla.item(selected)['tags']: return
+        item_data = self.tabla.item(selected)['values']
+        pop = ctk.CTkToplevel(self); pop.geometry("300x200"); pop.attributes("-topmost", True)
+        ctk.CTkLabel(pop, text="Nueva Cantidad:").pack(pady=10)
+        e_new = ctk.CTkEntry(pop); e_new.insert(0, item_data[2]); e_new.pack()
 
-    def finalizar_venta(self):
-        if not self.tabla.get_children(): return
-        messagebox.showinfo("Éxito", "Venta procesada correctamente")
-        self.reset_todo()
+        def aplicar():
+            try:
+                p_v = int(item_data[3].replace("$", "").replace(".", "")) // int(item_data[2])
+                n_c = int(e_new.get())
+                self.tabla.item(selected, values=(item_data[0], item_data[1], n_c, f"${n_c*p_v:,.0f}".replace(",", ".")))
+                self.actualizar_totales(); pop.destroy()
+            except: pass
+        ctk.CTkButton(pop, text="APLICAR", command=aplicar).pack(pady=20)
 
-    def reset_todo(self):
-        for i in self.tabla.get_children(): self.tabla.delete(i)
-        self.ent_efectivo.delete(0, 'end')
-        self.lbl_total_num.configure(text="$0")
-        self.lbl_cambio_num.configure(text="$0")
-        self.contador_id = 1
+    def acc_eliminar(self):
+        if self.venta_finalizada: return
+        sel = self.tabla.selection()
+        if sel and 'total_row' not in self.tabla.item(sel)['tags']:
+            self.tabla.delete(sel); self.actualizar_totales()
+
+    def acc_buscar(self):
+        messagebox.showinfo("Buscador", "Función de búsqueda lista.")
 
 if __name__ == "__main__":
-    app = CajaPalmaPOS()
+    app = AppPalma()
     app.mainloop()
