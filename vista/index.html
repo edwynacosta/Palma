@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PALMA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <img src="logo_palma.png" alt="Logo Palma" class="palm-logo-img">
+      <div class="logo-text">PALMA</div>
+    </div>
+
+
+    <div class="input-group">
+      <input type="text" placeholder="Usuario" id="usuario" autocomplete="username">
+      <input type="password" placeholder="Contraseña" id="contrasena" autocomplete="current-password">
+    </div>
+
+    <div class="bottom-row">
+      <button class="btn-entrar" onclick="handleLogin()">ENTRAR</button>
+      <div class="links">
+        <a href="#">¿Olvidaste el usuario?</a>
+        <a href="#">¿Olvidaste la contraseña?</a>
+        <a href="#">Ayuda</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
