@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recibo Proveedores</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #e8ede8;
+    min-height: 100vh;
+    margin: 0;
+    padding: 24px;
+    display: flex;
+    align-items: stretch;
+    box-sizing: border-box;
+  }
+
+  .app-window {
+    background: #fff;
+    border-radius: 22px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    width: 100%;
+    min-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Top nav */
+  .top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 28px 0 28px;
+    border-bottom: 1px solid #eee;
+  }
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+  }
+  .nav-tab {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #aaa;
+    padding: 10px 18px 12px 18px;
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: color 0.18s, border-color 0.18s;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .nav-tab.active {
+    color: #2a7a2a;
+    border-bottom: 2.5px solid #2a7a2a;
+  }
+  .nav-tab:hover:not(.active) { color: #555; }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .close-btn {
+    font-size: 16px;
+    font-weight: 700;
+    color: #777;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .close-btn:hover { background: #f0f0f0; }
+
+  /* Main content */
+  .main-content {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 0;
+    padding: 24px 32px 24px 24px;
+    flex: 1;
+  }
+
+  /* Left sidebar */
+  .sidebar {
+    padding-right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .total-box {
+    background: linear-gradient(135deg, #3aaa3a 60%, #2e8b2e);
+    border-radius: 14px;
+    padding: 16px 18px 14px 18px;
+    color: #fff;
+  }
+  .total-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 4px;
+  }
+  .total-amount {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .filter-box {
+    background: #fff;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .filter-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: #333;
+    margin-bottom: 10px;
+  }
+  .filter-select {
+    width: 100%;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 8px;
+    padding: 7px 32px 7px 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    appearance: none;
+    cursor: pointer;
+    margin-bottom: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .filter-select:focus { border-color: #3aaa3a; }
+  .filter-select:last-child { margin-bottom: 0; }
+
+  .status-box {
+    background: #e8f5e9;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-top: auto;
+  }
+  .status-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 2px;
+  }
+  .status-value {
+    font-size: 20px;
+    font-weight: 900;
+    color: #2a7a2a;
+  }
+
+  /* Right panel */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+  }
+
+  .data-table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    border-radius: 8px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-size: 26px;
+    font-weight: 900;
+    color: #2a7a2a;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .op-id {
+    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    color: #aaa;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .op-id span {
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    color: #444;
+    letter-spacing: 0;
+  }
+
+  /* Table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .data-table th {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #3aaa3a;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1.5px solid #e8f5e9;
+  }
+  .data-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    border-bottom: 1px solid #f5f5f5;
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table .id-col { color: #aaa; font-size: 12px; font-weight: 700; }
+
+  .badge-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fff8e1;
+    color: #e6a000;
+    border-radius: 20px;
+    padding: 3px 10px 3px 6px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .badge-icon { font-size: 13px; }
+
+  .empty-row td {
+    color: #bbb;
+    font-style: italic;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  /* Bottom area */
+  .bottom-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .obs-select {
+    width: 55%;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 8px;
+    padding: 9px 32px 9px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .obs-select:focus { border-color: #3aaa3a; }
+
+  .nota-textarea {
+    width: 100%;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    resize: none;
+    height: 60px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .nota-textarea::placeholder { color: #bbb; }
+  .nota-textarea:focus { border-color: #3aaa3a; }
+
+  /* Bottom bar */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px 18px 22px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .btn-cargar {
+    background: #2a7a2a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 26px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.12s;
+  }
+  .btn-cargar:hover { background: #236623; transform: translateY(-1px); }
+  .btn-cargar:active { transform: translateY(0); }
+
+  .action-btns {
+    display: flex;
+    gap: 10px;
+  }
+  .btn-action {
+    border: 1.5px solid #ccc;
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-action:hover { border-color: #2a7a2a; color: #2a7a2a; background: #f0faf0; }
+  .btn-action:active { transform: scale(0.97); }
+
+  /* Modal / form overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.18);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.18);
+    padding: 28px 32px;
+    width: 420px;
+    max-width: 95vw;
+    animation: slideUp 0.22s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 900;
+    color: #2a7a2a;
+    margin-bottom: 18px;
+  }
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .form-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #666;
+  }
+  .form-input, .form-select-modal {
+    border: 1.5px solid #d0d0d0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    outline: none;
+    transition: border-color 0.15s;
+    background: #fff;
+    width: 100%;
+  }
+  .form-input:focus, .form-select-modal:focus { border-color: #3aaa3a; }
+  .form-select-modal {
+    appearance: none;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    cursor: pointer;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+  .btn-cancel {
+    background: #f5f5f5;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #666;
+    cursor: pointer;
+  }
+  .btn-save {
+    background: #2a7a2a;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-save:hover { background: #236623; }
+
+  /* Search box */
+  .search-modal .form-input { margin-bottom: 0; }
+
+  /* Inline form */
+  .inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    background: #f7fdf7;
+    border: 1.5px solid #d4edda;
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .ifield {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 80px;
+    min-width: 70px;
+  }
+  .ifield--wide { flex: 2 1 120px; }
+  .form-input-inline {
+    border: 1.5px solid #d0d0d0;
+    border-radius: 7px;
+    padding: 7px 9px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    outline: none;
+    background: #fff;
+    width: 100%;
+    transition: border-color 0.15s;
+    appearance: none;
+  }
+  .form-input-inline:focus { border-color: #3aaa3a; }
+  .btn-add-inline {
+    background: #3aaa3a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: flex-end;
+    transition: background 0.15s;
+  }
+  .btn-add-inline:hover { background: #2a8a2a; }
+
+  /* Op-id editable */
+  .op-id-input {
+    border: none;
+    border-bottom: 1.5px dashed #ccc;
+    outline: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: #444;
+    background: transparent;
+    text-align: right;
+    width: 110px;
+    padding: 1px 2px;
+    transition: border-color 0.15s;
+  }
+  .op-id-input:focus { border-color: #3aaa3a; }
+  .op-id-input::placeholder { color: #bbb; font-weight: 600; }
+
+  /* User name input */
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+  }
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c8e6c9, #81c784);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #2a7a2a;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .user-name-input {
+    border: none;
+    outline: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    background: transparent;
+    width: 110px;
+    border-bottom: 1.5px dashed #ccc;
+    padding: 2px 4px;
+    transition: border-color 0.15s;
+  }
+  .user-name-input:focus { border-color: #3aaa3a; }
+  .user-name-input::placeholder { color: #bbb; font-weight: 600; }
+  .chevron { font-size: 11px; color: #555; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .main-content { grid-template-columns: 1fr; }
+    .sidebar { flex-direction: row; flex-wrap: wrap; padding-right: 0; }
+    .total-box, .filter-box, .status-box { flex: 1 1 150px; }
+    .panel-title { font-size: 20px; }
+    .obs-select { width: 100%; }
+    .action-btns { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-window">
+  <!-- Top navigation -->
+  <nav class="top-nav">
+    <div class="nav-tabs">
+      <div class="nav-tab">Caja</div>
+      <div class="nav-tab">Factura<br>Electrónica</div>
+      <div class="nav-tab">Devoluciones</div>
+      <div class="nav-tab active">Recibo<br>Proveedores</div>
+    </div>
+    <div class="nav-right">
+      <div class="user-badge">
+        <div class="user-avatar" id="avatarBox">?</div>
+        <input class="user-name-input" id="inputNombreUsuario" type="text" placeholder="Tu nombre..." oninput="actualizarAvatar()">
+        <span class="chevron">▾</span>
+      </div>
+      <div class="close-btn">✕</div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="total-box">
+        <div class="total-label">Costo Total Pedido:</div>
+        <div class="total-amount" id="totalDisplay">$1.250.000</div>
+      </div>
+
+      <div class="filter-box">
+        <div class="filter-title">Filtros rápidos:</div>
+        <select class="filter-select" id="filtroFecha1">
+          <option value="hoy">Hoy</option>
+          <option value="ayer">Ayer</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mes</option>
+        </select>
+        <select class="filter-select" id="filtroFecha2">
+          <option value="manana">Mañana</option>
+          <option value="dos-dias">En 2 días</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mes</option>
+        </select>
+      </div>
+
+      <div class="status-box">
+        <div class="status-label">Estado:</div>
+        <div class="status-value" id="estadoGlobal">En camino</div>
+      </div>
+    </aside>
+
+    <!-- Right panel -->
+    <section class="right-panel">
+      <div class="panel-header">
+        <h1 class="panel-title">RECIBO PROVEEDORES</h1>
+        <div class="op-id">
+          ID Operación
+          <span><input class="op-id-input" id="inputOpId" type="text" placeholder="#0000-2026" value=""></span>
+        </div>
+      </div>
+
+      <!-- Inline form to add a record directly -->
+      <div class="inline-form">
+        <div class="ifield">
+          <label class="form-label">ID</label>
+          <input class="form-input-inline" type="text" id="fId" placeholder="Ej: 1001">
+        </div>
+        <div class="ifield ifield--wide">
+          <label class="form-label">Proveedor</label>
+          <input class="form-input-inline" type="text" id="fProveedor" placeholder="Nombre del proveedor">
+        </div>
+        <div class="ifield ifield--wide">
+          <label class="form-label">Producto</label>
+          <input class="form-input-inline" type="text" id="fProducto" placeholder="Nombre del producto">
+        </div>
+        <div class="ifield">
+          <label class="form-label">Estado</label>
+          <select class="form-input-inline" id="fEstado">
+            <option value="Pendiente">⚠️ Pendiente</option>
+            <option value="En camino">🚚 En camino</option>
+            <option value="Entregado">✅ Entregado</option>
+            <option value="Cancelado">❌ Cancelado</option>
+          </select>
+        </div>
+        <div class="ifield">
+          <label class="form-label">Fecha</label>
+          <input class="form-input-inline" type="date" id="fFecha">
+        </div>
+        <div class="ifield">
+          <label class="form-label">Costo ($)</label>
+          <input class="form-input-inline" type="number" id="fCosto" placeholder="0">
+        </div>
+        <button class="btn-add-inline" onclick="agregarDesdeForm()">+ Añadir</button>
+      </div>
+
+      <!-- Table -->
+      <div class="data-table-wrapper">
+      <table class="data-table" id="tablaProductos">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Proveedor</th>
+            <th>Producto</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="tablaBody">
+          <tr class="empty-row">
+            <td colspan="5">… lista de productos en espera …</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <!-- Bottom controls -->
+      <div class="bottom-area">
+        <select class="obs-select" id="obsSelect">
+          <option value="" disabled selected>Observaciones de entrega...</option>
+          <option value="completa">Entrega completa</option>
+          <option value="parcial">Entrega parcial</option>
+          <option value="danado">Producto dañado</option>
+          <option value="retraso">Retraso en entrega</option>
+          <option value="otro">Otro</option>
+        </select>
+        <textarea class="nota-textarea" id="notaRecibo" placeholder="Añadir nota de recibo..."></textarea>
+      </div>
+    </section>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <button class="btn-cargar" onclick="cargarInventario()">Cargar Inventario</button>
+    <div class="action-btns">
+      <button class="btn-action" onclick="abrirAgregar()">Agregar</button>
+      <button class="btn-action" onclick="eliminarFila()">Eliminar</button>
+      <button class="btn-action" onclick="abrirModificar()">Modificar</button>
+      <button class="btn-action" onclick="abrirBuscar()">Buscar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Agregar / Modificar -->
+<div class="modal-overlay" id="modalAgregar">
+  <div class="modal">
+    <div class="modal-title" id="modalTitulo">Agregar Producto</div>
+
+    <div class="form-row">
+      <label class="form-label">ID Proveedor</label>
+      <input class="form-input" type="text" id="inputId" placeholder="Ej: 1002">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Proveedor</label>
+      <input class="form-input" type="text" id="inputProveedor" placeholder="Nombre del proveedor">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Producto</label>
+      <input class="form-input" type="text" id="inputProducto" placeholder="Nombre del producto">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Estado</label>
+      <select class="form-select-modal" id="inputEstado">
+        <option value="Pendiente">⚠️ Pendiente</option>
+        <option value="En camino">🚚 En camino</option>
+        <option value="Entregado">✅ Entregado</option>
+        <option value="Cancelado">❌ Cancelado</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Fecha</label>
+      <input class="form-input" type="date" id="inputFecha">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Costo del Pedido</label>
+      <input class="form-input" type="number" id="inputCosto" placeholder="Ej: 500000">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="cerrarModal('modalAgregar')">Cancelar</button>
+      <button class="btn-save" onclick="guardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buscar -->
+<div class="modal-overlay" id="modalBuscar">
+  <div class="modal search-modal">
+    <div class="modal-title">Buscar Producto</div>
+    <div class="form-row">
+      <label class="form-label">Término de búsqueda</label>
+      <input class="form-input" type="text" id="inputBusqueda" placeholder="Proveedor, producto o ID..." oninput="filtrarTabla()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="cerrarModal('modalBuscar'); limpiarFiltro()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Data store — starts empty
+  let productos = [];
+  let modoEdicion = false;
+  let filaSeleccionada = null;
+
+  // Update avatar initials from user name input
+  function actualizarAvatar() {
+    const nombre = document.getElementById('inputNombreUsuario').value.trim();
+    const box = document.getElementById('avatarBox');
+    if (!nombre) { box.textContent = '?'; return; }
+    const partes = nombre.split(' ');
+    box.textContent = partes.length >= 2
+      ? (partes[0][0] + partes[1][0]).toUpperCase()
+      : nombre.substring(0,2).toUpperCase();
+  }
+
+  function formatFecha(f) {
+    if (!f) return '';
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const [y,m,d] = f.split('-');
+    return `${d}/${meses[parseInt(m)-1]}/${y}`;
+  }
+
+  function badgeEstado(estado) {
+    const iconos = { 'Pendiente':'⚠️','En camino':'🚚','Entregado':'✅','Cancelado':'❌' };
+    return `<span class="badge-pending"><span class="badge-icon">${iconos[estado]||'❓'}</span>${estado}</span>`;
+  }
+
+  function formatMoney(n) {
+    return '$' + Number(n).toLocaleString('es-CO').replace(/,/g,'.');
+  }
+
+  function renderTabla(lista) {
+    const body = document.getElementById('tablaBody');
+    if (!lista || lista.length === 0) {
+      body.innerHTML = `<tr class="empty-row"><td colspan="5">… lista de productos en espera …</td></tr>`;
+    } else {
+      body.innerHTML = lista.map((p) => `
+        <tr data-index="${productos.indexOf(p)}" onclick="seleccionarFila(this)" style="cursor:pointer;">
+          <td class="id-col">${p.id}</td>
+          <td>${p.proveedor}</td>
+          <td>${p.producto}</td>
+          <td>${badgeEstado(p.estado)}</td>
+          <td>${formatFecha(p.fecha)}</td>
+        </tr>
+      `).join('') + `<tr class="empty-row"><td colspan="5">… lista de productos en espera …</td></tr>`;
+    }
+    actualizarTotal();
+    actualizarEstadoGlobal();
+  }
+
+  function actualizarTotal() {
+    const total = productos.reduce((s,p)=>s+Number(p.costo||0),0);
+    document.getElementById('totalDisplay').textContent = formatMoney(total);
+  }
+
+  function actualizarEstadoGlobal() {
+    const el = document.getElementById('estadoGlobal');
+    if (productos.length === 0) { el.textContent = '—'; return; }
+    const estados = productos.map(p=>p.estado);
+    if (estados.every(e=>e==='Entregado')) el.textContent = 'Entregado';
+    else if (estados.some(e=>e==='En camino')) el.textContent = 'En camino';
+    else if (estados.some(e=>e==='Pendiente')) el.textContent = 'Pendiente';
+    else el.textContent = estados[estados.length-1];
+  }
+
+  function agregarDesdeForm() {
+    const obj = {
+      id: document.getElementById('fId').value.trim(),
+      proveedor: document.getElementById('fProveedor').value.trim(),
+      producto: document.getElementById('fProducto').value.trim(),
+      estado: document.getElementById('fEstado').value,
+      fecha: document.getElementById('fFecha').value,
+      costo: document.getElementById('fCosto').value || 0
+    };
+    if (!obj.proveedor || !obj.producto) { alert('Por favor completa al menos Proveedor y Producto.'); return; }
+    if (!obj.id) obj.id = String(productos.length + 1001);
+    productos.push(obj);
+    renderTabla(productos);
+    // Clear form fields
+    ['fId','fProveedor','fProducto','fFecha','fCosto'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('fEstado').value='Pendiente';
+  }
+
+  function seleccionarFila(tr) {
+    document.querySelectorAll('.data-table tr').forEach(r=>r.style.background='');
+    tr.style.background = '#f0faf0';
+    filaSeleccionada = parseInt(tr.getAttribute('data-index'));
+  }
+
+  function abrirAgregar() {
+    modoEdicion = false;
+    document.getElementById('modalTitulo').textContent = 'Agregar Producto';
+    ['inputId','inputProveedor','inputProducto','inputFecha','inputCosto'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('inputEstado').value = 'Pendiente';
+    document.getElementById('modalAgregar').classList.add('active');
+  }
+
+  function abrirModificar() {
+    if (filaSeleccionada === null || filaSeleccionada === undefined) { alert('Selecciona un producto de la tabla primero.'); return; }
+    modoEdicion = true;
+    const p = productos[filaSeleccionada];
+    document.getElementById('modalTitulo').textContent = 'Modificar Producto';
+    document.getElementById('inputId').value = p.id;
+    document.getElementById('inputProveedor').value = p.proveedor;
+    document.getElementById('inputProducto').value = p.producto;
+    document.getElementById('inputEstado').value = p.estado;
+    document.getElementById('inputFecha').value = p.fecha;
+    document.getElementById('inputCosto').value = p.costo;
+    document.getElementById('modalAgregar').classList.add('active');
+  }
+
+  function guardarProducto() {
+    const obj = {
+      id: document.getElementById('inputId').value.trim(),
+      proveedor: document.getElementById('inputProveedor').value.trim(),
+      producto: document.getElementById('inputProducto').value.trim(),
+      estado: document.getElementById('inputEstado').value,
+      fecha: document.getElementById('inputFecha').value,
+      costo: document.getElementById('inputCosto').value || 0
+    };
+    if (!obj.proveedor || !obj.producto) { alert('Por favor completa los campos obligatorios.'); return; }
+    if (!obj.id) obj.id = String(productos.length + 1001);
+    if (modoEdicion && filaSeleccionada !== null) {
+      productos[filaSeleccionada] = obj;
+    } else {
+      productos.push(obj);
+    }
+    renderTabla(productos);
+    cerrarModal('modalAgregar');
+    filaSeleccionada = null;
+  }
+
+  function eliminarFila() {
+    if (filaSeleccionada === null || filaSeleccionada === undefined) { alert('Selecciona un producto de la tabla primero.'); return; }
+    if (!confirm(`¿Eliminar "${productos[filaSeleccionada].producto}"?`)) return;
+    productos.splice(filaSeleccionada, 1);
+    filaSeleccionada = null;
+    renderTabla(productos);
+  }
+
+  function abrirBuscar() {
+    document.getElementById('inputBusqueda').value = '';
+    document.getElementById('modalBuscar').classList.add('active');
+    setTimeout(()=>document.getElementById('inputBusqueda').focus(), 100);
+  }
+
+  function filtrarTabla() {
+    const q = document.getElementById('inputBusqueda').value.toLowerCase();
+    const filtrados = productos.filter(p =>
+      p.id.toLowerCase().includes(q) ||
+      p.proveedor.toLowerCase().includes(q) ||
+      p.producto.toLowerCase().includes(q) ||
+      p.estado.toLowerCase().includes(q)
+    );
+    renderTabla(filtrados);
+  }
+
+  function limpiarFiltro() { renderTabla(productos); }
+
+  function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+
+  function cargarInventario() {
+    const obs = document.getElementById('obsSelect').value;
+    const nota = document.getElementById('notaRecibo').value.trim();
+    if (productos.length === 0) { alert('No hay productos en la lista.'); return; }
+    alert(`✅ Inventario cargado correctamente.\nProductos: ${productos.length}\nObservación: ${obs || 'Ninguna'}\nNota: ${nota || 'Sin nota'}`);
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('active');
+        limpiarFiltro();
+      }
+    });
+  });
+
+  // Allow Enter key in inline form
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.activeElement.classList.contains('form-input-inline')) {
+      agregarDesdeForm();
+    }
+  });
+
+  renderTabla(productos);
+</script>
+</body>
+</html>
