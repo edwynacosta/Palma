@@ -1,4 +1,3 @@
-# vistas/login_vista.py
 import customtkinter as ctk
 from PIL import Image
 
@@ -23,17 +22,21 @@ class AppVista(ctk.CTk):
         self.frames = {}
 
     def inicializar_frames(self, controlador_global):
-        # Aquí mapeamos las tres vistas de tu interfaz
+        # 1. Creamos e indexamos las tres vistas de tu interfaz
         for F in (LoginFrame, AdminDashboard, UserDashboard):
             page_name = F.__name__
             frame = F(parent=self.contenedor, controller=controlador_global)
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
+        
+        # 2. ¡AQUÍ ESTÁ EL TRUCO! 
+        # Forzamos a que la pantalla inicial en pantalla sea SIEMPRE el Login
+        self.mostrar_frame("LoginFrame")
 
     def mostrar_frame(self, page_name):
+        """Eleva la pantalla solicitada al frente de la interfaz."""
         frame = self.frames[page_name]
         frame.tkraise()
-
 
 class LoginFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
