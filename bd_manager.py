@@ -1,5 +1,4 @@
-# bd_manager.py
-import mysql.connector # O sqlite3 si estás usando una base local
+import mysql.connector
 
 def obtener_conexion():
     try:

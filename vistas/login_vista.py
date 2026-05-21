@@ -29,8 +29,6 @@ class AppVista(ctk.CTk):
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
         
-        # 2. ¡AQUÍ ESTÁ EL TRUCO! 
-        # Forzamos a que la pantalla inicial en pantalla sea SIEMPRE el Login
         self.mostrar_frame("LoginFrame")
 
     def mostrar_frame(self, page_name):
