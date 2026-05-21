@@ -245,8 +245,8 @@ INSERT INTO `inventarios` (`id_inventario`, `id_producto`, `stock_actual`, `cond
 -- Estructura de tabla para la tabla `login`
 --
 
-CREATE TABLE `login` (
-  `id_login` int(11) NOT NULL,
+CREATE TABLE `usuarios` (
+  `id_usuarios` int(11) NOT NULL,
   `id_empleado` int(11) DEFAULT NULL,
   `username_log` varchar(50) DEFAULT NULL,
   `contrasena_log` varchar(255) DEFAULT NULL
@@ -256,7 +256,7 @@ CREATE TABLE `login` (
 -- Volcado de datos para la tabla `login`
 --
 
-INSERT INTO `login` (`id_login`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
+INSERT INTO `usuarios` (`id_usuarios`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
 (1, 1, 'sofia.ramirez', '$2b$10$XqZ1aB2cD3eF4gH5iJ6kLmNoPqRsTuVwXyZaAbBcCdDeEfFgGhH'),
 (2, 2, 'diego.hernandez', '$2b$10$AbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFfGgHhIiJjKkLlMm'),
 (3, 3, 'valentina.suarez', '$2b$10$BcDeFgHiJkLmNoPqRsTuVwXyZaAbBcCdDeEfFgGhHiIjJkKlLmMn'),
@@ -311,6 +311,7 @@ CREATE TABLE `productos` (
   `marca_producto` varchar(100) DEFAULT NULL,
   `id_categoria` int(11) DEFAULT NULL,
   `id_estado` int(11) DEFAULT NULL,
+  `id_proveedor` int(11) NOT NULL,
   `precio_venta_prod` float DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -318,18 +319,18 @@ CREATE TABLE `productos` (
 -- Volcado de datos para la tabla `productos`
 --
 
-INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`, `precio_venta_prod`) VALUES
-(1, 'Manzana Roja x kg', 'Frutas Frescas', 1, 1, 4500),
-(2, 'Leche Entera x Lt', 'Alquería', 4, 1, 3200),
-(3, 'Arroz Blanco x 5kg', 'Roa', 3, 1, 18500),
-(4, 'Agua Mineral x 600ml', 'Cristal', 5, 1, 2000),
-(5, 'Jabón de Baño', 'Dove', 6, 1, 3800),
-(6, 'Zanahoria x kg', 'La Huerta', 2, 1, 2800),
-(7, 'Yogur Fresa x 200g', 'Alpina', 4, 2, 2500),
-(8, 'Shampoo Anticaspa x 400ml', 'Head & Shoulders', 6, 1, 18900),
-(9, 'Banano x kg', 'Frutas Frescas', 1, 1, 2200),
-(10, 'Detergente Líquido x 1Lt', 'Ariel', 6, 1, 12500),
-(11, 'Jugo de Naranja x 1Lt', 'Del Valle', 5, 1, 5800);
+INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`,`id_proveedor`, `precio_venta_prod`) VALUES
+(1, 'Manzana Roja x kg', 'Frutas Frescas', 1, 1,1, 4500),
+(2, 'Leche Entera x Lt', 'Alquería', 4, 1, 2, 3200),
+(3, 'Arroz Blanco x 5kg', 'Roa', 3, 1, 1, 18500),
+(4, 'Agua Mineral x 600ml', 'Cristal', 5, 1, 2, 2000),
+(5, 'Jabón de Baño', 'Dove', 6, 1, 3, 3800),
+(6, 'Zanahoria x kg', 'La Huerta', 2, 1, 1, 2800),
+(7, 'Yogur Fresa x 200g', 'Alpina', 4, 2, 2, 2500),
+(8, 'Shampoo Anticaspa x 400ml', 'Head & Shoulders', 6, 1, 3, 18900),
+(9, 'Banano x kg', 'Frutas Frescas', 1, 1, 1, 2200),
+(10, 'Detergente Líquido x 1Lt', 'Ariel', 6, 1, 3, 12500),
+(11, 'Jugo de Naranja x 1Lt', 'Del Valle', 5, 1, 2, 5800);
 
 -- --------------------------------------------------------
 
@@ -457,10 +458,10 @@ ALTER TABLE `inventarios`
   ADD KEY `id_producto` (`id_producto`);
 
 --
--- Indices de la tabla `login`
+-- Indices de la tabla `usuarios`
 --
-ALTER TABLE `login`
-  ADD PRIMARY KEY (`id_login`),
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id_usuarios`),
   ADD UNIQUE KEY `username_log` (`username_log`),
   ADD KEY `id_empleado` (`id_empleado`);
 
@@ -481,6 +482,7 @@ ALTER TABLE `movimientos`
 ALTER TABLE `productos`
   ADD PRIMARY KEY (`id_producto`),
   ADD KEY `id_categoria` (`id_categoria`),
+  ADD KEY `id_proveedor` (`id_proveedor`),
   ADD KEY `id_estado` (`id_estado`);
 
 --
