@@ -256,11 +256,11 @@ CREATE TABLE `usuarios` (
 -- Volcado de datos para la tabla `login`
 --
 
-INSERT INTO `usuarios` (`id_usuarios`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
-(1, 1, 'sofia.ramirez', '$2b$10$XqZ1aB2cD3eF4gH5iJ6kLmNoPqRsTuVwXyZaAbBcCdDeEfFgGhH'),
-(2, 2, 'diego.hernandez', '$2b$10$AbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFfGgHhIiJjKkLlMm'),
-(3, 3, 'valentina.suarez', '$2b$10$BcDeFgHiJkLmNoPqRsTuVwXyZaAbBcCdDeEfFgGhHiIjJkKlLmMn'),
-(4, 4, 'andres.rojas', '$2b$10$CdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFfGgHhIiJjKkLlMmNn');
+INSERT INTO `usuarios` (`id_usuarios`, `id_rol`, `username_log`, `contrasena_log`) VALUES
+(1, 1, 'edwin.acosta', '123'),
+(2, 1, 'nicolas.herran', '456'),
+(3, 2, 'joshep,hernandez', '246'),
+(4, 2, 'mariana.zarate', '135');
 
 -- --------------------------------------------------------
 
@@ -463,7 +463,7 @@ ALTER TABLE `inventarios`
 ALTER TABLE `usuarios`
   ADD PRIMARY KEY (`id_usuarios`),
   ADD UNIQUE KEY `username_log` (`username_log`),
-  ADD KEY `id_empleado` (`id_empleado`);
+  ADD KEY `id_rol` (`id_rol`);
 
 --
 -- Indices de la tabla `movimientos`
