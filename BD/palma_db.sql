@@ -242,12 +242,12 @@ INSERT INTO `inventarios` (`id_inventario`, `id_producto`, `stock_actual`, `cond
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `login`
+-- Estructura de tabla para la tabla `usuarios`
 --
 
 CREATE TABLE `usuarios` (
   `id_usuarios` int(11) NOT NULL,
-  `id_empleado` int(11) DEFAULT NULL,
+  `id_rol` int(11) NOT NULL,
   `username_log` varchar(50) DEFAULT NULL,
   `contrasena_log` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
