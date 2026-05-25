@@ -6,9 +6,11 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
+
 --
 -- Base de datos: `palma_db`
 --
+
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `categoria`
 -- --------------------------------------------------------
@@ -64,6 +66,24 @@ INSERT INTO `estado_producto` (`id_estado`, `nombre_estado`) VALUES
 (4, 'Dañado');
 
 -- --------------------------------------------------------
+-- Estructura de tabla para la tabla `proveedores`
+-- --------------------------------------------------------
+CREATE TABLE `proveedores` (
+  `id_proveedor` int(11) NOT NULL,
+  `nombre_empresa` varchar(150) NOT NULL,
+  `nit` varchar(20) DEFAULT NULL,
+  `telefono_principal` varchar(20) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `ciudad` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `proveedores` (`id_proveedor`, `nombre_empresa`, `nit`, `telefono_principal`, `email`, `direccion`, `ciudad`) VALUES
+(1, 'Distribuidora El Campo SAS', '900111222-1', '6011234567', 'ventas@elcampo.com', 'Bodega 5, Zona Industrial Norte', 'Bogotá'),
+(2, 'Lácteos del Valle Ltda', '800333444-2', '6024569870', 'pedidos@lacteosvalle.com', 'Km 3 Vía Cali-Palmira', 'Cali'),
+(3, 'Proviser Higiene y Aseo SAS', '901555666-3', '6055558877', 'comercial@proviser.com', 'Carrera 50 # 30-40', 'Medellín');
+
+-- --------------------------------------------------------
 -- Estructura de tabla para la tabla `productos`
 -- --------------------------------------------------------
 CREATE TABLE `productos` (
@@ -72,10 +92,9 @@ CREATE TABLE `productos` (
   `marca_producto` varchar(100) DEFAULT NULL,
   `id_categoria` int(11) DEFAULT NULL,
   `id_estado` int(11) DEFAULT NULL,
-  `precio_venta_prod` decimal(10,2) DEFAULT NULL
+  `precio_venta_prod` decimal(10,2) DEFAULT NULL,
+  `id_proveedor` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-START TRANSACTION;
 
 INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`, `precio_venta_prod`, `id_proveedor`) VALUES
 -- 11 Productos Iniciales
@@ -183,8 +202,6 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (90, 'Jabón Líquido Manos 500ml', 'Protex', 6, 1, 8900.00, 3),
 (91, 'Desodorante Original Barra', 'Rexona', 6, 1, 11200.00, 3);
 
-COMMIT;
-
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `rol`
 -- --------------------------------------------------------
@@ -234,23 +251,14 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `inventarios`
 -- --------------------------------------------------------
--- 1. Aseguramos la estructura de la tabla por si acaso
-CREATE TABLE IF NOT EXISTS `inventarios` (
-  `id_inventario` int(11) NOT NULL AUTO_INCREMENT,
+CREATE TABLE `inventarios` (
+  `id_inventario` int(11) NOT NULL,
   `id_producto` int(11) DEFAULT NULL,
   `stock_actual` int(11) DEFAULT NULL,
   `condicion` varchar(100) DEFAULT NULL,
-  `timestamp_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id_inventario`)
+  `timestamp_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 2. Inserción corregida (Separando por la estructura de columnas correspondiente)
--- ====================================================================
--- INSERCIÓN CORREGIDA CON AUTOINCREMENTAL PARA TODO EL INVENTARIO
--- ====================================================================
-START TRANSACTION;
-
--- Al omitir 'id_inventario', MySQL le asignará automáticamente los IDs secuenciales del 1 al 91
 INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestamp_ultima_actualizacion`) VALUES
 -- 11 Inventarios Iniciales
 (1, 150, 'Buena', '2026-04-06 14:46:59'),
@@ -357,25 +365,6 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (90, 65, 'Buena', CURRENT_TIMESTAMP), 
 (91, 75, 'Buena', CURRENT_TIMESTAMP);
 
-COMMIT;
--- --------------------------------------------------------
--- Estructura de tabla para la tabla `proveedores`
--- --------------------------------------------------------
-CREATE TABLE `proveedores` (
-  `id_proveedor` int(11) NOT NULL,
-  `nombre_empresa` varchar(150) NOT NULL,
-  `nit` varchar(20) DEFAULT NULL,
-  `telefono_principal` varchar(20) DEFAULT NULL,
-  `email` varchar(150) DEFAULT NULL,
-  `direccion` varchar(200) DEFAULT NULL,
-  `ciudad` varchar(100) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `proveedores` (`id_proveedor`, `nombre_empresa`, `nit`, `telefono_principal`, `email`, `direccion`, `ciudad`) VALUES
-(1, 'Distribuidora El Campo SAS', '900111222-1', '6011234567', 'ventas@elcampo.com', 'Bodega 5, Zona Industrial Norte', 'Bogotá'),
-(2, 'Lácteos del Valle Ltda', '800333444-2', '6024569870', 'pedidos@lacteosvalle.com', 'Km 3 Vía Cali-Palmira', 'Cali'),
-(3, 'Proviser Higiene y Aseo SAS', '901555666-3', '6055558877', 'comercial@proviser.com', 'Carrera 50 # 30-40', 'Medellín');
-
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `factura_compra`
 -- --------------------------------------------------------
@@ -399,7 +388,7 @@ INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedo
 CREATE TABLE `facturas` (
   `id_factura` int(11) NOT NULL,
   `id_empleado` int(11) DEFAULT NULL,
-  `id_cliente覆` int(11) DEFAULT NULL, -- Nombre de la columna normalizado abajo en la FK
+  `id_cliente覆` int(11) DEFAULT NULL,
   `id_cliente` int(11) DEFAULT NULL,
   `fecha_fac` datetime DEFAULT current_timestamp(),
   `total_fac` decimal(10,2) DEFAULT NULL
@@ -500,7 +489,7 @@ ALTER TABLE `factura_compra` ADD PRIMARY KEY (`id_fac_compra`), ADD KEY `id_prov
 ALTER TABLE `inventarios` ADD PRIMARY KEY (`id_inventario`), ADD KEY `id_producto` (`id_producto`);
 ALTER TABLE `usuarios` ADD PRIMARY KEY (`id_usuario`), ADD UNIQUE KEY `username_log` (`username_log`), ADD KEY `id_empleado` (`id_empleado`), ADD KEY `id_rol` (`id_rol`);
 ALTER TABLE `movimientos` ADD PRIMARY KEY (`id_movimiento`), ADD KEY `id_inventario` (`id_inventario`), ADD KEY `id_tipo_mov` (`id_tipo_mov`), ADD KEY `id_empleado` (`id_empleado`), ADD KEY `id_factura` (`id_factura`), ADD KEY `id_fac_compra` (`id_fac_compra`);
-ALTER TABLE `productos` ADD PRIMARY KEY (`id_producto`), ADD KEY `id_categoria` (`id_categoria`), ADD KEY `id_estado` (`id_estado`);
+ALTER TABLE `productos` ADD PRIMARY KEY (`id_producto`), ADD KEY `id_categoria` (`id_categoria`), ADD KEY `id_estado` (`id_estado`), ADD KEY `id_proveedor` (`id_proveedor`);
 ALTER TABLE `proveedores` ADD PRIMARY KEY (`id_proveedor`), ADD UNIQUE KEY `nit` (`nit`);
 ALTER TABLE `rol` ADD PRIMARY KEY (`id_rol`);
 ALTER TABLE `tipo_movimiento` ADD PRIMARY KEY (`id_tipo_mov`);
@@ -557,5 +546,7 @@ ALTER TABLE `movimientos`
 
 ALTER TABLE `productos`
   ADD CONSTRAINT `productos_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`),
-  ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`id_estado`) REFERENCES `estado_producto` (`id_estado`);
+  ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`id_estado`) REFERENCES `estado_producto` (`id_estado`),
+  ADD CONSTRAINT `productos_ibfk_3` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedores` (`id_proveedor`);
+
 COMMIT;
