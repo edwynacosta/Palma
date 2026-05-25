@@ -252,12 +252,17 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 -- Estructura de tabla para la tabla `inventarios`
 -- --------------------------------------------------------
 CREATE TABLE `inventarios` (
-  `id_inventario` int(11) NOT NULL,
+  `id_inventario` int(11) NOT NULL AUTO_INCREMENT,
   `id_producto` int(11) DEFAULT NULL,
   `stock_actual` int(11) DEFAULT NULL,
   `condicion` varchar(100) DEFAULT NULL,
-  `timestamp_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `timestamp_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_inventario`),
+  KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 3. Inserción de datos limpia
+START TRANSACTION;
 
 INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestamp_ultima_actualizacion`) VALUES
 -- 11 Inventarios Iniciales
@@ -273,7 +278,7 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (10, 90, 'Buena', '2026-04-06 14:51:06'),
 (11, 130, 'Buena', '2026-04-06 14:51:06'),
 
--- FRUTAS (Categoría 1) - Nuevas Inserciones
+-- FRUTAS (Categoría 1)
 (12, 85, 'Buena', CURRENT_TIMESTAMP), 
 (13, 120, 'Buena', CURRENT_TIMESTAMP), 
 (14, 60, 'Buena', CURRENT_TIMESTAMP), 
@@ -309,7 +314,7 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (44, 130, 'Buena', CURRENT_TIMESTAMP), 
 (45, 140, 'Buena', CURRENT_TIMESTAMP), 
 
--- VERDURAS (Categoría 2) - Nuevas Inserciones
+-- VERDURAS (Categoría 2)
 (46, 200, 'Buena', CURRENT_TIMESTAMP), 
 (47, 180, 'Buena', CURRENT_TIMESTAMP), 
 (48, 220, 'Buena', CURRENT_TIMESTAMP), 
@@ -341,29 +346,35 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (74, 100, 'Buena', CURRENT_TIMESTAMP), 
 (75, 110, 'Buena', CURRENT_TIMESTAMP), 
 
--- GRANOS (Categoría 3) - Nuevas Inserciones
+-- GRANOS (Categoría 3)
 (76, 150, 'Buena', CURRENT_TIMESTAMP), 
 (77, 120, 'Buena', CURRENT_TIMESTAMP), 
 (78, 95, 'Buena', CURRENT_TIMESTAMP), 
 (79, 140, 'Buena', CURRENT_TIMESTAMP), 
 
--- LÁCTEOS (Categoría 4) - Nuevas Inserciones
+-- LÁCTEOS (Categoría 4)
 (80, 45, 'Buena', CURRENT_TIMESTAMP), 
 (81, 70, 'Buena', CURRENT_TIMESTAMP), 
 (82, 85, 'Buena', CURRENT_TIMESTAMP), 
 (83, 120, 'Buena', CURRENT_TIMESTAMP), 
 
--- BEBIDAS (Categoría 5) - Nuevas Inserciones
+-- BEBIDAS (Categoría 5)
 (84, 100, 'Buena', CURRENT_TIMESTAMP), 
 (85, 60, 'Buena', CURRENT_TIMESTAMP), 
 (86, 80, 'Buena', CURRENT_TIMESTAMP), 
 (87, 150, 'Buena', CURRENT_TIMESTAMP), 
 
--- ASEO Y LIMPIEZA PERSONAL (Categoría 6) - Nuevas Inserciones
+-- ASEO Y LIMPIEZA PERSONAL (Categoría 6)
 (88, 90, 'Buena', CURRENT_TIMESTAMP), 
 (89, 110, 'Buena', CURRENT_TIMESTAMP), 
 (90, 65, 'Buena', CURRENT_TIMESTAMP), 
 (91, 75, 'Buena', CURRENT_TIMESTAMP);
+
+COMMIT;
+
+-- 4. Vincular la Llave Foránea con productos de forma segura
+ALTER TABLE `inventarios`
+  ADD CONSTRAINT `inventarios_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
 
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `factura_compra`
