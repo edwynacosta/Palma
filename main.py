@@ -1,4 +1,3 @@
-# main.py
 import customtkinter as ctk
 from modelos.usuario_modelo import UsuarioModelo
 from vistas.login_vista import AppVista

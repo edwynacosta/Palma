@@ -1,27 +1,22 @@
+# bd_manager.py
 import mysql.connector
+from mysql.connector import Error
 
 def obtener_conexion():
     try:
         conexion = mysql.connector.connect(
-            host="localhost",      # Servidor local de XAMPP
-            user="root",           # Usuario por defecto de XAMPP
-            password="",           # IMPORTANTE: En XAMPP la contraseña va VACÍA (sin espacios, solo comillas)
-            database="palma_db"    # Asegúrate de que este nombre coincida con tu phpMyAdmin
+            host="localhost",
+            user="root",
+            password="",
+            database="palma_db"
         )
         if conexion.is_connected():
-            print("🚀 ¡Conexión exitosa a XAMPP MySQL!")
+            print("🚀 ¡Conexión exitosa a XAMPP MySQL!") 
             return conexion
-    except mysql.connector.Error as err:
-        print(f"❌ Error de conexión: {err}")
+            
+    except Error as err:
+        # Esto te dirá el número exacto del problema en la terminal de VS Code
+        print("\n❌ ¡OCURRIÓ UN ERROR DE CAPA DE DATOS!")
+        print(f"Detalle técnico del error: {err}")
+        print(f"Código del error de MySQL: {err.errno}\n")
         return None
-
-def cerrar_conexion(conexion, cursor=None):
-    """Cierra de forma segura el cursor y la conexión."""
-    try:
-        if cursor:
-            cursor.close()
-        if conexion and conexion.is_connected():
-            conexion.close()
-            print("🔌 Conexión cerrada correctamente.")
-    except mysql.connector.Error as err:
-        print(f"⚠️ Error al cerrar la conexión: {err}")
