@@ -17,3 +17,4 @@ if __name__ == "__main__":
 
     # 4. Arranca la aplicación de escritorio
     vista_sistema.mainloop()
+
