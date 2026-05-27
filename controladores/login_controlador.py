@@ -14,20 +14,21 @@ class PalmaControlador:
             messagebox.showerror("Error", "Por favor, llena todos los campos")
             return
 
-        # Le pide al modelo que valide las credenciales en la base de datos
         datos_usuario = self.modelo.verificar_credenciales(usuario, password)
 
         if datos_usuario:
-            # Convertimos a minúsculas para evitar problemas con mayúsculas/minúsculas
+            # Convertimos a string y limpiamos espacios
             rol = str(datos_usuario.get("rol", "")).lower().strip()
             
-            # 1. Primero realizamos la redirección inteligente según el rol
-            if rol == "admin" or rol == "administrador":
+            # CORREGIDO: Ahora acepta el "1" que viene de tu base de datos
+            if rol in ["1", "admin", "administrador"]:
                 self.vista.mostrar_frame("AdminDashboard")
             else:
-                self.vista.mostrar_frame("UserDashboard")
+                messagebox.showinfo(
+                    "Acceso Exitoso", 
+                    f"Bienvenido/a. El rol '{rol.upper()}' está activo, pero su interfaz está en desarrollo."
+                )
             
-            # 2. Después de cambiar la pantalla, limpiamos los campos de forma segura
             try:
                 self.vista.frames["LoginFrame"].limpiar_campos()
             except Exception:
