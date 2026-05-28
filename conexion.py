@@ -1,15 +1,17 @@
-import pymysql
 import os
+import pymysql
 from dotenv import load_dotenv
-# ... tus otras importaciones (como mysql.connector, psycopg2, etc.)
 
 # Cargar las variables del archivo .env
 load_dotenv()
 
-# Obtener las credenciales de manera segura
-DB_PASSWORD = os.getenv("AIVEN_PASSWORD")
-DB_HOST = os.getenv("AIVEN_HOST")
-DB_USER = os.getenv("AIVEN_USER")
+# Obtener las credenciales de manera segura desde el entorno
+HOST_AIVEN = os.getenv("AIVEN_HOST")
+# Convertimos el puerto a entero (int) y usamos 3306 como respaldo por defecto
+PUERTO_AIVEN = int(os.getenv("AIVEN_PORT", 3306))
+USUARIO_AIVEN = os.getenv("AIVEN_USER")
+PASSWORD_AIVEN = os.getenv("AIVEN_PASSWORD")
+DB_NAME = os.getenv("AIVEN_DB_NAME")
 
 def obtener_conexion():
     """
@@ -28,7 +30,7 @@ def obtener_conexion():
             connect_timeout=30,   # Más tiempo para el saludo inicial
             read_timeout=60,      # Evita que muera durante queries
             write_timeout=60,
-            autocommit=True  
+            autocommit=True
         )
         print("✅ Enlace de red establecido de forma segura con SSL.")
         return conexion
