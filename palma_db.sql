@@ -97,7 +97,6 @@ CREATE TABLE `productos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`, `precio_venta_prod`, `id_proveedor`) VALUES
--- 11 Productos Iniciales
 (1, 'Manzana Roja x kg', 'Frutas Frescas', 1, 1, 4500.00, 1),
 (2, 'Leche Entera x Lt', 'Alquería', 4, 1, 3200.00, 2),
 (3, 'Arroz Blanco x 5kg', 'Roa', 3, 1, 18500.00, 1),
@@ -109,8 +108,6 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (9, 'Banano x kg', 'Frutas Frescas', 1, 1, 2200.00, 1),
 (10, 'Detergente Líquido x 1Lt', 'Ariel', 6, 1, 12500.00, 3),
 (11, 'Jugo de Naranja x 1Lt', 'Del Valle', 5, 1, 5800.00, 2),
-
--- FRUTAS (Categoría 1) - Nuevas Inserciones
 (12, 'Aguacate Has x kg', 'Fruver Local', 1, 1, 8500.00, 1),
 (13, 'Mango Tomy x kg', 'Fruver Local', 1, 1, 4200.00, 1),
 (14, 'Piña Oro Miel unidad', 'Fruver Local', 1, 1, 3500.00, 1),
@@ -145,8 +142,6 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (43, 'Frambuesas bandeja x 125g', 'Fruver Premium', 1, 1, 6900.00, 1),
 (44, 'Plátano Hartón Verde x kg', 'Fruver Local', 1, 1, 3300.00, 1),
 (45, 'Plátano Madurito x kg', 'Fruver Local', 1, 1, 3500.00, 1),
-
--- VERDURAS (Categoría 2) - Nuevas Inserciones
 (46, 'Tomate Chonto x kg', 'La Huerta', 2, 1, 3400.00, 1),
 (47, 'Tomate Milano x kg', 'La Huerta', 2, 1, 4200.00, 1),
 (48, 'Cebolla Cabezona Blanca x kg', 'La Huerta', 2, 1, 2800.00, 1),
@@ -177,76 +172,22 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (73, 'Perejil Crespo atado', 'La Huerta', 2, 1, 1400.00, 1),
 (74, 'Ajo trenza x 3 unidades', 'La Huerta', 2, 1, 3000.00, 1),
 (75, 'Remolacha limpia x kg', 'La Huerta', 2, 1, 2300.00, 1),
-
--- GRANOS (Categoría 3) - Nuevas Inserciones
 (76, 'Lenteja Nacional x 500g', 'Aburrá', 3, 1, 3500.00, 1),
 (77, 'Fríjol Bola Roja x 500g', 'Aburrá', 3, 1, 6200.00, 1),
 (78, 'Garbanzo Importado x 500g', 'Aburrá', 3, 1, 4100.00, 1),
 (79, 'Maíz Pira Bolsa x 500g', 'Aburrá', 3, 1, 2800.00, 1),
-
--- LÁCTEOS (Categoría 4) - Nuevas Inserciones
 (80, 'Queso Campesino x 500g', 'Alpina', 4, 1, 11500.00, 2),
 (81, 'Mantequilla con sal x 250g', 'Colanta', 4, 1, 6800.00, 2),
 (82, 'Crema de Leche x 200g', 'Alquería', 4, 1, 4100.00, 2),
 (83, 'Kumis Vaso x 150g', 'San Fernando', 4, 1, 1800.00, 2),
-
--- BEBIDAS (Categoría 5) - Nuevas Inserciones
 (84, 'Gaseosa Coca-Cola 1.5Lt', 'Coca-Cola', 5, 1, 4800.00, 2),
 (85, 'Té Verde Hatsu 400ml', 'Hatsu', 5, 1, 3900.00, 2),
 (86, 'Jugo Hit Mora 1Lt', 'Postobón', 5, 1, 3200.00, 2),
 (87, 'Soda Bretaña Botella 300ml', 'Postobón', 5, 1, 1700.00, 2),
-
--- ASEO Y LIMPIEZA PERSONAL (Categoría 6) - Nuevas Inserciones
 (88, 'Crema Dental Triple Acción', 'Colgate', 6, 1, 5400.00, 3),
 (89, 'Papel Higiénico x 4 rollos', 'Familia', 6, 1, 6500.00, 3),
 (90, 'Jabón Líquido Manos 500ml', 'Protex', 6, 1, 8900.00, 3),
 (91, 'Desodorante Original Barra', 'Rexona', 6, 1, 11200.00, 3);
-
--- --------------------------------------------------------
--- Estructura de tabla para la tabla `rol`
--- --------------------------------------------------------
-CREATE TABLE `rol` (
-  `id_rol` int(4) NOT NULL,
-  `descripcion_rol` varchar(100) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `rol` (`id_rol`, `descripcion_rol`) VALUES
-(1, 'Administrador'),
-(2, 'Cajero');
-
--- --------------------------------------------------------
--- Estructura de tabla para la tabla `empleados`
--- --------------------------------------------------------
-CREATE TABLE `empleados` (
-  `id_empleado` int(10) NOT NULL,
-  `nombre_empleado` varchar(150) NOT NULL,
-  `id_rol` int(4) DEFAULT NULL,
-  `fecha_ingreso` datetime DEFAULT current_timestamp(),
-  `monto_pago` decimal(10,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `empleados` (`id_empleado`, `nombre_empleado`, `id_rol`, `fecha_ingreso`, `monto_pago`) VALUES
-(1, 'nicolas eduardo herran daza', 1, '2023-01-15 08:00:00', 3500000.00),
-(2, 'edwin armando acosta soriano', 1, '2023-03-01 08:00:00', 3200000.00),
-(3, 'Joseph Alejandro Hernández', 2, '2023-06-10 08:00:00', 2000000.00),
-(4, 'Mariana Zarate Pachote', 2, '2022-11-20 08:00:00', 2000000.00);
-
--- --------------------------------------------------------
--- Estructura de tabla para la tabla `usuarios`
--- --------------------------------------------------------
-CREATE TABLE `usuarios` (
-  `id_usuario` int(11) NOT NULL,
-  `id_rol` int(4) DEFAULT NULL,
-  `id_empleado` int(10) DEFAULT NULL,
-  `username_log` varchar(50) DEFAULT NULL,
-  `contrasena_log` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
-(1, 1, 1, 'nicolasherran', '113355'),
-(2, 1, 2, 'edwinacosta', '224466'),
-(3, 2, 3, 'alejandrohernandez', '335577'),
-(4, 2, 4, 'marianazarate', '446688');
 
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `inventarios`
@@ -261,11 +202,7 @@ CREATE TABLE `inventarios` (
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 3. Inserción de datos limpia
-START TRANSACTION;
-
 INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestamp_ultima_actualizacion`) VALUES
--- 11 Inventarios Iniciales
 (1, 150, 'Buena', '2026-04-06 14:46:59'),
 (2, 200, 'Buena', '2026-04-06 14:46:59'),
 (3, 80, 'Buena', '2026-04-06 14:46:59'),
@@ -277,8 +214,6 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (9, 180, 'Buena', '2026-04-06 14:51:06'),
 (10, 90, 'Buena', '2026-04-06 14:51:06'),
 (11, 130, 'Buena', '2026-04-06 14:51:06'),
-
--- FRUTAS (Categoría 1)
 (12, 85, 'Buena', CURRENT_TIMESTAMP), 
 (13, 120, 'Buena', CURRENT_TIMESTAMP), 
 (14, 60, 'Buena', CURRENT_TIMESTAMP), 
@@ -313,8 +248,6 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (43, 40, 'Buena', CURRENT_TIMESTAMP), 
 (44, 130, 'Buena', CURRENT_TIMESTAMP), 
 (45, 140, 'Buena', CURRENT_TIMESTAMP), 
-
--- VERDURAS (Categoría 2)
 (46, 200, 'Buena', CURRENT_TIMESTAMP), 
 (47, 180, 'Buena', CURRENT_TIMESTAMP), 
 (48, 220, 'Buena', CURRENT_TIMESTAMP), 
@@ -345,36 +278,68 @@ INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestam
 (73, 80, 'Buena', CURRENT_TIMESTAMP), 
 (74, 100, 'Buena', CURRENT_TIMESTAMP), 
 (75, 110, 'Buena', CURRENT_TIMESTAMP), 
-
--- GRANOS (Categoría 3)
 (76, 150, 'Buena', CURRENT_TIMESTAMP), 
 (77, 120, 'Buena', CURRENT_TIMESTAMP), 
 (78, 95, 'Buena', CURRENT_TIMESTAMP), 
 (79, 140, 'Buena', CURRENT_TIMESTAMP), 
-
--- LÁCTEOS (Categoría 4)
 (80, 45, 'Buena', CURRENT_TIMESTAMP), 
 (81, 70, 'Buena', CURRENT_TIMESTAMP), 
 (82, 85, 'Buena', CURRENT_TIMESTAMP), 
 (83, 120, 'Buena', CURRENT_TIMESTAMP), 
-
--- BEBIDAS (Categoría 5)
 (84, 100, 'Buena', CURRENT_TIMESTAMP), 
 (85, 60, 'Buena', CURRENT_TIMESTAMP), 
 (86, 80, 'Buena', CURRENT_TIMESTAMP), 
 (87, 150, 'Buena', CURRENT_TIMESTAMP), 
-
--- ASEO Y LIMPIEZA PERSONAL (Categoría 6)
 (88, 90, 'Buena', CURRENT_TIMESTAMP), 
 (89, 110, 'Buena', CURRENT_TIMESTAMP), 
 (90, 65, 'Buena', CURRENT_TIMESTAMP), 
 (91, 75, 'Buena', CURRENT_TIMESTAMP);
 
-COMMIT;
+-- --------------------------------------------------------
+-- Estructura de tabla para la tabla `rol`
+-- --------------------------------------------------------
+CREATE TABLE `rol` (
+  `id_rol` int(11) NOT NULL,
+  `descripcion_rol` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 4. Vincular la Llave Foránea con productos de forma segura
-ALTER TABLE `inventarios`
-  ADD CONSTRAINT `inventarios_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
+INSERT INTO `rol` (`id_rol`, `descripcion_rol`) VALUES
+(1, 'Administrador'),
+(2, 'Cajero');
+
+-- --------------------------------------------------------
+-- Estructura de tabla para la tabla `empleados`
+-- --------------------------------------------------------
+CREATE TABLE `empleados` (
+  `id_empleado` int(10) NOT NULL,
+  `nombre_empleado` varchar(150) NOT NULL,
+  `id_rol` int(11) DEFAULT NULL,
+  `fecha_ingreso` datetime DEFAULT current_timestamp(),
+  `monto_pago` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `empleados` (`id_empleado`, `nombre_empleado`, `id_rol`, `fecha_ingreso`, `monto_pago`) VALUES
+(1, 'nicolas eduardo herran daza', 1, '2023-01-15 08:00:00', 3500000.00),
+(2, 'edwin armando acosta soriano', 1, '2023-03-01 08:00:00', 3200000.00),
+(3, 'Joseph Alejandro Hernández', 2, '2023-06-10 08:00:00', 2000000.00),
+(4, 'Mariana Zarate Pachote', 2, '2022-11-20 08:00:00', 2000000.00);
+
+-- --------------------------------------------------------
+-- Estructura de tabla para la tabla `usuarios`
+-- --------------------------------------------------------
+CREATE TABLE `usuarios` (
+  `id_usuario` int(11) NOT NULL,
+  `id_rol` int(11) DEFAULT NULL,
+  `id_empleado` int(10) DEFAULT NULL,
+  `username_log` varchar(50) DEFAULT NULL,
+  `contrasena_log` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
+(1, 1, 1, 'nicolasherran', '113355'),
+(2, 1, 2, 'edwinacosta', '224466'),
+(3, 2, 3, 'alejandrohernandez', '335577'),
+(4, 2, 4, 'marianazarate', '446688');
 
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `factura_compra`
@@ -399,20 +364,19 @@ INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedo
 CREATE TABLE `facturas` (
   `id_factura` int(11) NOT NULL,
   `id_empleado` int(11) DEFAULT NULL,
-  `id_cliente覆` int(11) DEFAULT NULL,
   `id_cliente` int(11) DEFAULT NULL,
   `fecha_fac` datetime DEFAULT current_timestamp(),
   `total_fac` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `facturas` (`id_factura`, `id_empleado`, `id_cliente覆`, `id_cliente`, `fecha_fac`, `total_fac`) VALUES
-(1, 2, NULL, 1, '2024-03-15 10:15:00', 26200.00),
-(2, 3, NULL, 2, '2024-03-16 14:30:00', 18500.00),
-(3, 2, NULL, 3, '2024-03-18 09:45:00', 41700.00),
-(4, 3, NULL, 4, '2024-03-20 16:00:00', 22700.00),
-(5, 2, NULL, 5, '2024-04-02 11:20:00', 34500.00),
-(6, 3, NULL, 6, '2024-04-05 15:00:00', 27400.00),
-(7, 2, NULL, 7, '2024-04-08 10:10:00', 19800.00);
+INSERT INTO `facturas` (`id_factura`, `id_empleado`, `id_cliente`, `fecha_fac`, `total_fac`) VALUES
+(1, 2, 1, '2024-03-15 10:15:00', 26200.00),
+(2, 3, 2, '2024-03-16 14:30:00', 18500.00),
+(3, 2, 3, '2024-03-18 09:45:00', 41700.00),
+(4, 3, 4, '2024-03-20 16:00:00', 22700.00),
+(5, 2, 5, '2024-04-02 11:20:00', 34500.00),
+(6, 3, 6, '2024-04-05 15:00:00', 27400.00),
+(7, 2, 7, '2024-04-08 10:10:00', 19800.00);
 
 -- --------------------------------------------------------
 -- Estructura de tabla para la tabla `detalle_factura`
@@ -497,7 +461,6 @@ ALTER TABLE `empleados` ADD PRIMARY KEY (`id_empleado`), ADD KEY `id_rol` (`id_r
 ALTER TABLE `estado_producto` ADD PRIMARY KEY (`id_estado`);
 ALTER TABLE `facturas` ADD PRIMARY KEY (`id_factura`), ADD KEY `id_empleado` (`id_empleado`), ADD KEY `id_cliente` (`id_cliente`);
 ALTER TABLE `factura_compra` ADD PRIMARY KEY (`id_fac_compra`), ADD KEY `id_proveedor` (`id_proveedor`), ADD KEY `id_empleado` (`id_empleado`);
-ALTER TABLE `inventarios` ADD PRIMARY KEY (`id_inventario`), ADD KEY `id_producto` (`id_producto`);
 ALTER TABLE `usuarios` ADD PRIMARY KEY (`id_usuario`), ADD UNIQUE KEY `username_log` (`username_log`), ADD KEY `id_empleado` (`id_empleado`), ADD KEY `id_rol` (`id_rol`);
 ALTER TABLE `movimientos` ADD PRIMARY KEY (`id_movimiento`), ADD KEY `id_inventario` (`id_inventario`), ADD KEY `id_tipo_mov` (`id_tipo_mov`), ADD KEY `id_empleado` (`id_empleado`), ADD KEY `id_factura` (`id_factura`), ADD KEY `id_fac_compra` (`id_fac_compra`);
 ALTER TABLE `productos` ADD PRIMARY KEY (`id_producto`), ADD KEY `id_categoria` (`id_categoria`), ADD KEY `id_estado` (`id_estado`), ADD KEY `id_proveedor` (`id_proveedor`);

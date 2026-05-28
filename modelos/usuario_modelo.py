@@ -1,38 +1,34 @@
 # modelos/usuario_modelo.py
-from bd_manager import obtener_conexion
-import mysql.connector
+from conexion import obtener_conexion  # <-- Conexión a la nube de Aiven
 
 class UsuarioModelo:
-    def verificar_credenciales(self, usuario, password):
+    def __init__(self):
+        # Al instanciar el modelo, podemos probar si la red hacia Aiven responde
+        self.probar_conexion_nube()
+
+    def probar_conexion_nube(self):
+        conexion = obtener_conexion()
+        if conexion:
+            conexion.close()
+            print("📡 [Modelo] Prueba de conexión exitosa con el clúster de Aiven.")
+        else:
+            print("⚠️ [Modelo] No se pudo establecer contacto con la base de datos remota.")
+
+    def verificar_usuario(self, usuario, contrasena):
+        """Método de ejemplo para validar credenciales en la nube"""
         conexion = obtener_conexion()
         if not conexion:
-            return None
+            return False
             
-        cursor = conexion.cursor(dictionary=True)
-        user_lower = usuario.lower()
-        
         try:
-            # Traemos las columnas reales de tu XAMPP: username_log y contrasena_log
-            query = "SELECT username_log, contrasena_log, id_rol FROM usuarios WHERE username_log = %s"
-            cursor.execute(query, (user_lower,))
-            resultado = cursor.fetchone()
-            
-            if resultado:
-                # REPARACIÓN: Usamos 'contrasena_log' para evitar el KeyError
-                if resultado["contrasena_log"] == password:
-                    return {
-                        "nombre": resultado["username_log"],
-                        "rol": str(resultado["id_rol"])
-                    }
-                else:
-                    print("Contraseña incorrecta.")
-            else:
-                print("El usuario no existe.")
-                
-        except mysql.connector.Error as err:
-            print(f"Error de SQL: {err}")
+            with conexion.cursor() as cursor:
+                # Ajusta la consulta según el nombre exacto de tu tabla y columnas
+                sql = "SELECT * FROM usuarios WHERE email = %s AND password = %s"
+                cursor.execute(sql, (usuario, contrasena))
+                resultado = cursor.fetchone()
+                return resultado is not None
+        except Exception as e:
+            print(f"Error al consultar usuario: {e}")
+            return False
         finally:
-            cursor.close()
             conexion.close()
-            
-        return None
