@@ -1,13 +1,15 @@
 import pymysql
+import os
+from dotenv import load_dotenv
+# ... tus otras importaciones (como mysql.connector, psycopg2, etc.)
 
-# ==============================================================================
-# CONFIGURACIÓN DE CREDENCIALES DE AIVEN
-# ==============================================================================
-HOST_AIVEN = 'mysql-1d0abef0-palmasoftware.l.aivencloud.com'  
-PUERTO_AIVEN = 24083  # Cambia por el número de puerto que te asigne Aiven
-USUARIO_AIVEN = 'avnadmin'
-PASSWORD_AIVEN = 'AVNS_zsnkr3NzJBC4GGAMW3A'       
-DB_NAME = 'defaultdb'  # En Aiven siempre trabajamos sobre la base por defecto
+# Cargar las variables del archivo .env
+load_dotenv()
+
+# Obtener las credenciales de manera segura
+DB_PASSWORD = os.getenv("AIVEN_PASSWORD")
+DB_HOST = os.getenv("AIVEN_HOST")
+DB_USER = os.getenv("AIVEN_USER")
 
 def obtener_conexion():
     """
