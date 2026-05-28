@@ -1,6 +1,17 @@
-# Ignorar carpetas de compilación de Python
+# Archivos de configuración local y credenciales (CRUCIAL)
+.env
+
+# Entornos virtuales de Python
+venv/
+.venv/
+env/
+
+# Archivos temporales de Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Ignorar archivos de variables de entorno (donde guardaremos la contraseña)
-.env
+# Configuraciones de editores de código (Opcional)
+.vscode/
+.idea/

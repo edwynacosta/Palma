@@ -1,34 +1,32 @@
 # modelos/usuario_modelo.py
-from conexion import obtener_conexion  # <-- Conexión a la nube de Aiven
+from conexion import obtener_conexion
 
 class UsuarioModelo:
     def __init__(self):
-        # Al instanciar el modelo, podemos probar si la red hacia Aiven responde
-        self.probar_conexion_nube()
+        pass
 
-    def probar_conexion_nube(self):
-        conexion = obtener_conexion()
-        if conexion:
-            conexion.close()
-            print("📡 [Modelo] Prueba de conexión exitosa con el clúster de Aiven.")
-        else:
-            print("⚠️ [Modelo] No se pudo establecer contacto con la base de datos remota.")
-
-    def verificar_usuario(self, usuario, contrasena):
-        """Método de ejemplo para validar credenciales en la nube"""
+    def verificar_credenciales(self, usuario, contrasena):
+        """
+        Consulta las credenciales usando las columnas reales de tu clúster en Aiven.
+        """
         conexion = obtener_conexion()
         if not conexion:
-            return False
+            return None
             
         try:
             with conexion.cursor() as cursor:
-                # Ajusta la consulta según el nombre exacto de tu tabla y columnas
-                sql = "SELECT * FROM usuarios WHERE email = %s AND password = %s"
+                # 👇 CAMBIO CLAVE: Usamos las columnas reales indexadas en tu panel de Aiven
+                # Cambié 'email' por 'username_log' y 'rol' por 'id_rol' o la columna de texto de tu rol
+                sql = "SELECT id_rol FROM usuarios WHERE username_log = %s AND password = %s"
                 cursor.execute(sql, (usuario, contrasena))
                 resultado = cursor.fetchone()
-                return resultado is not None
+                
+                if resultado:
+                    # Retorna el rol encontrado (ej: si id_rol es un número o texto, lo procesa el controlador)
+                    return str(resultado[0])
+                return None
         except Exception as e:
-            print(f"Error al consultar usuario: {e}")
-            return False
+            print(f"❌ Error en la consulta de credenciales: {e}")
+            return None
         finally:
             conexion.close()

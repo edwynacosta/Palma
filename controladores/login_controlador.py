@@ -1,48 +1,37 @@
 # controladores/login_controlador.py
-from tkinter import messagebox
 
 class PalmaControlador:
-    def __init__(self, vista, modelo):
+    def __init__(self, vista, modelo, navegador):
         self.vista = vista
         self.modelo = modelo
-        
-        # Inicializa las pantallas secundarias incrustadas
-        self.vista.inicializar_frames(self)
+        self.navegador = navegador  # El QStackedWidget de main.py
 
-    def procesar_login(self, usuario, password):
-        if not usuario or not password:
-            messagebox.showerror("Error", "Por favor, llena todos los campos")
+        # Conectar señales nativas de PySide6 (Click y Enter)
+        self.vista.btn_entrar.clicked.connect(self.procesar_login)
+        self.vista.txt_usuario.returnPressed.connect(self.procesar_login)
+        self.vista.txt_password.returnPressed.connect(self.procesar_login)
+
+    def procesar_login(self):
+        usuario = self.vista.txt_usuario.text().strip()
+        contrasena = self.vista.txt_password.text().strip()
+
+        if not usuario or not contrasena:
+            print("⚠️ Por favor, llene todos los campos.")
             return
 
-        datos_usuario = self.modelo.verificar_credenciales(usuario, password)
-
-        if datos_usuario:
-            # Convertimos a string y limpiamos espacios
-            rol = str(datos_usuario.get("rol", "")).lower().strip()
+        # Consultar las credenciales en la nube de Aiven (Devuelve el string del rol)
+        rol_usuario = self.modelo.verificar_credenciales(usuario, contrasena)
+        
+        if rol_usuario:
+            rol_limpio = rol_usuario.lower().strip()
+            print(f"✅ ¡Acceso concedido! Rol detectado: {rol_limpio}")
             
-            # CORREGIDO: Ahora acepta el "1" que viene de tu base de datos
-            if rol in ["1", "admin", "administrador"]:
-                self.vista.mostrar_frame("AdminDashboard")
+            # Redirección dinámica basada en roles mediante el Stack de Qt
+            if rol_limpio == "administrador":
+                self.navegador.cambiar_pantalla("AdminDashboard")
+            elif rol_limpio == "cajero":
+                self.navegador.cambiar_pantalla("CajeroDashboard")
             else:
-                messagebox.showinfo(
-                    "Acceso Exitoso", 
-                    f"Bienvenido/a. El rol '{rol.upper()}' está activo, pero su interfaz está en desarrollo."
-                )
-            
-            try:
-                self.vista.frames["LoginFrame"].limpiar_campos()
-            except Exception:
-                pass
-                
+                print(f"⚠️ Rol desconocido '{rol_limpio}'. No hay interfaz asignada.")
         else:
-            messagebox.showerror("Error", "Usuario o contraseña incorrectos")
-
-    def cambiar_pantalla(self, nombre_pantalla):
-        # Al cerrar sesión o volver, limpiamos primero el formulario
-        if nombre_pantalla == "LoginFrame":
-            try:
-                self.vista.frames["LoginFrame"].limpiar_campos()
-            except Exception:
-                pass
-            
-        self.vista.mostrar_frame(nombre_pantalla)
+            print("❌ Usuario o contraseña incorrectos.")
