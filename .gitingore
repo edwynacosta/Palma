@@ -1,0 +1,6 @@
+# Ignorar carpetas de compilación de Python
+__pycache__/
+*.pyc
+
+# Ignorar archivos de variables de entorno (donde guardaremos la contraseña)
+.env
