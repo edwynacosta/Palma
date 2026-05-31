@@ -1,18 +1,15 @@
-# vistas/login_vista.py
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, 
-                             QPushButton, QLabel, QFrame, QGraphicsDropShadowEffect)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPixmap, QColor, QPainter
+                             QPushButton, QLabel, QFrame, QGraphicsDropShadowEffect,
+                             QMessageBox)
+from PySide6.QtCore import Qt, QRect
+from PySide6.QtGui import QFont, QPixmap, QColor, QFontDatabase, QPainter, QBrush
 
 class LoginVista(QWidget):
     def __init__(self, controlador_flujo):
         super().__init__()
         self.controlador = controlador_flujo
         
-        # Activar el dibujado de estilos nativo en Windows
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        
-        # Paleta de Colores Exacta
+        # Paleta de colores
         self.VERDE_FONDO = "#008F39"
         self.VERDE_CORPORATIVO = "#008037"
         self.VERDE_INPUT_BG = "#DCEFE3"
@@ -20,146 +17,85 @@ class LoginVista(QWidget):
         self.VERDE_HOVER_BOTON = "#005E28"
         self.BLANCO_CARD = "#FFFFFF"
 
-        self.setStyleSheet(f"background-color: {self.VERDE_FONDO};")
-
+        # Layout Principal
         layout_principal = QHBoxLayout(self)
         layout_principal.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # --- TARJETA CENTRAL ---
+        # Tarjeta Central
         self.card = QFrame()
-        self.card.setFixedSize(420, 600)
-        self.card.setStyleSheet(f"QFrame {{ background-color: {self.BLANCO_CARD}; border-radius: 40px; }}")
+        self.card.setFixedSize(400, 500)
+        self.card.setStyleSheet(f"QFrame {{ background-color: {self.BLANCO_CARD}; border-radius: 30px; }}")
         
+        # Efecto de sombra
         sombra = QGraphicsDropShadowEffect(self)
-        sombra.setBlurRadius(35)
-        sombra.setColor(QColor(0, 0, 0, 45))
-        sombra.setOffset(0, 10)
+        sombra.setBlurRadius(30)
+        sombra.setColor(QColor(0, 0, 0, 40))
+        sombra.setOffset(0, 5)
         self.card.setGraphicsEffect(sombra)
 
+        # Layout interno de la tarjeta
         layout_card = QVBoxLayout(self.card)
-        layout_card.setContentsMargins(45, 45, 45, 45)
+        layout_card.setContentsMargins(40, 40, 40, 40)
         layout_card.setSpacing(15)
 
-        # --- LOGO Y TÍTULO ---
+        # --- LOGO Y TÍTULO (BLOQUE DE ESTRUCTURA RÍGIDA) ---
+        
+        # 1. Logo
         self.lbl_logo = QLabel()
         pixmap = QPixmap("vistas/logo_palma.png")
         if not pixmap.isNull():
-            self.lbl_logo.setPixmap(pixmap.scaled(130, 130, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        else:
-            self.lbl_logo.setText("🌴")
-            self.lbl_logo.setStyleSheet("font-size: 70px; background: transparent;")
+            # Escalado estricto
+            self.lbl_logo.setPixmap(pixmap.scaled(140, 140, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout_card.addWidget(self.lbl_logo)
+        layout_card.addWidget(self.lbl_logo, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Título "PALMA" con tipografía limpia y pesada
+        # 2. Título (PALMA)
         self.lbl_palma = QLabel("PALMA")
-        fuente_palma = QFont("Segoe UI", 36, QFont.Weight.Bold)
-        fuente_palma.setStyleStrategy(QFont.StyleStrategy.PreferAntialias) # Fuerza suavizado de bordes
-        self.lbl_palma.setFont(fuente_palma)
+        self.lbl_palma.setFont(QFont("Montserrat", 32, QFont.Weight.Bold))
         self.lbl_palma.setStyleSheet(f"color: {self.VERDE_CORPORATIVO}; background: transparent; margin-bottom: 10px;")
         self.lbl_palma.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout_card.addWidget(self.lbl_palma)
+        layout_card.addWidget(self.lbl_palma, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # --- INPUTS ESTILIZADOS ---
-        estilo_inputs = f"""
-            QLineEdit {{
-                background-color: {self.VERDE_INPUT_BG};
-                color: {self.VERDE_FOCUS};
-                border: 2px solid {self.VERDE_INPUT_BG};
-                border-radius: 25px;
-                padding-left: 20px;
-                font-family: 'Segoe UI';
-                font-size: 14px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid {self.VERDE_FOCUS};
-            }}
-        """
-
+        # 3. Inputs
+        estilo_inputs = f"background-color: {self.VERDE_INPUT_BG}; color: {self.VERDE_FOCUS}; border: none; border-radius: 20px; padding: 15px; font-size: 14px;"
+        
         self.txt_usuario = QLineEdit()
         self.txt_usuario.setPlaceholderText("Usuario")
-        self.txt_usuario.setFixedSize(330, 50)
         self.txt_usuario.setStyleSheet(estilo_inputs)
-        self.txt_usuario.returnPressed.connect(self.verificar_login)
-        layout_card.addWidget(self.txt_usuario, 0, Qt.AlignmentFlag.AlignCenter)
+        layout_card.addWidget(self.txt_usuario)
 
         self.txt_password = QLineEdit()
         self.txt_password.setPlaceholderText("Contraseña")
         self.txt_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.txt_password.setFixedSize(330, 50)
         self.txt_password.setStyleSheet(estilo_inputs)
-        self.txt_password.returnPressed.connect(self.verificar_login)
-        layout_card.addWidget(self.txt_password, 0, Qt.AlignmentFlag.AlignCenter)
+        layout_card.addWidget(self.txt_password)
 
-        layout_card.addSpacing(15)
-
-        # --- SECCIÓN BOTÓN Y LINKS ---
-        layout_inferior = QHBoxLayout()
-        layout_inferior.setSpacing(15)
-        
-        # 1. BOTÓN ENTRAR CON RENDERIZADO CRISTALINO (Solución a tu problema visual)
+        # 4. Botón
         self.btn_entrar = QPushButton("ENTRAR")
-        self.btn_entrar.setFixedSize(145, 50)
-        self.btn_entrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        # Configuramos la fuente usando Segoe UI / Arial con estrategia de Antialiasing explícita
-        fuente_boton = QFont("Segoe UI", 14, QFont.Weight.DemiBold)
-        fuente_boton.setStyleStrategy(QFont.StyleStrategy.PreferAntialias) 
-        fuente_boton.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.5) # Separa ligeramente las letras para mayor nitidez
-        self.btn_entrar.setFont(fuente_boton)
-        
-        self.btn_entrar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {self.VERDE_CORPORATIVO};
-                color: white;
-                border-radius: 18px;
-                border: none;
-            }}
-            QPushButton:hover {{
-                background-color: {self.VERDE_HOVER_BOTON};
-            }}
-        """)
+        self.btn_entrar.setFixedSize(300, 50)
+        self.btn_entrar.setStyleSheet(f"QPushButton {{ background-color: {self.VERDE_CORPORATIVO}; color: white; border-radius: 20px; font-weight: bold; font-size: 16px; }} QPushButton:hover {{ background-color: {self.VERDE_HOVER_BOTON}; }}")
         self.btn_entrar.clicked.connect(self.verificar_login)
-        layout_inferior.addWidget(self.btn_entrar)
-
-        # 3. Contenedor de links compactos
-        layout_links = QVBoxLayout()
-        layout_links.setSpacing(3)
-        layout_links.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        
-        # Configuración de fuente limpia para los textos pequeños
-        fuente_links = QFont("Segoe UI", 9, QFont.Weight.Bold)
-        fuente_links.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
-        
-        estilo_links = f"""
-            QLabel {{
-                color: {self.VERDE_FOCUS}; 
-                background: transparent;
-                margin: 0px;
-                padding: 0px;
-            }}
-        """
-        
-        lbl_olvido_u = QLabel("¿Olvidaste el usuario?")
-        lbl_olvido_c = QLabel("¿Olvidaste la contraseña?")
-        lbl_ayuda = QLabel("Ayuda")
-        
-        for lbl in [lbl_olvido_u, lbl_olvido_c, lbl_ayuda]:
-            lbl.setFont(fuente_links)
-            lbl.setStyleSheet(estilo_links)
-            lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout_links.addWidget(lbl)
-            
-        layout_inferior.addLayout(layout_links)
-        layout_card.addLayout(layout_inferior)
+        layout_card.addWidget(self.btn_entrar, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout_principal.addWidget(self.card)
 
-    def mousePressEvent(self, event):
-        focused_widget = self.focusWidget()
-        if isinstance(focused_widget, QLineEdit):
-            focused_widget.clearFocus()
-        super().mousePressEvent(event)
+    # --- FORZAR FONDO VERDE ---
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setBrush(QBrush(QColor(self.VERDE_FONDO)))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
 
     def verificar_login(self):
-        self.controlador.cambiar_pantalla("AdminDashboard")
+        usuario = self.txt_usuario.text().strip()
+        password = self.txt_password.text().strip()
+        try:
+            with self.controlador.conexion.cursor() as cursor:
+                sql = "SELECT id_usuario, username_log FROM usuarios WHERE username_log = %s AND contrasena_log = %s;"
+                cursor.execute(sql, (usuario, password))
+                if cursor.fetchone():
+                    self.controlador.cambiar_pantalla("AdminDashboard")
+                else:
+                    QMessageBox.warning(self, "Acceso", "Usuario o contraseña incorrectos.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error BD", f"Error de conexión: {e}")
