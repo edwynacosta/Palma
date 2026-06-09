@@ -56,16 +56,11 @@ class BotonAnimado(QPushButton):
         self.setStyleSheet(self.estilo_hover)
  
         # Guardamos la posición SOLO si aún no la tenemos
-        # (la primera vez que el mouse entra, el botón ya está en reposo)
         if self.pos_original is None:
             self.pos_original = self.pos()
  
-        # ── CORRECCIÓN CLAVE ──────────────────────────────────────────────────
-        # raise_() hace que este botón se pinte ENCIMA de sus hermanos en el
-        # mismo widget padre, por lo que jamás quedará tapado o recortado por
-        # los bordes del contenedor_grid durante el movimiento hacia arriba.
+        # raise_() hace que este botón se pinte ENCIMA de sus hermanos
         self.raise_()
-        # ─────────────────────────────────────────────────────────────────────
  
         self.anim_pos.stop()
         self.anim_pos.setStartValue(self.pos())
@@ -151,22 +146,18 @@ class AdminDashboardQt(QWidget):
         # ==============================================================================
         contenedor_grid = QWidget()
  
-        # ── CORRECCIÓN CLAVE ──────────────────────────────────────────────────
-        # Añadimos 15 px de margen superior al contenedor_grid.
-        # Ese espacio vacío es exactamente el "techo" que los botones de la
-        # fila 0 necesitan para subir 10 px sin que su widget padre los recorte.
-        # Sin este padding el layout comprime el borde superior hasta el botón
-        # y cualquier movimiento hacia arriba queda fuera del área pintable.
         grid_layout = QGridLayout(contenedor_grid)
         grid_layout.setSpacing(35)
-        grid_layout.setContentsMargins(0, 15, 0, 0)   # ← top=15 (antes era 0)
-        # ─────────────────────────────────────────────────────────────────────
+        grid_layout.setContentsMargins(0, 15, 0, 0)
  
         self.mod_ventas      = BotonAnimado("VENTAS")
         self.mod_inventarios = BotonAnimado("INVENTARIOS")
         self.mod_finanzas    = BotonAnimado("FINANZAS")
         self.mod_personal    = BotonAnimado("PERSONAL")
         self.mod_cuenta      = BotonAnimado("CUENTA", alto_personalizado=615)
+ 
+        # ENLACE CON EL MÓDULO DE LA CAJA VISTA
+        self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
  
         grid_layout.addWidget(self.mod_ventas,       0, 0)
         grid_layout.addWidget(self.mod_finanzas,     1, 0)
@@ -202,6 +193,8 @@ class AdminDashboardQt(QWidget):
         footer_layout.addWidget(self.lbl_time)
         layout_principal.addLayout(footer_layout)
  
+        # --- SOLUCIÓN ORDEN INCORRECTO DE INICIALIZACIÓN ---
+        # Ahora se ejecuta al final de todo el constructor, garantizando que 'lbl_user' ya exista.
         self.actualizar_interfaz_usuario()
  
         self.timer = QTimer(self)
@@ -210,8 +203,15 @@ class AdminDashboardQt(QWidget):
         self.actualizar_tiempo()
  
     # ==============================================================================
-    # MECANISMOS DE ACTUALIZACIÓN
+    # MECANISMOS DE ACTUALIZACIÓN Y DIRECCIÓN
     # ==============================================================================
+    def abrir_modulo_caja(self):
+        """Redirecciona al cajero hacia el nuevo módulo de caja pasándole sus datos de sesión."""
+        if self.controlador:
+            # Recuperamos los datos del usuario logueado en formato de diccionario seguro
+            datos = getattr(self, 'datos_usuario', {})
+            self.controlador.cambiar_pantalla("Caja", datos_usuario=datos)
+ 
     def establecer_usuario(self, nombre, rol):
         if nombre and rol:
             self.lbl_user.setText(f"<span style='font-size: 20px;'>{str(nombre).title()}</span><br>"
@@ -222,8 +222,9 @@ class AdminDashboardQt(QWidget):
         rol_final    = "Administrador"
         
         if isinstance(self.datos_usuario, dict) and self.datos_usuario:
-            nombre_final = self.datos_usuario.get("nombre", nombre_final)
-            rol_final    = self.datos_usuario.get("rol",    rol_final)
+            # Compatibilidad con los campos de login (username_log) y dashboard local (nombre)
+            nombre_final = self.datos_usuario.get("username_log", self.datos_usuario.get("nombre", nombre_final))
+            rol_final    = self.datos_usuario.get("rol", rol_final)
             
         nombre_final = str(nombre_final).strip().title()
         rol_final    = str(rol_final).strip().capitalize()
