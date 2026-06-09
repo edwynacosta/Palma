@@ -167,6 +167,9 @@ class AdminDashboardQt(QWidget):
         self.mod_finanzas    = BotonAnimado("FINANZAS")
         self.mod_personal    = BotonAnimado("PERSONAL")
         self.mod_cuenta      = BotonAnimado("CUENTA", alto_personalizado=615)
+
+        if self.controlador:
+            self.mod_inventarios.clicked.connect(lambda: self.controlador.cambiar_pantalla("Inventario"))
  
         grid_layout.addWidget(self.mod_ventas,       0, 0)
         grid_layout.addWidget(self.mod_finanzas,     1, 0)

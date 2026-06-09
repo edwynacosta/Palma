@@ -7,6 +7,8 @@ from PySide6.QtGui import QIcon
 from conexion import conexion_db
 from vistas.login_vista import LoginVista
 from vistas.admin_vista import AdminDashboardQt
+from vistas.inventario_vista import InventarioVista
+from vistas.proveedores_vista import ProveedoresVista
 
 load_dotenv()
 
@@ -34,9 +36,13 @@ class MainWindow(QMainWindow):
         # Inicialización de vistas
         self.login_view = LoginVista(self)
         self.admin_view = AdminDashboardQt(self, datos_usuario={})
+        self.inventario_view = InventarioVista(self, self.conexion)
+        self.proveedores_view = ProveedoresVista(self, self.conexion)
         
         self.stack.addWidget(self.login_view)
         self.stack.addWidget(self.admin_view)
+        self.stack.addWidget(self.inventario_view)
+        self.stack.addWidget(self.proveedores_view)
         
         self.stack.setCurrentWidget(self.login_view)
         self.showMaximized()
@@ -48,6 +54,14 @@ class MainWindow(QMainWindow):
             if hasattr(self.admin_view, 'actualizar_interfaz_usuario'):
                 self.admin_view.actualizar_interfaz_usuario()
             self.stack.setCurrentWidget(self.admin_view)
+        elif nombre_pantalla == "Inventario":
+            if hasattr(self.inventario_view, "cargar_productos"):
+                self.inventario_view.cargar_productos()
+            self.stack.setCurrentWidget(self.inventario_view)
+        elif nombre_pantalla == "Proveedores":
+            if hasattr(self.proveedores_view, "cargar_proveedores"):
+                self.proveedores_view.cargar_proveedores()
+            self.stack.setCurrentWidget(self.proveedores_view)
         else:
             self.stack.setCurrentWidget(self.login_view)
 
