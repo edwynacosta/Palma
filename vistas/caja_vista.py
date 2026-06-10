@@ -3,11 +3,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
     QPushButton, QLabel, QFrame, QTableWidget,
     QTableWidgetItem, QHeaderView, QMessageBox,
-    QGraphicsDropShadowEffect, QStackedLayout
+    QSizePolicy
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor, QPainter, QBrush, QFontDatabase
-
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QFont, QColor, QFontDatabase
 
 class CajaVista(QWidget):
     def __init__(self, controlador_flujo):
@@ -16,673 +15,429 @@ class CajaVista(QWidget):
         self.productos_venta = []
         self.total_actual = 0
 
+        # --- PALETA DE COLORES (Identidad Palma / Tailwind Config) ---
+        self.COLOR_FONDO = "#F4F7F5"
+        self.COLOR_BRAND = "#1A7C3E"
+        self.COLOR_BRAND_LIGHT = "#25A355"
+        self.COLOR_MUTED = "#E8F5EE"
+        self.COLOR_BORDE = "#D1E2D9"
+        self.COLOR_TEXTO_OSCURO = "#1C2420"
+        self.COLOR_PELIGRO = "#D66666"
+
+        # --- CONFIGURACIÓN DE FUENTES ---
         ruta_vistas = os.path.dirname(os.path.abspath(__file__))
         ruta_raiz = os.path.dirname(ruta_vistas)
         carpeta_fuentes = os.path.join(ruta_raiz, "fuentes")
 
-        QFontDatabase.addApplicationFont(os.path.join(carpeta_fuentes, "Montserrat-Bold.ttf"))
-        QFontDatabase.addApplicationFont(os.path.join(carpeta_fuentes, "Montserrat-Regular.ttf"))
-        QFontDatabase.addApplicationFont(os.path.join(carpeta_fuentes, "Montserrat-Medium.ttf"))
+        for f in ("Montserrat-Bold.ttf", "Montserrat-Regular.ttf",
+                  "Montserrat-Medium.ttf", "Montserrat-Black.ttf"):
+            ruta_f = os.path.join(carpeta_fuentes, f)
+            if os.path.exists(ruta_f):
+                QFontDatabase.addApplicationFont(ruta_f)
 
-        self.fuente_heavy = QFont("Montserrat", 34, QFont.Weight.Bold)
-        self.fuente_heavy.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        # --- CONFIGURACIÓN ESTÁTICA ---
+        self.setObjectName("CajaModulo")
+        self.setStyleSheet(f"QWidget#CajaModulo {{ background-color: {self.COLOR_FONDO}; }}")
 
-        self.fuente_titulos = QFont("Montserrat", 25, QFont.Weight.Bold)
-        self.fuente_titulos.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        # Layout Principal de la Ventana
+        self.layout_principal = QVBoxLayout(self)
+        self.layout_principal.setContentsMargins(0, 0, 0, 0)
+        self.layout_principal.setSpacing(0)
 
-        self.fuente_normal = QFont("Montserrat", 11, QFont.Weight.Medium)
-        self.fuente_tags = QFont("Montserrat", 9, QFont.Weight.Bold)
+        # 1. CONSTRUCCIÓN DE COMPONENTES
+        self.inicializar_header()
+        self.inicializar_cuerpo_pos()
 
-        self.COLOR_FONDO = "#F4F7F5"
-        self.BRAND_DEFAULT = "#17813D"
-        self.BRAND_LIGHT = "#228E49"
-        self.BRAND_MUTED = "#E9F7EF"
-        self.BRAND_BORDER = "#A9DDBC"
-        self.DANGER_DEFAULT = "#DC6468"
-        self.DANGER_LIGHT = "#FDEEEF"
-
-        layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(12, 13, 12, 13)
-        layout_principal.setSpacing(0)
-
-        self.contenedor_blanco = QFrame()
-        self.contenedor_blanco.setObjectName("ContenedorCaja")
-        self.contenedor_blanco.setStyleSheet("""
-            QFrame#ContenedorCaja {
+    def inicializar_header(self):
+        """Construye la barra superior idéntica a los dashboards corporativos."""
+        self.frame_header = QFrame()
+        self.frame_header.setFixedHeight(70)
+        self.frame_header.setStyleSheet(f"""
+            QFrame {{
                 background-color: #FFFFFF;
-                border: 1px solid #B8E3C8;
-                border-radius: 14px;
-            }
+                border-bottom: 1px solid {self.COLOR_BORDE};
+            }}
         """)
+        layout_header = QHBoxLayout(self.frame_header)
+        layout_header.setContentsMargins(40, 0, 40, 0)
 
-        sombra_general = QGraphicsDropShadowEffect(self)
-        sombra_general.setBlurRadius(18)
-        sombra_general.setColor(QColor(23, 129, 61, 35))
-        sombra_general.setOffset(0, 4)
-        self.contenedor_blanco.setGraphicsEffect(sombra_general)
+        # Branding Izquierda
+        lbl_logo = QLabel("PALMA")
+        lbl_logo.setStyleSheet(f"font-family: 'Montserrat'; font-size: 24px; font-weight: 900; color: {self.COLOR_BRAND}; border: none;")
+        layout_header.addWidget(lbl_logo)
+        
+        layout_header.addStretch()
 
-        layout_contenedor = QVBoxLayout(self.contenedor_blanco)
-        layout_contenedor.setContentsMargins(0, 0, 0, 0)
-        layout_contenedor.setSpacing(0)
-
-        navbar = QFrame()
-        navbar.setObjectName("NavbarCaja")
-        navbar.setFixedHeight(74)
-        navbar.setStyleSheet(
-            "QFrame#NavbarCaja { background-color: #FFFFFF; border: none; border-bottom: 1px solid #EEF0F2; }"
-        )
-
-        layout_navbar = QHBoxLayout(navbar)
-        layout_navbar.setContentsMargins(0, 0, 25, 0)
-        layout_navbar.setSpacing(0)
-
-        layout_pestanas = QHBoxLayout()
-        layout_pestanas.setSpacing(0)
-
-        estilo_pestana_activa = f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {self.BRAND_DEFAULT};
-                font-family: 'Montserrat', sans-serif;
-                font-size: 11px;
-                font-weight: 900;
-                border: none;
-                border-bottom: 4px solid {self.BRAND_DEFAULT};
-                padding: 0px 34px;
-                text-transform: uppercase;
-                height: 74px;
-            }}
-        """
-
-        estilo_pestana_inactiva = f"""
-            QPushButton {{
-                background-color: transparent;
-                color: #9CA3AF;
-                font-family: 'Montserrat', sans-serif;
-                font-size: 11px;
-                font-weight: 800;
-                border: none;
-                border-bottom: 4px solid transparent;
-                padding: 0px 33px;
-                text-transform: uppercase;
-                height: 74px;
-            }}
-            QPushButton:hover {{
-                color: {self.BRAND_DEFAULT};
-            }}
-        """
-
-        btn_tab_caja = QPushButton("Caja")
-        btn_tab_caja.setStyleSheet(estilo_pestana_activa)
-
-        btn_tab_factura = QPushButton("Factura\nElectrónica")
-        btn_tab_factura.setStyleSheet(estilo_pestana_inactiva)
-
-        btn_tab_devoluciones = QPushButton("Devoluciones")
-        btn_tab_devoluciones.setStyleSheet(estilo_pestana_inactiva)
-
-        btn_tab_proveedores = QPushButton("Recibo\nProveedores")
-        btn_tab_proveedores.setStyleSheet(estilo_pestana_inactiva)
-
-        layout_pestanas.addWidget(btn_tab_caja)
-        layout_pestanas.addWidget(btn_tab_factura)
-        layout_pestanas.addWidget(btn_tab_devoluciones)
-        layout_pestanas.addWidget(btn_tab_proveedores)
-
-        layout_usuario_acciones = QHBoxLayout()
-        layout_usuario_acciones.setSpacing(16)
-
-        widget_perfil = QFrame()
-        widget_perfil.setStyleSheet("background: transparent; border: none;")
-
-        layout_perfil = QHBoxLayout(widget_perfil)
+        # Información del Cajero Activo
+        container_perfil = QWidget()
+        layout_perfil = QHBoxLayout(container_perfil)
         layout_perfil.setContentsMargins(0, 0, 0, 0)
-        layout_perfil.setSpacing(10)
+        layout_perfil.setSpacing(12)
 
-        layout_meta_usuario = QVBoxLayout()
-        layout_meta_usuario.setSpacing(1)
-        layout_meta_usuario.setAlignment(Qt.AlignmentFlag.AlignRight)
+        container_texto = QWidget()
+        layout_texto_user = QVBoxLayout(container_texto)
+        layout_texto_user.setContentsMargins(0, 0, 0, 0)
+        layout_texto_user.setSpacing(2)
 
         self.lbl_nombre_cajero = QLabel("Edwin Acosta")
-        self.lbl_nombre_cajero.setFont(self.fuente_tags)
+        self.lbl_nombre_cajero.setStyleSheet(f"font-family: 'Montserrat'; font-size: 14px; font-weight: 700; color: {self.COLOR_TEXTO_OSCURO};")
         self.lbl_nombre_cajero.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.lbl_nombre_cajero.setStyleSheet(
-            f"color: {self.BRAND_DEFAULT}; background: transparent; font-weight: 900; font-size: 11px;"
-        )
 
-        lbl_rol = QLabel("CAJERO")
-        lbl_rol.setFont(QFont("Montserrat", 8, QFont.Weight.Bold))
+        lbl_rol = QLabel("Cajero de Turno")
+        lbl_rol.setStyleSheet("font-family: 'Montserrat'; font-size: 11px; font-weight: 500; color: #708077;")
         lbl_rol.setAlignment(Qt.AlignmentFlag.AlignRight)
-        lbl_rol.setStyleSheet("color: #9CA3AF; background: transparent;")
 
-        layout_meta_usuario.addWidget(self.lbl_nombre_cajero)
-        layout_meta_usuario.addWidget(lbl_rol)
+        layout_texto_user.addWidget(self.lbl_nombre_cajero)
+        layout_texto_user.addWidget(lbl_rol)
 
         self.lbl_avatar = QLabel("EA")
-        self.lbl_avatar.setFixedSize(38, 38)
+        self.lbl_avatar.setFixedSize(42, 42)
         self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_avatar.setStyleSheet(f"""
             QLabel {{
-                background-color: {self.BRAND_MUTED};
-                border: 1px solid {self.BRAND_BORDER};
-                border-radius: 19px;
-                color: {self.BRAND_DEFAULT};
+                background-color: {self.COLOR_MUTED};
+                border: 2px solid {self.COLOR_BRAND};
+                border-radius: 21px;
                 font-family: 'Montserrat';
-                font-weight: 800;
-                font-size: 11px;
+                font-size: 14px;
+                font-weight: 700;
+                color: {self.COLOR_BRAND};
             }}
         """)
 
-        layout_perfil.addLayout(layout_meta_usuario)
-        layout_perfil.addWidget(self.lbl_avatar)
-
-        btn_logout = QPushButton("Cerrar sesión")
-        btn_logout.setFixedSize(103, 35)
-        btn_logout.setFont(QFont("Montserrat", 8, QFont.Weight.Bold))
-        btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_logout.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF;
-                color: #DC2626;
-                border: 1px solid #FEE2E2;
-                border-radius: 9px;
-            }
-            QPushButton:hover {
-                background-color: #DC2626;
-                color: #FFFFFF;
-            }
-        """)
-        btn_logout.clicked.connect(self.cerrar_sesion)
-
-        btn_salir = QPushButton("X")
-        btn_salir.setFixedSize(40, 40)
-        btn_salir.setFont(QFont("Montserrat", 13, QFont.Weight.Black))
-        btn_salir.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_salir.setStyleSheet(f"""
+        # Botón Volver Minimalista (Estilo '✕')
+        btn_volver = QPushButton("✕")
+        btn_volver.setFixedSize(36, 36)
+        btn_volver.setStyleSheet(f"""
             QPushButton {{
-                background-color: #FFFFFF;
-                color: {self.BRAND_DEFAULT};
-                border: 1px solid #E5E7EB;
-                border-radius: 11px;
+                background-color: #F4F7F5;
+                border: 1px solid {self.COLOR_BORDE};
+                border-radius: 8px;
+                font-family: 'Montserrat';
+                font-size: 14px;
+                font-weight: 700;
+                color: {self.COLOR_TEXTO_OSCURO};
             }}
             QPushButton:hover {{
-                background-color: {self.DANGER_LIGHT};
-                color: {self.DANGER_DEFAULT};
-                border: 1px solid #FCA5A5;
+                background-color: #FDF2F2;
+                color: {self.COLOR_PELIGRO};
+                border-color: #F2DEDE;
             }}
         """)
-        btn_salir.clicked.connect(self.volver_dashboard)
+        btn_volver.clicked.connect(self.volver_dashboard)
 
-        layout_usuario_acciones.addWidget(widget_perfil)
-        layout_usuario_acciones.addWidget(btn_logout)
-        layout_usuario_acciones.addWidget(btn_salir)
+        layout_perfil.addWidget(container_texto)
+        layout_perfil.addWidget(self.lbl_avatar)
+        layout_perfil.addWidget(btn_volver)
+        layout_header.addWidget(container_perfil)
 
-        layout_navbar.addLayout(layout_pestanas)
-        layout_navbar.addStretch()
-        layout_navbar.addLayout(layout_usuario_acciones)
+        self.layout_principal.addWidget(self.frame_header)
 
-        layout_contenedor.addWidget(navbar)
+    def inicializar_cuerpo_pos(self):
+        """Distribuye la pantalla en el esquema POS de dos paneles de alta fidelidad."""
+        container_cuerpo = QWidget()
+        layout_cuerpo = QHBoxLayout(container_cuerpo)
+        layout_cuerpo.setContentsMargins(40, 30, 40, 30)
+        layout_cuerpo.setSpacing(30)
 
-        cuerpo_central = QHBoxLayout()
-        cuerpo_central.setContentsMargins(0, 0, 0, 0)
-        cuerpo_central.setSpacing(0)
-
-        panel_cobros = QFrame()
-        panel_cobros.setObjectName("PanelCobros")
-        panel_cobros.setFixedWidth(320)
-        panel_cobros.setStyleSheet(
-            "QFrame#PanelCobros { background-color: #FBFCFC; border: none; border-right: 1px solid #EEF0F2; }"
-        )
-
-        layout_panel = QVBoxLayout(panel_cobros)
-        layout_panel.setContentsMargins(24, 24, 24, 24)
-        layout_panel.setSpacing(20)
-
-        card_total = QFrame()
-        card_total.setObjectName("CardTotal")
-        card_total.setFixedHeight(123)
-        card_total.setStyleSheet(
-            f"QFrame#CardTotal {{ background-color: {self.BRAND_DEFAULT}; border: none; border-radius: 24px; }}"
-        )
-
-        sombra_total = QGraphicsDropShadowEffect(self)
-        sombra_total.setBlurRadius(16)
-        sombra_total.setColor(QColor(23, 129, 61, 55))
-        sombra_total.setOffset(0, 7)
-        card_total.setGraphicsEffect(sombra_total)
-
-        layout_card_total = QVBoxLayout(card_total)
-        layout_card_total.setContentsMargins(27, 27, 24, 20)
-        layout_card_total.setSpacing(0)
-
-        lbl_title_total = QLabel("TOTAL A PAGAR:")
-        lbl_title_total.setFont(self.fuente_tags)
-        lbl_title_total.setStyleSheet(
-            "color: #FFFFFF; background: transparent; border: none; letter-spacing: 1px;"
-        )
-
-        self.lbl_display_total = QLabel("$0")
-        self.lbl_display_total.setFont(self.fuente_heavy)
-        self.lbl_display_total.setStyleSheet("color: #FFFFFF; background: transparent; border: none;")
-
-        layout_card_total.addWidget(lbl_title_total)
-        layout_card_total.addWidget(self.lbl_display_total)
-
-        card_efectivo = QFrame()
-        card_efectivo.setObjectName("CardEfectivo")
-        card_efectivo.setFixedHeight(119)
-        card_efectivo.setStyleSheet(
-            f"QFrame#CardEfectivo {{ background-color: #FFFFFF; border: 2px solid {self.BRAND_BORDER}; border-radius: 24px; }}"
-        )
-
-        layout_card_efectivo = QVBoxLayout(card_efectivo)
-        layout_card_efectivo.setContentsMargins(27, 27, 24, 18)
-        layout_card_efectivo.setSpacing(0)
-
-        lbl_title_efectivo = QLabel("EFECTIVO:")
-        lbl_title_efectivo.setFont(self.fuente_tags)
-        lbl_title_efectivo.setStyleSheet(
-            f"color: {self.BRAND_DEFAULT}; background: transparent; border: none; letter-spacing: 1px;"
-        )
-
-        self.txt_efectivo = QLineEdit()
-        self.txt_efectivo.setPlaceholderText("0")
-        self.txt_efectivo.setFont(self.fuente_heavy)
-        self.txt_efectivo.setFixedHeight(48)
-        self.txt_efectivo.setStyleSheet(
-            "QLineEdit { color: #99A1B2; background: transparent; border: none; padding: 0px; }"
-        )
-        self.txt_efectivo.textChanged.connect(self.actualizar_cambio)
-
-        layout_card_efectivo.addWidget(lbl_title_efectivo)
-        layout_card_efectivo.addWidget(self.txt_efectivo)
-
-        card_cambio = QFrame()
-        card_cambio.setObjectName("CardCambio")
-        card_cambio.setFixedHeight(118)
-        card_cambio.setStyleSheet(
-            f"QFrame#CardCambio {{ background-color: {self.DANGER_LIGHT}; border: 2px solid #F8CBCD; border-radius: 24px; }}"
-        )
-
-        layout_card_cambio = QVBoxLayout(card_cambio)
-        layout_card_cambio.setContentsMargins(27, 28, 24, 18)
-        layout_card_cambio.setSpacing(0)
-
-        lbl_title_cambio = QLabel("CAMBIO:")
-        lbl_title_cambio.setFont(self.fuente_tags)
-        lbl_title_cambio.setStyleSheet(
-            f"color: {self.DANGER_DEFAULT}; background: transparent; border: none; letter-spacing: 1px;"
-        )
-
-        self.lbl_display_cambio = QLabel("$0")
-        self.lbl_display_cambio.setFont(self.fuente_heavy)
-        self.lbl_display_cambio.setStyleSheet(
-            f"color: {self.DANGER_DEFAULT}; background: transparent; border: none;"
-        )
-
-        layout_card_cambio.addWidget(lbl_title_cambio)
-        layout_card_cambio.addWidget(self.lbl_display_cambio)
-
-        layout_panel.addWidget(card_total)
-        layout_panel.addWidget(card_efectivo)
-        layout_panel.addStretch()
-        layout_panel.addWidget(card_cambio)
-
-        area_tabla = QFrame()
-        area_tabla.setObjectName("AreaFacturacion")
-        area_tabla.setStyleSheet("QFrame#AreaFacturacion { border: none; background-color: #FFFFFF; }")
-
-        layout_area_tabla = QVBoxLayout(area_tabla)
-        layout_area_tabla.setContentsMargins(32, 22, 40, 20)
-        layout_area_tabla.setSpacing(17)
-
-        lbl_titulo_seccion = QLabel("FACTURACIÓN")
-        lbl_titulo_seccion.setFont(self.fuente_titulos)
-        lbl_titulo_seccion.setFixedHeight(56)
-        lbl_titulo_seccion.setStyleSheet(
-            f"color: {self.BRAND_DEFAULT}; font-weight: 900; letter-spacing: 0px; background: transparent;"
-        )
-
-        self.tabla_productos = QTableWidget()
-        self.tabla_productos.setColumnCount(4)
-        self.tabla_productos.setHorizontalHeaderLabels([
-            "ID",
-            "NOMBRE DEL PRODUCTO",
-            "CANTIDAD/PESO",
-            "PRECIO UNITARIO"
-        ])
-
-        self.tabla_productos.horizontalHeaderItem(0).setTextAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.tabla_productos.horizontalHeaderItem(1).setTextAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.tabla_productos.horizontalHeaderItem(2).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tabla_productos.horizontalHeaderItem(3).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.tabla_productos.verticalHeader().setDefaultSectionSize(54)
-        self.tabla_productos.verticalHeader().setVisible(False)
-        self.tabla_productos.setShowGrid(False)
-        self.tabla_productos.setFrameShape(QFrame.Shape.NoFrame)
-        self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-        self.tabla_productos.setStyleSheet("""
-            QTableWidget {
-                border: none;
-                gridline-color: transparent;
+        # ==========================================
+        # PANEL IZQUIERDO: Búsqueda y Tabla de Items
+        # ==========================================
+        panel_izquierdo = QFrame()
+        panel_izquierdo.setStyleSheet(f"""
+            QFrame {{
                 background-color: #FFFFFF;
-                outline: none;
-            }
-            QTableWidget::item {
-                border-bottom: 1px solid #EEF0F2;
-                color: #1F2937;
+                border: 1px solid {self.COLOR_BORDE};
+                border-radius: 12px;
+            }}
+        """)
+        layout_izq = QVBoxLayout(panel_izquierdo)
+        layout_izq.setContentsMargins(24, 24, 24, 24)
+        layout_izq.setSpacing(20)
+
+        # Barra de Entrada / Filtro Automático
+        self.txt_buscar = QLineEdit()
+        self.txt_buscar.setPlaceholderText("Escribe el nombre del producto o código de barras...")
+        self.txt_buscar.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: #FFFFFF;
+                border: 1px solid {self.COLOR_BORDE};
+                border-radius: 8px;
+                padding: 12px 16px;
+                font-family: 'Montserrat';
+                font-size: 14px;
+                color: {self.COLOR_TEXTO_OSCURO};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {self.COLOR_BRAND};
+            }}
+        """)
+
+        # Tabla de Productos en Venta
+        self.tabla_productos = QTableWidget()
+        self.tabla_productos.setColumnCount(5)
+        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Precio", "Cant.", "Total", "Acción"])
+        self.tabla_productos.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: #FFFFFF;
+                border: none;
+                gridline-color: #F4F7F5;
                 font-family: 'Montserrat';
                 font-size: 13px;
-            }
-            QTableWidget::item:selected {
-                background-color: #E8F5EE;
-                color: #1A7C3E;
-            }
-        """)
-
-        header = self.tabla_productos.horizontalHeader()
-        header.setFixedHeight(43)
-        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        header.setStyleSheet("""
-            QHeaderView::section {
-                background-color: #FFFFFF;
-                color: #86B896;
-                font-family: 'Montserrat';
-                font-size: 11px;
-                font-weight: 800;
-                border: none;
-                border-bottom: 1px solid #EEF0F2;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                padding-left: 0px;
-                padding-right: 0px;
-            }
-        """)
-
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-
-        self.tabla_productos.setColumnWidth(0, 58)
-        self.tabla_productos.setColumnWidth(1, 743)
-        self.tabla_productos.setColumnWidth(3, 220)
-
-        self.tabla_productos.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-        self.lbl_estado_tabla = QLabel("ESPERANDO PRODUCTOS...")
-        self.lbl_estado_tabla.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
-        self.lbl_estado_tabla.setStyleSheet("""
-            QLabel {
-                color: #DFE3E8;
-                background: transparent;
-                font-family: 'Montserrat';
-                font-size: 12px;
-                font-style: italic;
+                color: {self.COLOR_TEXTO_OSCURO};
+            }}
+            QHeaderView::section {{
+                background-color: #F4F7F5;
+                color: #55635A;
+                padding: 12px 8px;
                 font-weight: 700;
-                padding-top: 84px;
-            }
+                font-size: 12px;
+                border: none;
+                border-bottom: 2px solid {self.COLOR_BORDE};
+                text-transform: uppercase;
+            }}
         """)
+        
+        # Configuración elástica de columnas
+        header = self.tabla_productos.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.tabla_productos.verticalHeader().setVisible(False)
 
-        table_shell = QFrame()
-        table_shell.setObjectName("TablaShell")
-        table_shell.setStyleSheet("QFrame#TablaShell { background-color: #FFFFFF; border: none; }")
+        layout_izq.addWidget(self.txt_buscar)
+        layout_izq.addWidget(self.tabla_productos)
+        layout_cuerpo.addWidget(panel_izquierdo, stretch=65)
 
-        self.table_stack = QStackedLayout(table_shell)
-        self.table_stack.setContentsMargins(0, 0, 0, 0)
-        self.table_stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        self.table_stack.addWidget(self.tabla_productos)
-        self.table_stack.addWidget(self.lbl_estado_tabla)
+        # ==========================================
+        # PANEL DERECHO: Liquidación, Totales y Cobro
+        # ==========================================
+        panel_derecho = QFrame()
+        panel_derecho.setStyleSheet(f"""
+            QFrame {{
+                background-color: #FFFFFF;
+                border: 1px solid {self.COLOR_BORDE};
+                border-radius: 12px;
+            }}
+        """)
+        layout_der = QVBoxLayout(panel_derecho)
+        layout_der.setContentsMargins(24, 24, 24, 24)
+        layout_der.setSpacing(24)
 
-        layout_area_tabla.addWidget(lbl_titulo_seccion)
-        layout_area_tabla.addWidget(table_shell, 1)
+        lbl_titulo_resumen = QLabel("RESUMEN DE VENTA")
+        lbl_titulo_resumen.setStyleSheet(f"font-family: 'Montserrat'; font-size: 14px; font-weight: 800; color: #55635A; letter-spacing: 0.5px;")
 
-        cuerpo_central.addWidget(panel_cobros)
-        cuerpo_central.addWidget(area_tabla)
+        # Visor del TOTAL Macizo (Estilo Caja Registradora)
+        container_total = QFrame()
+        container_total.setStyleSheet(f"background-color: {self.COLOR_MUTED}; border: 1px solid #B6DFC6; border-radius: 8px;")
+        layout_total_box = QVBoxLayout(container_total)
+        layout_total_box.setContentsMargins(16, 16, 16, 16)
+        layout_total_box.setSpacing(4)
 
-        layout_contenedor.addLayout(cuerpo_central, 1)
+        lbl_total_tag = QLabel("TOTAL A COBRAR")
+        lbl_total_tag.setStyleSheet(f"font-family: 'Montserrat'; font-size: 11px; font-weight: 700; color: {self.COLOR_BRAND};")
+        
+        self.lbl_total_display = QLabel("$0")
+        self.lbl_total_display.setStyleSheet(f"font-family: 'Montserrat'; font-size: 36px; font-weight: 900; color: {self.COLOR_BRAND};")
+        self.lbl_total_display.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
-        barra_inferior = QFrame()
-        barra_inferior.setObjectName("BarraInferiorCaja")
-        barra_inferior.setFixedHeight(102)
-        barra_inferior.setStyleSheet(
-            "QFrame#BarraInferiorCaja { border: none; border-top: 1px solid #EEF0F2; background-color: #FFFFFF; }"
-        )
+        layout_total_box.addWidget(lbl_total_tag)
+        layout_total_box.addWidget(self.lbl_total_display)
 
-        layout_inferior = QHBoxLayout(barra_inferior)
-        layout_inferior.setContentsMargins(33, 0, 32, 0)
+        # Sección: Efectivo Recibido
+        container_efectivo = QWidget()
+        layout_efectivo_field = QVBoxLayout(container_efectivo)
+        layout_efectivo_field.setContentsMargins(0, 0, 0, 0)
+        layout_efectivo_field.setSpacing(8)
 
-        self.btn_cobrar = QPushButton("COBRAR")
-        self.btn_cobrar.setFixedSize(222, 60)
-        self.btn_cobrar.setFont(QFont("Montserrat", 14, QFont.Weight.Black))
-        self.btn_cobrar.setCursor(Qt.CursorShape.PointingHandCursor)
+        lbl_efectivo_tag = QLabel("EFECTIVO RECIBIDO")
+        lbl_efectivo_tag.setStyleSheet(f"font-family: 'Montserrat'; font-size: 12px; font-weight: 700; color: {self.COLOR_TEXTO_OSCURO};")
+
+        self.txt_efectivo = QLineEdit()
+        self.txt_efectivo.setPlaceholderText("$ 0.00")
+        self.txt_efectivo.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: #FFFFFF;
+                border: 1px solid {self.COLOR_BORDE};
+                border-radius: 8px;
+                padding: 14px;
+                font-family: 'Montserrat';
+                font-size: 18px;
+                font-weight: 700;
+                color: {self.COLOR_TEXTO_OSCURO};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {self.COLOR_BRAND};
+            }}
+        """)
+        self.txt_efectivo.textChanged.connect(self.actualizar_cambio)
+        layout_efectivo_field.addWidget(lbl_efectivo_tag)
+        layout_efectivo_field.addWidget(self.txt_efectivo)
+
+        # Sección: Cambio a Devolver
+        container_cambio = QWidget()
+        layout_cambio_field = QVBoxLayout(container_cambio)
+        layout_cambio_field.setContentsMargins(0, 0, 0, 0)
+        layout_cambio_field.setSpacing(4)
+
+        lbl_cambio_tag = QLabel("CAMBIO A DEVOLVER")
+        lbl_cambio_tag.setStyleSheet("font-family: 'Montserrat'; font-size: 11px; font-weight: 700; color: #708077;")
+
+        self.lbl_cambio_display = QLabel("$0")
+        self.lbl_cambio_display.setStyleSheet(f"font-family: 'Montserrat'; font-size: 24px; font-weight: 800; color: {self.COLOR_TEXTO_OSCURO};")
+        layout_cambio_field.addWidget(lbl_cambio_tag)
+        layout_cambio_field.addWidget(self.lbl_cambio_display)
+
+        # Botón de Acción Masiva: COBRAR
+        self.btn_cobrar = QPushButton("PROCESAR COBRO (ENTER)")
+        self.btn_cobrar.setMinimumHeight(55)
         self.btn_cobrar.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.BRAND_DEFAULT};
-                color: #FFFFFF;
+                background-color: {self.COLOR_BRAND};
                 border: none;
-                border-radius: 16px;
-                letter-spacing: 1px;
+                border-radius: 8px;
+                color: #FFFFFF;
+                font-family: 'Montserrat';
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: 0.5px;
             }}
             QPushButton:hover {{
-                background-color: {self.BRAND_LIGHT};
+                background-color: {self.COLOR_BRAND_LIGHT};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.COLOR_BRAND};
             }}
         """)
-
-        sombra_cobrar = QGraphicsDropShadowEffect(self)
-        sombra_cobrar.setBlurRadius(12)
-        sombra_cobrar.setColor(QColor(23, 129, 61, 50))
-        sombra_cobrar.setOffset(0, 5)
-        self.btn_cobrar.setGraphicsEffect(sombra_cobrar)
         self.btn_cobrar.clicked.connect(self.ejecutar_cobro)
 
-        layout_botones_secundarios = QHBoxLayout()
-        layout_botones_secundarios.setSpacing(17)
+        # Armado del Panel Derecho
+        layout_der.addWidget(lbl_titulo_resumen)
+        layout_der.addWidget(container_total)
+        layout_der.addWidget(container_efectivo)
+        layout_der.addWidget(container_cambio)
+        layout_der.addStretch()
+        layout_der.addWidget(self.btn_cobrar)
 
-        estilo_btn_secundario = """
-            QPushButton {
-                background-color: #FFFFFF;
-                color: #9CA3AF;
-                border: 2px solid #F0F1F4;
-                border-radius: 15px;
-                padding: 0px 25px;
-                min-height: 49px;
-                font-family: 'Montserrat';
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-            QPushButton:hover {
-                background-color: #FAFBFB;
-                color: #1A7C3E;
-                border-color: #B6DFC6;
-            }
-        """
+        layout_cuerpo.addWidget(panel_derecho, stretch=35)
+        self.layout_principal.addWidget(container_cuerpo)
 
-        btn_agregar = QPushButton("Agregar")
-        btn_agregar.setFixedSize(139, 52)
-        btn_agregar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #FFFFFF;
-                color: {self.BRAND_DEFAULT};
-                border: 2px solid {self.BRAND_BORDER};
-                border-radius: 15px;
-                padding: 0px 25px;
-                min-height: 49px;
-                font-family: 'Montserrat';
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }}
-            QPushButton:hover {{
-                background-color: {self.BRAND_MUTED};
-            }}
-        """)
-
-        btn_eliminar = QPushButton("Eliminar")
-        btn_eliminar.setFixedSize(141, 52)
-        btn_eliminar.setStyleSheet(estilo_btn_secundario)
-
-        btn_modificar = QPushButton("Modificar")
-        btn_modificar.setFixedSize(153, 52)
-        btn_modificar.setStyleSheet(estilo_btn_secundario)
-
-        btn_buscar = QPushButton("Buscar")
-        btn_buscar.setFixedSize(129, 52)
-        btn_buscar.setStyleSheet(estilo_btn_secundario)
-
-        btn_agregar.clicked.connect(self.agregar_producto_mock)
-        btn_eliminar.clicked.connect(self.eliminar_producto_seleccionado)
-
-        layout_botones_secundarios.addWidget(btn_agregar)
-        layout_botones_secundarios.addWidget(btn_eliminar)
-        layout_botones_secundarios.addWidget(btn_modificar)
-        layout_botones_secundarios.addWidget(btn_buscar)
-
-        layout_inferior.addWidget(self.btn_cobrar)
-        layout_inferior.addStretch()
-        layout_inferior.addLayout(layout_botones_secundarios)
-
-        layout_contenedor.addWidget(barra_inferior)
-        layout_principal.addWidget(self.contenedor_blanco)
-
-    def showEvent(self, event):
+        # Render inicial por si hay datos residuales en memoria
         self.renderizar_tabla()
-        super().showEvent(event)
 
+    # ==========================================
+    # LÓGICA DE CONTROL INTERNA (Preservada)
+    # ==========================================
     def renderizar_tabla(self):
+        """Pinta dinámicamente las filas de productos respetando el look minimalista."""
         self.tabla_productos.setRowCount(0)
         self.total_actual = 0
 
-        for p in self.productos_venta:
-            self.total_actual += p["precio"] * p["cantidad"]
+        for idx, item in enumerate(self.productos_venta):
+            # item esperado: dict {'id': 1, 'nombre': 'Manzana', 'precio': 2500, 'cantidad': 2}
+            nombre = item.get('nombre', 'Producto')
+            precio = item.get('precio', 0)
+            cantidad = item.get('cantidad', 1)
+            subtotal = precio * cantidad
+            self.total_actual += subtotal
+
             row = self.tabla_productos.rowCount()
             self.tabla_productos.insertRow(row)
 
-            item_id = QTableWidgetItem(str(p["id"]))
-            item_id.setFont(QFont("Courier New", 11, QFont.Weight.Bold))
-            item_id.setForeground(QColor("#9CA3AF"))
-            item_id.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+            # Celdas estilizadas
+            item_nombre = QTableWidgetItem(str(nombre))
+            item_nombre.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            
+            item_precio = QTableWidgetItem(f"${precio:,}")
+            item_precio.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            item_precio.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            item_nombre = QTableWidgetItem(p["nombre"].upper())
-            item_nombre.setFont(QFont("Montserrat", 11, QFont.Weight.Bold))
-            item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+            item_cantidad = QTableWidgetItem(str(cantidad))
+            item_cantidad.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            item_cantidad.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            item_cant = QTableWidgetItem(str(p["cantidad"]))
-            item_cant.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item_cant.setFont(QFont("Montserrat", 11, QFont.Weight.Bold))
-            item_cant.setForeground(QColor(self.BRAND_DEFAULT))
+            item_subtotal = QTableWidgetItem(f"${subtotal:,}")
+            item_subtotal.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            item_subtotal.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-            item_precio = QTableWidgetItem(f"${p['precio']:,}")
-            item_precio.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            item_precio.setFont(QFont("Montserrat", 11, QFont.Weight.Black))
+            # Botón Eliminar Fila
+            btn_eliminar = QPushButton("✕")
+            btn_eliminar.setFixedSize(24, 24)
+            btn_eliminar.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: #FDF2F2;
+                    border: none;
+                    border-radius: 4px;
+                    color: {self.COLOR_PELIGRO};
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {self.COLOR_PELIGRO};
+                    color: #FFFFFF;
+                }}
+            """)
+            btn_eliminar.clicked.connect(lambda checked, i=idx: self.eliminar_item(i))
 
-            self.tabla_productos.setItem(row, 0, item_id)
-            self.tabla_productos.setItem(row, 1, item_nombre)
-            self.tabla_productos.setItem(row, 2, item_cant)
-            self.tabla_productos.setItem(row, 3, item_precio)
+            self.tabla_productos.setItem(row, 0, item_nombre)
+            self.tabla_productos.setItem(row, 1, item_precio)
+            self.tabla_productos.setItem(row, 2, item_cantidad)
+            self.tabla_productos.setItem(row, 3, item_subtotal)
+            self.tabla_productos.setCellWidget(row, 4, btn_eliminar)
 
-        self.lbl_display_total.setText(f"${self.total_actual:,}")
-
-        if self.productos_venta:
-            self.table_stack.setCurrentWidget(self.tabla_productos)
-            self.lbl_estado_tabla.hide()
-        else:
-            self.lbl_estado_tabla.show()
-            self.table_stack.setCurrentWidget(self.lbl_estado_tabla)
-            self.lbl_estado_tabla.raise_()
-
+        # Actualizar visor maestro de precios
+        self.lbl_total_display.setText(f"${self.total_actual:,}")
         self.actualizar_cambio()
 
-    def agregar_producto_mock(self):
-        nuevo_id = 1000 + len(self.productos_venta) + 1
-        self.productos_venta.append({
-            "id": nuevo_id,
-            "nombre": f"Producto de Prueba {nuevo_id}",
-            "cantidad": 1,
-            "precio": 4500
-        })
-        self.renderizar_tabla()
-
-    def eliminar_producto_seleccionado(self):
-        fila = self.tabla_productos.currentRow()
-
-        if fila >= 0:
-            self.productos_venta.pop(fila)
+    def eliminar_item(self, indice):
+        """Remueve un elemento del listado actual."""
+        if 0 <= indice < len(self.productos_venta):
+            self.productos_venta.pop(indice)
             self.renderizar_tabla()
-        else:
-            QMessageBox.warning(
-                self,
-                "Caja",
-                "Por favor seleccione un producto de la tabla para eliminar."
-            )
 
     def actualizar_cambio(self):
+        """Calcula el cambio en tiempo real eliminando caracteres de formateo."""
         try:
-            texto_limpio = self.txt_efectivo.text().replace(".", "").replace(",", "")
-            efectivo = int(texto_limpio) if texto_limpio else 0
+            texto = self.txt_efectivo.text().replace(".", "").replace(",", "").replace("$", "").strip()
+            efectivo = int(texto) if texto else 0
         except ValueError:
             efectivo = 0
 
-        cambio = efectivo - self.total_actual
-
-        if cambio > 0:
-            self.lbl_display_cambio.setText(f"${cambio:,}")
+        if efectivo >= self.total_actual and self.total_actual > 0:
+            cambio = efectivo - self.total_actual
+            self.lbl_cambio_display.setText(f"${cambio:,}")
+            self.lbl_cambio_display.setStyleSheet(f"font-family: 'Montserrat'; font-size: 24px; font-weight: 800; color: {self.COLOR_BRAND};")
         else:
-            self.lbl_display_cambio.setText("$0")
+            self.lbl_cambio_display.setText("$0")
+            self.lbl_cambio_display.setStyleSheet(f"font-family: 'Montserrat'; font-size: 24px; font-weight: 800; color: {self.COLOR_TEXTO_OSCURO};")
 
     def ejecutar_cobro(self):
+        """Valida el pago y procesa la transacción."""
         try:
-            texto_limpio = self.txt_efectivo.text().replace(".", "").replace(",", "")
-            efectivo = int(texto_limpio) if texto_limpio else 0
+            texto = self.txt_efectivo.text().replace(".", "").replace(",", "").replace("$", "").strip()
+            efectivo = int(texto) if texto else 0
         except ValueError:
             efectivo = 0
 
         if self.total_actual == 0:
             QMessageBox.warning(self, "Cobro", "No hay productos en la lista actual.")
             return
-
         if efectivo < self.total_actual:
             QMessageBox.warning(self, "Cobro", "El efectivo ingresado es insuficiente.")
             return
 
         cambio = efectivo - self.total_actual
-
         QMessageBox.information(
-            self,
-            "Éxito",
+            self, "Éxito",
             f"COBRO EXITOSO\n\nTotal: ${self.total_actual:,}\nCambio: ${cambio:,}"
         )
-
+        
+        # Reset de la interfaz de venta
         self.productos_venta = []
         self.txt_efectivo.clear()
         self.renderizar_tabla()
 
-    def cerrar_sesion(self):
-        respuesta = QMessageBox.question(
-            self,
-            "Salir",
-            "¿Estás seguro de que deseas cerrar la sesión?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if respuesta == QMessageBox.StandardButton.Yes:
-            self.controlador.cambiar_pantalla("Login")
-
     def volver_dashboard(self):
+        """Regresa con seguridad al área del Dashboard correspondiente a través del ruteador central."""
         self.controlador.cambiar_pantalla("AdminDashboard")
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setBrush(QBrush(QColor(self.COLOR_FONDO)))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(self.rect())
