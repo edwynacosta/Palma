@@ -125,6 +125,71 @@ class AdminDashboardQt(QWidget):
                 background: transparent;
                 font-family: 'Montserrat';
             }
+            QPushButton:hover { background-color: #BD2130; }
+        """
+        btn_admin.setStyleSheet(style_nav)
+        btn_cajero.setStyleSheet(style_nav)
+        btn_logout.setStyleSheet(style_logout)
+        
+        nav_layout.addStretch()
+        nav_layout.addWidget(btn_admin)
+        nav_layout.addWidget(btn_cajero)
+        nav_layout.addWidget(btn_logout)
+        layout_principal.addLayout(nav_layout)
+        
+        layout_principal.addStretch()
+ 
+        # ==============================================================================
+        # CUADRÍCULA COMPACTA
+        # ==============================================================================
+        contenedor_grid = QWidget()
+ 
+        # ── CORRECCIÓN CLAVE ──────────────────────────────────────────────────
+        # Añadimos 15 px de margen superior al contenedor_grid.
+        # Ese espacio vacío es exactamente el "techo" que los botones de la
+        # fila 0 necesitan para subir 10 px sin que su widget padre los recorte.
+        # Sin este padding el layout comprime el borde superior hasta el botón
+        # y cualquier movimiento hacia arriba queda fuera del área pintable.
+        grid_layout = QGridLayout(contenedor_grid)
+        grid_layout.setSpacing(35)
+        grid_layout.setContentsMargins(0, 15, 0, 0)   # ← top=15 (antes era 0)
+        # ─────────────────────────────────────────────────────────────────────
+ 
+        self.mod_ventas      = BotonAnimado("VENTAS")
+        self.mod_inventarios = BotonAnimado("INVENTARIOS")
+        self.mod_finanzas    = BotonAnimado("FINANZAS")
+        self.mod_personal    = BotonAnimado("PERSONAL")
+        self.mod_cuenta      = BotonAnimado("CUENTA", alto_personalizado=615)
+
+        if self.controlador:
+            self.mod_inventarios.clicked.connect(lambda: self.controlador.cambiar_pantalla("Inventario"))
+ 
+        grid_layout.addWidget(self.mod_ventas,       0, 0)
+        grid_layout.addWidget(self.mod_finanzas,     1, 0)
+        grid_layout.addWidget(self.mod_inventarios,  0, 1)
+        grid_layout.addWidget(self.mod_personal,     1, 1)
+        grid_layout.addWidget(self.mod_cuenta,       0, 2, 2, 1)
+ 
+        layout_centrado_horizontal = QHBoxLayout()
+        layout_centrado_horizontal.addStretch()
+        layout_centrado_horizontal.addWidget(contenedor_grid)
+        layout_centrado_horizontal.addStretch()
+ 
+        layout_principal.addLayout(layout_centrado_horizontal)
+        layout_principal.addStretch()
+ 
+        # ==============================================================================
+        # FOOTER
+        # ==============================================================================
+        footer_layout = QHBoxLayout()
+        footer_layout.setContentsMargins(10, 0, 10, 0)
+        
+        self.lbl_user = QLabel()
+        self.lbl_user.setFont(QFont("Montserrat", 16, QFont.Weight.Bold))
+        self.lbl_user.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        self.lbl_user.setStyleSheet("color: white; line-height: 120%;")
+        
+        self.lbl_time = QLabel()
         """)
 
         self.lbl_time = QLabel(self)
