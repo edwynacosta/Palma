@@ -1,3 +1,4 @@
+
 import os
 import sys
 from datetime import datetime
@@ -8,7 +9,7 @@ from PySide6.QtWidgets import QLabel, QPushButton, QWidget
 
 
 class BotonAnimado(QPushButton):
-    """Tarjeta-boton blanca con elevacion sutil al pasar el cursor."""
+    """Tarjeta-boton blanca con una elevacion sutil al pasar el cursor."""
 
     def __init__(self, texto, parent=None):
         super().__init__(texto, parent)
@@ -72,40 +73,45 @@ class BotonAnimado(QPushButton):
         self.actualizar_estilo()
 
 
-class AdminDashboardQt(QWidget):
+class CajeroDashboardQt(QWidget):
     def __init__(self, controlador_flujo=None, datos_usuario=None):
         super().__init__()
 
         self.controlador = controlador_flujo
         self.datos_usuario = datos_usuario or {}
+
         self.VERDE_FONDO = "#008F39"
 
         self.cargar_fuentes()
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setObjectName("ContenedorAdmin")
+        self.setObjectName("ContenedorCajero")
         self.setStyleSheet(
-            f"QWidget#ContenedorAdmin {{ background-color: {self.VERDE_FONDO}; }}"
+            f"QWidget#ContenedorCajero {{ background-color: {self.VERDE_FONDO}; }}"
         )
 
-        self.btn_admin = QPushButton("Ver Admin", self)
-        self.btn_cajero = QPushButton("Ver Cajero", self)
-        self.btn_logout = QPushButton("Cerrar Sesión", self)
-
-        for boton in [self.btn_admin, self.btn_cajero, self.btn_logout]:
-            boton.setCursor(Qt.CursorShape.PointingHandCursor)
-            boton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-        self.btn_admin.clicked.connect(self.ver_admin)
-        self.btn_cajero.clicked.connect(self.ver_cajero)
+        self.btn_logout = QPushButton("Cerrar sesión", self)
+        self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_logout.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_logout.clicked.connect(self.cerrar_sesion)
+        self.btn_logout.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #FF0000;
+                border: none;
+                border-radius: 9px;
+                font-family: 'Montserrat';
+                font-size: 9px;
+                font-weight: 900;
+            }
+            QPushButton:hover {
+                background-color: #FDEEEF;
+            }
+        """)
 
-        self.aplicar_estilo_nav()
-
-        self.mod_ventas = BotonAnimado("VENTAS", self)
-        self.mod_inventarios = BotonAnimado("INVENTARIOS", self)
-        self.mod_finanzas = BotonAnimado("FINANZAS", self)
-        self.mod_cuenta = BotonAnimado("CUENTA", self)
+        self.mod_ventas = BotonAnimado("V E N T A S", self)
+        self.mod_finanzas = BotonAnimado("F I N A N Z A S", self)
+        self.mod_inventarios = BotonAnimado("I N V E N T A R I O S", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
 
@@ -160,43 +166,6 @@ class AdminDashboardQt(QWidget):
             if os.path.exists(ruta):
                 QFontDatabase.addApplicationFont(ruta)
 
-    def aplicar_estilo_nav(self):
-        estilo_nav = """
-            QPushButton {
-                background-color: #FFFFFF;
-                color: #008F39;
-                border: none;
-                border-radius: 9px;
-                font-family: 'Montserrat';
-                font-size: 9px;
-                font-weight: 900;
-            }
-            QPushButton:hover {
-                background-color: #1B4314;
-                color: #FFFFFF;
-            }
-        """
-
-        estilo_logout = """
-            QPushButton {
-                background-color: #FFFFFF;
-                color: #FF0000;
-                border: none;
-                border-radius: 9px;
-                font-family: 'Montserrat';
-                font-size: 9px;
-                font-weight: 900;
-            }
-            QPushButton:hover {
-                background-color: #FF0000;
-                color: #FFFFFF;
-            }
-        """
-
-        self.btn_admin.setStyleSheet(estilo_nav)
-        self.btn_cajero.setStyleSheet(estilo_nav)
-        self.btn_logout.setStyleSheet(estilo_logout)
-
     def escala(self):
         return min(self.width() / 1904, self.height() / 943)
 
@@ -208,75 +177,58 @@ class AdminDashboardQt(QWidget):
         super().resizeEvent(event)
 
     def reacomodar_interfaz(self):
-        ancho_card = self.sx(368)
-        alto_card = self.sx(320)
-        ancho_cuenta = self.sx(369)
-        alto_cuenta = self.sx(665)
+        ancho_ventas = self.sx(1152)
+        alto_ventas = self.sx(324)
+
+        ancho_card = self.sx(564)
+        alto_card = self.sx(316)
         gap = self.sx(24)
 
-        total_ancho = ancho_card * 2 + ancho_cuenta + gap * 2
-        x_inicio = (self.width() - total_ancho) // 2
+        centro_x = self.width() // 2
+        x_inicio = centro_x - (ancho_ventas // 2)
 
-        y_inicio = self.sx(85)
-        y_abajo = y_inicio + alto_card + gap
+        y_ventas = self.sx(87)
+        y_cards = self.sx(436)
 
-        btn_w = self.sx(96)
-        btn_h = self.sx(31)
-        btn_gap = self.sx(12)
-        logout_w = self.sx(109)
-
-        nav_total = btn_w * 2 + logout_w + btn_gap * 2
-        nav_x = self.width() - self.sx(30) - nav_total
-        nav_y = self.sx(27)
-
-        self.btn_admin.setGeometry(nav_x, nav_y, btn_w, btn_h)
-        self.btn_cajero.setGeometry(nav_x + btn_w + btn_gap, nav_y, btn_w, btn_h)
-        self.btn_logout.setGeometry(nav_x + (btn_w + btn_gap) * 2, nav_y, logout_w, btn_h)
-
-        radio = self.sx(39)
-        font_card = max(14, self.sx(24))
+        self.btn_logout.setGeometry(
+            self.width() - self.sx(151),
+            self.sx(29),
+            self.sx(121),
+            self.sx(31),
+        )
 
         self.mod_ventas.fijar_geometria(
             x_inicio,
-            y_inicio,
-            ancho_card * 2 + gap,
-            alto_card,
-            radio,
-            max(16, self.sx(26)),
+            y_ventas,
+            ancho_ventas,
+            alto_ventas,
+            self.sx(39),
+            max(16, self.sx(27)),
         )
 
         self.mod_finanzas.fijar_geometria(
             x_inicio,
-            y_abajo,
+            y_cards,
             ancho_card,
             alto_card,
-            radio,
-            font_card,
+            self.sx(39),
+            max(13, self.sx(20)),
         )
 
         self.mod_inventarios.fijar_geometria(
             x_inicio + ancho_card + gap,
-            y_abajo,
+            y_cards,
             ancho_card,
             alto_card,
-            radio,
-            max(13, self.sx(22)),
-        )
-
-        self.mod_cuenta.fijar_geometria(
-            x_inicio + (ancho_card + gap) * 2,
-            y_inicio,
-            ancho_cuenta,
-            alto_cuenta,
-            radio,
-            font_card,
+            self.sx(39),
+            max(13, self.sx(20)),
         )
 
         avatar = self.sx(64)
 
         self.lbl_avatar.setGeometry(
             self.sx(310),
-            self.height() - self.sx(112),
+            self.height() - self.sx(110),
             avatar,
             avatar,
         )
@@ -290,21 +242,25 @@ class AdminDashboardQt(QWidget):
         """)
 
         self.lbl_user.setGeometry(
+            self.sx(389),
+            self.height() - self.sx(111),
             self.sx(390),
-            self.height() - self.sx(112),
-            self.sx(420),
-            self.sx(76),
+            self.sx(75),
         )
 
         self.lbl_time.setGeometry(
-            self.width() - self.sx(575),
-            self.height() - self.sx(137),
-            self.sx(300),
-            self.sx(96),
+            self.width() - self.sx(590),
+            self.height() - self.sx(139),
+            self.sx(280),
+            self.sx(95),
         )
 
         self.actualizar_interfaz_usuario()
         self.actualizar_tiempo()
+
+    def cerrar_sesion(self):
+        if self.controlador:
+            self.controlador.cambiar_pantalla("Login")
 
     def abrir_modulo_caja(self):
         if self.controlador:
@@ -313,34 +269,9 @@ class AdminDashboardQt(QWidget):
                 datos_usuario=self.datos_usuario
             )
 
-    def ver_admin(self):
-        if self.controlador:
-            self.controlador.cambiar_pantalla(
-                "AdminDashboard",
-                datos_usuario=self.datos_usuario
-            )
-
-    def ver_cajero(self):
-        if self.controlador:
-            self.controlador.cambiar_pantalla(
-                "CajeroDashboard",
-                datos_usuario=self.datos_usuario
-            )
-
-    def cerrar_sesion(self):
-        if self.controlador:
-            self.controlador.cambiar_pantalla("Login")
-
-    def establecer_usuario(self, nombre, rol):
-        self.datos_usuario = {
-            "nombre": nombre,
-            "rol": rol
-        }
-        self.actualizar_interfaz_usuario()
-
     def actualizar_interfaz_usuario(self):
-        nombre_final = "Nicolás Herrán"
-        rol_final = "Administrador"
+        nombre_final = "Edwin Acosta"
+        rol_final = "Cajero"
 
         if isinstance(self.datos_usuario, dict) and self.datos_usuario:
             nombre_final = self.datos_usuario.get(
@@ -388,8 +319,8 @@ class AdminDashboardQt(QWidget):
 
         string_hora = ahora.strftime("%H:%M")
         string_fecha = (
-            f"{dias[ahora.weekday()]} "
-            f"{ahora.day} {meses[ahora.month - 1]}, {ahora.year}"
+            f"{dias[ahora.weekday()]}, "
+            f"{ahora.day} DE {meses[ahora.month - 1]} DE {ahora.year}"
         )
 
         self.lbl_time.setText(
@@ -403,12 +334,12 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-    usuario_detectado = {
-        "nombre": "nicolás herrán",
-        "rol": "administrador",
+    cajero_detectado = {
+        "nombre": "edwin acosta",
+        "rol": "cajero"
     }
 
-    ventana = AdminDashboardQt(datos_usuario=usuario_detectado)
+    ventana = CajeroDashboardQt(datos_usuario=cajero_detectado)
     ventana.resize(1904, 943)
     ventana.show()
 
