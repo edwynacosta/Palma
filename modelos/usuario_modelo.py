@@ -1,4 +1,3 @@
-# modelos/usuario_modelo.py
 from conexion import obtener_conexion
 
 class UsuarioModelo:
@@ -6,27 +5,27 @@ class UsuarioModelo:
         pass
 
     def verificar_credenciales(self, usuario, contrasena):
-        """
-        Consulta las credenciales usando las columnas reales de tu clúster en Aiven.
-        """
         conexion = obtener_conexion()
         if not conexion:
+            print("No se pudo establecer conexión con la base de datos")
             return None
             
         try:
             with conexion.cursor() as cursor:
-                # 👇 CAMBIO CLAVE: Usamos las columnas reales indexadas en tu panel de Aiven
-                # Cambié 'email' por 'username_log' y 'rol' por 'id_rol' o la columna de texto de tu rol
-                sql = "SELECT id_rol FROM usuarios WHERE username_log = %s AND password = %s"
+                sql = """
+                    SELECT id_usuario, username_log, id_rol
+                    FROM usuarios 
+                    WHERE username_log = %s AND contrasena_log = %s
+                """
                 cursor.execute(sql, (usuario, contrasena))
                 resultado = cursor.fetchone()
                 
                 if resultado:
-                    # Retorna el rol encontrado (ej: si id_rol es un número o texto, lo procesa el controlador)
-                    return str(resultado[0])
+                    # Retorna el diccionario completo con los datos del usuario
+                    return resultado
                 return None
         except Exception as e:
-            print(f"❌ Error en la consulta de credenciales: {e}")
+            print(f"Error en la consulta de credenciales: {e}")
             return None
         finally:
             conexion.close()

@@ -15,7 +15,7 @@ load_dotenv()
 class MainWindow(QMainWindow):
     def __init__(self, conexion):
         super().__init__()
-        self.conexion     = conexion
+        self.conexion = conexion
         self.usuario_actual = None
 
         self.setWindowTitle("PALMA")
@@ -34,10 +34,10 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         layout_central.addWidget(self.stack)
 
-        self.login_view  = LoginVista(self)
-        self.admin_view  = AdminDashboardQt(self, datos_usuario={})
+        self.login_view = LoginVista(self)
+        self.admin_view = AdminDashboardQt(self, datos_usuario={})
         self.cajero_view = CajeroDashboardQt(self, datos_usuario={})
-        self.caja_view   = CajaVista(self)
+        self.caja_view = CajaVista(self)
 
         self.stack.addWidget(self.login_view)
         self.stack.addWidget(self.admin_view)
@@ -48,24 +48,21 @@ class MainWindow(QMainWindow):
         self.showMaximized()
 
     def cambiar_pantalla(self, nombre_pantalla, datos_usuario=None):
-        # ── Guardar sesión solo cuando vienen datos nuevos ─────────────────────
         if datos_usuario:
-            self.usuario_actual = datos_usuario   # ya viene limpio desde login_vista
+            self.usuario_actual = datos_usuario
 
-        datos   = self.usuario_actual or {}
-        id_rol  = datos.get("id_rol")             # 1 = admin, 2 = cajero  (entero o str)
-        nombre  = datos.get("username_log", "Usuario")
+        datos = self.usuario_actual or {}
+        id_rol = datos.get("id_rol")
+        nombre = datos.get("username_log", "Usuario")
         rol_txt = datos.get("rol", "")
 
         print(f"[ROUTER] pantalla='{nombre_pantalla}' | id_rol={id_rol} | rol='{rol_txt}' | nombre='{nombre}'")
 
-        # ── Intercepción: cajero nunca puede llegar al panel admin ─────────────
         if str(id_rol) == "2":
             if nombre_pantalla in ("AdminDashboard", "MainDashboard"):
                 print("[ROUTER] Cajero → redirigido a CajeroDashboard")
                 nombre_pantalla = "CajeroDashboard"
 
-        # ── Enrutamiento ───────────────────────────────────────────────────────
         if nombre_pantalla == "AdminDashboard":
             self.admin_view.datos_usuario = datos
             self.admin_view.actualizar_interfaz_usuario()
@@ -87,16 +84,34 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(self.caja_view)
 
         else:
-            # Login / LoginFrame / cualquier destino desconocido
             self.usuario_actual = None
             self.stack.setCurrentWidget(self.login_view)
             print("[ROUTER] → Login")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    # Probar la conexión antes de crear la ventana
+    print("Conectando a la base de datos...")
     conexion = conexion_db()
+    
+    if conexion:
+        print("Conexión establecida correctamente")
+        # Probar que la conexión funciona
+        try:
+            with conexion.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            print("Conexión verificada")
+        except Exception as e:
+            print(f"Error al verificar conexión: {e}")
+            conexion = None
+    else:
+        print("No se pudo establecer conexión")
+    
     if conexion:
         ventana = MainWindow(conexion)
         sys.exit(app.exec())
     else:
+        print("No se pudo conectar a la base de datos. Verifica tu archivo .env")
         sys.exit(1)

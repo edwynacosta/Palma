@@ -221,4 +221,6 @@ class LoginVista(QWidget):
                     QMessageBox.warning(self, "Acceso", "Usuario o contraseña incorrectos.")
 
         except Exception as e:
-            QMessageBox.critical(self, "Error BD", f"Error de conexión: {e}")
+            error_msg = str(e)
+            error_msg = error_msg.encode('ascii', 'ignore').decode('ascii')
+            QMessageBox.critical(self, "Error BD", f"Error de conexión: {error_msg}")
