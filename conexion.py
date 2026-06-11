@@ -15,7 +15,6 @@ def conexion_db():
         )
         return conexion
     except Exception as e:
-        # Limpiar el mensaje de error
         error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
         print(f"Error en conexion_db: {error_msg}")
         return None
