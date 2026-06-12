@@ -414,26 +414,106 @@ class DialogoModificar(DialogoBase):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO 4 — BUSCADOR DE VENTA  (imagen 4)
+# DIÁLOGO 4 — BUSCADOR DE VENTA MODERNO (REDISEÑADO - VISTA PREVIA AMPLIA)
 # ══════════════════════════════════════════════════════════════════════════════
-class DialogoBuscar(DialogoBase):
+class DialogoBuscar(QDialog):
     def __init__(self, conexion=None, parent=None):
-        super().__init__("BUSCADOR DE VENTA", parent)
+        super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
         self._conexion = conexion
 
-        self.txt_buscar = self._input("Escribe el nombre aquí...")
-        self.layout_card.addWidget(self.txt_buscar)
+        # Layout que abarca toda la pantalla trasera de la caja
+        layout_fondo = QVBoxLayout(self)
+        layout_fondo.setContentsMargins(0, 0, 0, 0)
+        layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Tarjeta Central Blanca Grande y Destacada (620x540)
+        self.card = QFrame()
+        self.card.setFixedSize(620, 540)
+        self.card.setStyleSheet("""
+            QFrame {
+                background-color: #FFFFFF;
+                border-radius: 24px;
+                border: 1px solid #D1E2D9;
+            }
+        """)
+        
+        sombra = QGraphicsDropShadowEffect(self.card)
+        sombra.setBlurRadius(35)
+        sombra.setColor(QColor(0, 0, 0, 45))
+        sombra.setOffset(0, 8)
+        self.card.setGraphicsEffect(sombra)
+
+        layout_card = QVBoxLayout(self.card)
+        layout_card.setContentsMargins(35, 28, 35, 28)
+        layout_card.setSpacing(16)
+
+        # HEADER: Título e Ícono estilizado de cerrar '✕'
+        layout_header = QHBoxLayout()
+        lbl_titulo = QLabel("BUSCADOR DE VENTA")
+        f_tit = QFont("Montserrat", 15, QFont.Weight.Black)
+        f_tit.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        lbl_titulo.setFont(f_tit)
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent; letter-spacing: 0.5px; border: none;")
+
+        btn_cerrar = QPushButton("✕")
+        btn_cerrar.setFixedSize(32, 32)
+        btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
+        f_cerrar = QFont("Montserrat", 11, QFont.Weight.Bold)
+        f_cerrar.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        btn_cerrar.setFont(f_cerrar)
+        btn_cerrar.setStyleSheet("""
+            QPushButton {
+                background-color: #F4F7F5;
+                border: none;
+                border-radius: 16px;
+                color: #708077;
+            }
+            QPushButton:hover {
+                background-color: #FDF2F2;
+                color: #DC2626;
+            }
+        """)
+        btn_cerrar.clicked.connect(self.reject)
+
+        layout_header.addWidget(lbl_titulo)
+        layout_header.addStretch()
+        layout_header.addWidget(btn_cerrar)
+        layout_card.addLayout(layout_header)
+
+        # CUERPO: Input de Búsqueda Destacado y Alto
+        self.txt_buscar = QLineEdit()
+        self.txt_buscar.setPlaceholderText("Escribe el nombre aquí...")
+        f_input = QFont("Montserrat", 14, QFont.Weight.Medium)
+        f_input.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        self.txt_buscar.setFont(f_input)
+        self.txt_buscar.setFixedHeight(50)
+        self.txt_buscar.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #D1E2D9;
+                border-radius: 12px;
+                padding: 0 18px;
+                color: #1F2937;
+            }
+            QLineEdit:focus {
+                border: 2px solid #17813D;
+            }
+        """)
         self.txt_buscar.textChanged.connect(self._buscar_en_bd)
+        layout_card.addWidget(self.txt_buscar)
 
+        # Texto informativo de acción automático
         lbl_hint = QLabel("LA TABLA SE FILTRARÁ AUTOMÁTICAMENTE")
-        fh = QFont("Montserrat", 8, QFont.Weight.Bold)
-        fh.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
-        lbl_hint.setFont(fh)
-        lbl_hint.setStyleSheet("color:#A9DDBC; background:transparent; letter-spacing:0.5px;")
         lbl_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout_card.addWidget(lbl_hint)
+        f_hint = QFont("Montserrat", 9, QFont.Weight.Bold)
+        f_hint.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        lbl_hint.setFont(f_hint)
+        lbl_hint.setStyleSheet("color: rgba(23, 129, 61, 0.4); background: transparent; letter-spacing: 0.6px; border: none;")
+        layout_card.addWidget(lbl_hint)
 
-        # Tabla resultado
+        # Tabla de resultados (Diseño limpio e integrado)
         self.tabla = QTableWidget()
         self.tabla.setColumnCount(3)
         self.tabla.setHorizontalHeaderLabels(["ID", "NOMBRE", "PRECIO"])
@@ -442,29 +522,69 @@ class DialogoBuscar(DialogoBase):
         self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.tabla.setStyleSheet("""
-            QTableWidget { border:none; background:#EDF7F1;
-                border-radius:14px; outline:none; }
-            QTableWidget::item { color:#1F2937; font-family:'Montserrat';
-                font-size:11px; border-bottom:1px solid #D1EDD9; padding:4px; }
-            QTableWidget::item:selected { background:#17813D; color:#FFFFFF; }
+            QTableWidget {
+                border: none;
+                background: #F4F7F5;
+                border-radius: 12px;
+                outline: none;
+            }
+            QTableWidget::item {
+                color: #1F2937;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                border-bottom: 1px solid #E8F5EE;
+                padding: 6px;
+            }
+            QTableWidget::item:selected {
+                background: #E8F5EE;
+                color: #17813D;
+                font-weight: bold;
+            }
         """)
-        self.tabla.horizontalHeader().setStyleSheet(
-            "QHeaderView::section { background:#EDF7F1; color:#86B896;"
-            " font-family:'Montserrat'; font-size:9px; font-weight:800;"
-            " border:none; border-bottom:1px solid #C4DFC9; padding:6px; }"
-        )
+        self.tabla.horizontalHeader().setStyleSheet("""
+            QHeaderView::section {
+                background: #F4F7F5;
+                color: #708077;
+                font-family: 'Montserrat';
+                font-size: 10px;
+                font-weight: 800;
+                border: none;
+                border-bottom: 1px solid #D1E2D9;
+                padding: 6px;
+            }
+        """)
         self.tabla.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.tabla.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.tabla.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        self.tabla.setColumnWidth(0, 50)
-        self.tabla.setColumnWidth(2, 100)
-        self.tabla.setFixedHeight(160)
-        self.layout_card.addWidget(self.tabla)
+        self.tabla.setColumnWidth(0, 60)
+        self.tabla.setColumnWidth(2, 110)
+        layout_card.addWidget(self.tabla)
 
-        btn_hecho = self._btn_primario("HECHO")
+        # FOOTER: Botón de confirmación inferior amplio
+        btn_hecho = QPushButton("HECHO")
+        btn_hecho.setFixedHeight(50)
+        btn_hecho.setCursor(Qt.CursorShape.PointingHandCursor)
+        f_btn = QFont("Montserrat", 12, QFont.Weight.Black)
+        f_btn.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        btn_hecho.setFont(f_btn)
+        btn_hecho.setStyleSheet("""
+            QPushButton {
+                background-color: #17813D;
+                border: none;
+                border-radius: 12px;
+                color: #FFFFFF;
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover {
+                background-color: #228E49;
+            }
+        """)
         btn_hecho.clicked.connect(self.accept)
-        self.layout_card.addWidget(btn_hecho)
+        layout_card.addWidget(btn_hecho)
+
+        layout_fondo.addWidget(self.card)
 
     def _buscar_en_bd(self, texto):
         self.tabla.setRowCount(0)
@@ -490,11 +610,37 @@ class DialogoBuscar(DialogoBase):
                         pid, nombre, precio = fila[0], fila[1], fila[2]
                     row = self.tabla.rowCount()
                     self.tabla.insertRow(row)
-                    self.tabla.setItem(row, 0, QTableWidgetItem(str(pid)))
-                    self.tabla.setItem(row, 1, QTableWidgetItem(str(nombre)))
-                    self.tabla.setItem(row, 2, QTableWidgetItem("${:,}".format(int(precio))))
+                    
+                    item_id = QTableWidgetItem(str(pid))
+                    item_id.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+                    
+                    item_nombre = QTableWidgetItem(str(nombre).upper())
+                    item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+                    
+                    item_precio = QTableWidgetItem("${:,}".format(int(precio)))
+                    item_precio.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+                    
+                    self.tabla.setItem(row, 0, item_id)
+                    self.tabla.setItem(row, 1, item_nombre)
+                    self.tabla.setItem(row, 2, item_precio)
         except Exception:
             pass
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Forzar a que el diálogo cubra toda la dimensión global del padre trasero
+        if self.parent():
+            pg = self.parent().geometry()
+            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
+                             self.parent().mapToGlobal(QPoint(0,0)).y(),
+                             pg.width(), pg.height())
+
+    def paintEvent(self, event):
+        # Pintar el velo translúcido oscuro de enfoque estilo Web/Tailwind
+        painter = QPainter(self)
+        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))  # Opacidad balanceada
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
