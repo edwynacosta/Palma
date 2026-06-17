@@ -114,6 +114,7 @@ class CajeroDashboardQt(QWidget):
         self.mod_inventarios = BotonAnimado("I N V E N T A R I O S", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
+        self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
 
         self.lbl_avatar = QLabel("", self)
         self.lbl_avatar.setStyleSheet("""
@@ -266,6 +267,12 @@ class CajeroDashboardQt(QWidget):
         if self.controlador:
             self.controlador.cambiar_pantalla(
                 "Caja",
+                datos_usuario=self.datos_usuario
+            )
+    def abrir_modulo_inventario(self):
+        if self.controlador:
+            self.controlador.cambiar_pantalla(
+                "Inventario",
                 datos_usuario=self.datos_usuario
             )
 
