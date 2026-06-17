@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.conexion = conexion
         self.usuario_actual = None
 
-        self.setWindowTitle("PALMA")
+        self.setWindowTitle("Palma software")
 
         ruta_icono = os.path.join("vistas", "logo_palma.ico")
         if os.path.exists(ruta_icono):
