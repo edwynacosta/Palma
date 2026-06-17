@@ -9,6 +9,8 @@ from vistas.login_vista import LoginVista
 from vistas.admin_vista import AdminDashboardQt
 from vistas.caja_vista import CajaVista
 from vistas.cajero_vista import CajeroDashboardQt
+from vistas.inventario_vista import InventarioVista
+from vistas.proveedor_vista import ProveedoresVista
 
 load_dotenv()
 
@@ -38,11 +40,15 @@ class MainWindow(QMainWindow):
         self.admin_view = AdminDashboardQt(self, datos_usuario={})
         self.cajero_view = CajeroDashboardQt(self, datos_usuario={})
         self.caja_view = CajaVista(self)
+        self.inventario_view = InventarioVista(self, conexion)
+        self.proveedores_view = ProveedoresVista(self, conexion)
 
         self.stack.addWidget(self.login_view)
         self.stack.addWidget(self.admin_view)
         self.stack.addWidget(self.cajero_view)
         self.stack.addWidget(self.caja_view)
+        self.stack.addWidget(self.inventario_view)
+        self.stack.addWidget(self.proveedores_view)
 
         self.stack.setCurrentWidget(self.login_view)
         self.showMaximized()
@@ -82,6 +88,12 @@ class MainWindow(QMainWindow):
                     f"<span style='color:#1A7C3E;font-weight:bold;font-size:12px;'>{iniciales}</span>"
                 )
             self.stack.setCurrentWidget(self.caja_view)
+            
+        elif nombre_pantalla == "Inventario":
+            self.stack.setCurrentWidget(self.inventario_view)
+ 
+        elif nombre_pantalla == "Proveedores":
+            self.stack.setCurrentWidget(self.proveedores_view)
 
         else:
             self.usuario_actual = None
