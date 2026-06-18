@@ -2,7 +2,8 @@ import sys
 import os
 from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QGuiApplication
+from PySide6.QtCore import Qt
 from conexion import conexion_db
 
 from vistas.login_vista import LoginVista
@@ -28,6 +29,10 @@ class MainWindow(QMainWindow):
 
         self.setStyleSheet("QMainWindow { background-color: #008037; }")
 
+        # ── CONFIGURACIÓN DE VENTANA SIN BORDES ──
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowMinMaxButtonsHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         layout_central = QVBoxLayout(self.central_widget)
@@ -51,7 +56,22 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.proveedores_view)
 
         self.stack.setCurrentWidget(self.login_view)
-        self.showMaximized()
+        
+        # ── APLICAR EL AJUSTE DE PANTALLA EN LUGAR DE showMaximized() ──
+        self.congelar_tamano_pantalla()
+        self.show()
+
+    def congelar_tamano_pantalla(self):
+        # Detecta la pantalla en la que se está ejecutando la aplicación actualmente
+        pantalla = QGuiApplication.primaryScreen()
+        # availableGeometry() excluye la barra de tareas de Windows
+        area_util = pantalla.availableGeometry()
+        
+        # Asigna la posición inicial (X, Y) arriba a la izquierda del espacio útil
+        self.move(area_util.topLeft())
+        
+        # Fija el tamaño idéntico para impedir que layouts internos deformen la ventana
+        self.setFixedSize(area_util.size())
 
     def cambiar_pantalla(self, nombre_pantalla, datos_usuario=None):
         if datos_usuario:
@@ -123,6 +143,7 @@ if __name__ == "__main__":
     
     if conexion:
         ventana = MainWindow(conexion)
+        # La ventana ya se muestra mediante self.show() en el __init__
         sys.exit(app.exec())
     else:
         print("No se pudo conectar a la base de datos. Verifica tu archivo .env")
