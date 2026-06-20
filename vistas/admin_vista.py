@@ -5,6 +5,8 @@ from datetime import datetime
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QTimer, Qt
 from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget
+from vistas.cuenta_vista import CuentaDialog
+from vistas.inventario_vista import InventarioVista
 
 
 class BotonAnimado(QPushButton):
@@ -108,7 +110,7 @@ class AdminDashboardQt(QWidget):
         self.mod_cuenta = BotonAnimado("CUENTA", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
-        self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
+        self.mod_cuenta.clicked.connect(self.abrir_cuenta)
 
         self.lbl_avatar = QLabel("", self)
         self.lbl_avatar.setStyleSheet("""
@@ -313,12 +315,11 @@ class AdminDashboardQt(QWidget):
                 "Caja",
                 datos_usuario=self.datos_usuario
             )
-    def abrir_modulo_inventario(self):
-        if self.controlador:
-            self.controlador.cambiar_pantalla(
-                "Inventario",
-                datos_usuario=self.datos_usuario
-            )
+
+    def abrir_cuenta(self):
+        conexion = getattr(self.controlador, "conexion", None)
+        dlg = CuentaDialog(conexion, self.datos_usuario, self)
+        dlg.exec()
 
     def ver_admin(self):
         if self.controlador:
