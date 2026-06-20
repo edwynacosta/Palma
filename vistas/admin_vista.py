@@ -6,7 +6,10 @@ from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QTimer, Qt
 from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget
 from vistas.cuenta_vista import CuentaDialog
+<<<<<<< HEAD
 from vistas.inventario_vista import InventarioVista
+=======
+>>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
 
 
 class BotonAnimado(QPushButton):
@@ -110,6 +113,10 @@ class AdminDashboardQt(QWidget):
         self.mod_cuenta = BotonAnimado("CUENTA", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
+<<<<<<< HEAD
+=======
+        self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
+>>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
         self.mod_cuenta.clicked.connect(self.abrir_cuenta)
 
         self.lbl_avatar = QLabel("", self)
@@ -316,10 +323,51 @@ class AdminDashboardQt(QWidget):
                 datos_usuario=self.datos_usuario
             )
 
+<<<<<<< HEAD
     def abrir_cuenta(self):
         conexion = getattr(self.controlador, "conexion", None)
         dlg = CuentaDialog(conexion, self.datos_usuario, self)
         dlg.exec()
+=======
+    def abrir_modulo_inventario(self):
+        if self.controlador:
+            self.controlador.cambiar_pantalla(
+                "Inventario",
+                datos_usuario=self.datos_usuario
+            )
+>>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
+
+    def abrir_cuenta(self):
+        conexion = getattr(self.controlador, "conexion", None)
+        try:
+            # Flujo A: Si tu CuentaDialog hereda de QDialog directamente
+            dlg = CuentaDialog(conexion, self.datos_usuario, self)
+            if hasattr(dlg, "exec"):
+                dlg.exec()
+            else:
+                # Si es un QWidget mapeado como alias, lo envolvemos de forma limpia
+                from PySide6.QtWidgets import QDialog, QVBoxLayout
+                contenedor = QDialog(self)
+                contenedor.setWindowTitle("Gestión de Cuenta - Palma")
+                layout = QVBoxLayout(contenedor)
+                layout.setContentsMargins(0, 0, 0, 0)
+                layout.addWidget(dlg)
+                contenedor.resize(520, 420)
+                contenedor.exec()
+        except TypeError:
+            # Flujo B: Si la firma estructural cambió a (conexion, parent)
+            from PySide6.QtWidgets import QDialog, QVBoxLayout
+            from vistas.cuenta_vista import CuentaVista
+            
+            contenedor = QDialog(self)
+            contenedor.setWindowTitle("Gestión de Cuenta - Palma")
+            layout = QVBoxLayout(contenedor)
+            layout.setContentsMargins(0, 0, 0, 0)
+            
+            vista = CuentaVista(conexion=conexion, parent=contenedor)
+            layout.addWidget(vista)
+            contenedor.resize(520, 420)
+            contenedor.exec()
 
     def ver_admin(self):
         if self.controlador:
