@@ -1,256 +1,268 @@
-import sys
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QLabel, QPushButton, QLineEdit, QTextEdit, QComboBox, QSpinBox,
-                             QFrame, QGridLayout, QSizePolicy)
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon, QFont, QAction
+import os
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QColor
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QFrame,
+    QPushButton, QLabel, QGraphicsDropShadowEffect,
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QComboBox, QTextEdit
+)
 
-# Definimos los colores y estilos globales para replicar el diseño
-STYLE_SHEET = """
-QMainWindow {
-    background-color: #F8F9FA;
-}
-QWidget {
-    font-family: 'Segoe UI', sans-serif;
-    color: #333333;
-}
-QFrame {
-    border: none;
-}
-QLabel {
-    color: #6c757d;
-}
+class DevolucionesVista(QWidget):
+    """Módulo de Devoluciones con la estética de Palma."""
+    
+    def __init__(self, conexion=None, parent=None):
+        super().__init__(parent)
+        self.conexion = conexion
+        self.init_ui()
+        self.cargar_datos()
 
-/* Panel Izquierdo */
-#SidebarPanel {
-    background-color: transparent;
-    padding-right: 20px;
-}
-#RefundTotalLabel {
-    color: #FFFFFF;
-    font-size: 32px;
-    font-weight: bold;
-}
-#RefundTextLabel {
-    color: #FFFFFF;
-    font-size: 14px;
-}
-#SidebarRefundBox {
-    background-color: #B22222;
-    border-radius: 12px;
-    padding: 20px;
-}
-#IdInvoiceLine {
-    background-color: #FFFFFF;
-    border: 1px solid #D3D3D3;
-    border-radius: 6px;
-    padding: 8px;
-    color: #333333;
-    font-size: 14px;
-}
-#ChangeBoxLabel {
-    color: #FFFFFF;
-    font-size: 24px;
-    font-weight: bold;
-}
-#ChangeTextLabel {
-    color: #FFFFFF;
-    font-size: 14px;
-}
-#SidebarChangeBox {
-    background-color: #F5E0E0;
-    border-radius: 12px;
-    padding: 20px;
-}
-#ChangeBoxLabel {
-    color: #B22222;
-}
-#ChangeTextLabel {
-    color: #B22222;
-}
-#ReembolsarButton {
-    background-color: #B22222;
-    color: #FFFFFF;
-    border-radius: 12px;
-    padding: 15px;
-    font-size: 16px;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-#ReembolsarButton:hover {
-    background-color: #a01f1f;
-}
+    def init_ui(self):
+        # Layout principal
+        layout_principal = QVBoxLayout(self)
+        layout_principal.setContentsMargins(0, 0, 0, 0)
+        layout_principal.setSpacing(20)
 
-/* Panel Principal Derecho */
-#MainContentPanel {
-    background-color: #FFFFFF;
-    border-radius: 12px;
-    border: 1px solid #E0E0E0;
-    padding: 20px;
-}
-#ReturnsTitleLabel {
-    color: #B22222;
-    font-size: 28px;
-    font-weight: bold;
-}
-#OperationIdLabel {
-    color: #6c757d;
-    font-size: 12px;
-}
-#TableHeaderLabel {
-    font-size: 12px;
-    font-weight: bold;
-    color: #a3aab0;
-}
-#TableCellLabel {
-    font-size: 14px;
-    color: #333333;
-}
-QSpinBox {
-    background-color: #FFFFFF;
-    border: 1px solid #D3D3D3;
-    border-radius: 6px;
-    padding: 6px;
-    font-size: 14px;
-}
-QComboBox {
-    background-color: #FFFFFF;
-    border: 1px solid #D3D3D3;
-    border-radius: 6px;
-    padding: 6px;
-    font-size: 14px;
-}
-QComboBox QAbstractItemView {
-    background-color: #FFFFFF;
-    border: 1px solid #D3D3D3;
-}
-#WarningLabel {
-    color: #FF6F61;
-    font-size: 20px;
-}
-#ObservationsEdit {
-    background-color: #FFFFFF;
-    border: 1px solid #D3D3D3;
-    border-radius: 6px;
-    padding: 10px;
-    color: #333333;
-    font-size: 14px;
-}
-#SecondaryActionButton {
-    background-color: #FFFFFF;
-    color: #a3aab0;
-    border: 1px solid #D3D3D3;
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-size: 13px;
-    text-transform: uppercase;
-    font-weight: normal;
-}
-#SecondaryActionButton:hover {
-    background-color: #F8F9FA;
-    color: #333333;
-    border: 1px solid #333333;
-}
+        # ══════════════════════════════════════════════════════════════════════════════
+        # 1. ENCABEZADO SUPERIOR
+        # ══════════════════════════════════════════════════════════════════════════════
+        header_frame = QFrame()
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, 0, 0, 10)
 
-/* Banner Superior */
-#TopBarFrame {
-    background-color: #FFFFFF;
-    border-bottom: 1px solid #E0E0E0;
-    padding: 5px;
-}
-#CajaTitleLabel {
-    color: #12551e;
-    font-size: 12px;
-    font-weight: bold;
-}
-#NavButton {
-    background-color: transparent;
-    border: none;
-    padding: 10px 15px;
-    font-size: 11px;
-    text-transform: uppercase;
-    color: #a3aab0;
-}
-#NavButton:hover {
-    color: #333333;
-}
-#NavButtonActive {
-    background-color: #f1faf2;
-    border-radius: 8px;
-    color: #1a7126;
-    font-weight: bold;
-}
-#UserProfileFrame {
-    background-color: transparent;
-}
-#UserProfileNameLabel {
-    color: #6c757d;
-    font-size: 12px;
-}
-#CloseButton {
-    background-color: transparent;
-    border: none;
-    color: #a3aab0;
-    font-size: 16px;
-}
-#CloseButton:hover {
-    color: #B22222;
-}
-"""
-
-class DevolucionesWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle("Sistema de Caja - Devoluciones")
-        self.setMinimumSize(QSize(1100, 700))
-        self.setStyleSheet(STYLE_SHEET)
-
-        # Widget central y diseño principal
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # 1. Banner Superior
-        self.top_bar_frame = QFrame()
-        self.top_bar_frame.setObjectName("TopBarFrame")
-        top_bar_layout = QHBoxLayout(self.top_bar_frame)
-        top_bar_layout.setContentsMargins(15, 5, 15, 5)
-
-        caja_label = QLabel("CAJA")
-        caja_label.setObjectName("CajaTitleLabel")
-        top_bar_layout.addWidget(caja_label)
-        top_bar_layout.addStretch()
-
-        # Botones de Navegación
-        nav_buttons_frame = QFrame()
-        nav_layout = QHBoxLayout(nav_buttons_frame)
-        nav_layout.setContentsMargins(0, 0, 0, 0)
-        nav_layout.setSpacing(5)
+        lbl_titulo = QLabel("DEVOLUCIONES")
+        lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Weight.Black))
+        lbl_titulo.setStyleSheet("color: #1B4314;")
         
-        btn_caja = QPushButton("CAJA")
-        btn_caja.setObjectName("NavButton")
+        lbl_subtitulo = QLabel("Gestione las devoluciones de productos y reembolsos.")
+        lbl_subtitulo.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
+        lbl_subtitulo.setStyleSheet("color: #64748B;")
         
-        btn_factura = QPushButton("FACTURA ELECTRÓNICA")
-        btn_factura.setObjectName("NavButton")
+        titulos_layout = QVBoxLayout()
+        titulos_layout.addWidget(lbl_titulo)
+        titulos_layout.addWidget(lbl_subtitulo)
         
-        btn_devoluciones = QPushButton("DEVOLUCIONES")
-        btn_devoluciones.setObjectName("NavButtonActive") # Activa
-        
-        btn_recibo = QPushButton("RECIBO PROVEEDORES")
-        btn_recibo.setObjectName("NavButton")
+        header_layout.addLayout(titulos_layout)
+        header_layout.addStretch()
+        layout_principal.addWidget(header_frame)
 
-        nav_layout.addWidget(btn_caja)
-        nav_layout.addWidget(btn_factura)
-        nav_layout.addWidget(btn_devoluciones)
-        nav_layout.addWidget(btn_recibo)
+        # ══════════════════════════════════════════════════════════════════════════════
+        # 2. CONTENEDOR PRINCIPAL BLANCO
+        # ══════════════════════════════════════════════════════════════════════════════
+        tarjeta_principal = QFrame()
+        tarjeta_principal.setStyleSheet("""
+            QFrame {
+                background-color: #FFFFFF;
+                border-radius: 25px;
+                border: 1px solid #E2E8F0;
+            }
+        """)
         
-        top_bar_layout.addWidget(nav_buttons_frame)
-        top_bar_layout.addStretch()
+        sombra = QGraphicsDropShadowEffect(self)
+        sombra.setBlurRadius(20)
+        sombra.setXOffset(0)
+        sombra.setYOffset(4)
+        sombra.setColor(QColor(0, 0, 0, 15))
+        tarjeta_principal.setGraphicsEffect(sombra)
 
-        # Perfil de Usuario
-        user_frame = QFrame()
-        user_frame.setObjectName("UserProfileFrame")
-        user_layout = QHBoxLayout(user_frame)
+        layout_tarjeta = QVBoxLayout(tarjeta_principal)
+        layout_tarjeta.setContentsMargins(30, 30, 30, 30)
+        layout_tarjeta.setSpacing(20)
+
+        # --- Filtros ---
+        filtros_layout = QHBoxLayout()
+        filtros_layout.setSpacing(15)
+
+        self.txt_buscador = QLineEdit()
+        self.txt_buscador.setPlaceholderText("Buscar devolución por número o cliente...")
+        self.txt_buscador.setFixedHeight(46)
+        self.txt_buscador.setStyleSheet("""
+            QLineEdit {
+                background-color: #F8FAFC;
+                color: #1B4314;
+                border: 2px solid #E2E8F0;
+                border-radius: 12px;
+                padding-left: 20px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #008F39;
+                background-color: #FFFFFF;
+            }
+        """)
+        self.txt_buscador.textChanged.connect(self.filtrar_tabla)
+
+        self.cmb_estado = QComboBox()
+        self.cmb_estado.addItems(["Todos", "Pendiente", "Aprobada", "Rechazada"])
+        self.cmb_estado.setFixedHeight(46)
+        self.cmb_estado.setFixedWidth(150)
+        self.cmb_estado.setStyleSheet("""
+            QComboBox {
+                background-color: #F8FAFC;
+                border: 2px solid #E2E8F0;
+                border-radius: 12px;
+                padding: 0 15px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                color: #1B4314;
+            }
+            QComboBox:focus {
+                border: 2px solid #008F39;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+        """)
+        self.cmb_estado.currentTextChanged.connect(self.filtrar_tabla)
+
+        self.btn_nueva = QPushButton("+ NUEVA DEVOLUCIÓN")
+        self.btn_nueva.setFixedHeight(46)
+        self.btn_nueva.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_nueva.setStyleSheet("""
+            QPushButton {
+                background-color: #DC2626;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 12px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                font-weight: 900;
+                padding: 0 25px;
+            }
+            QPushButton:hover {
+                background-color: #B91C1C;
+            }
+        """)
+        self.btn_nueva.clicked.connect(self.simular_nueva_devolucion)
+
+        filtros_layout.addWidget(self.txt_buscador, 1)
+        filtros_layout.addWidget(self.cmb_estado)
+        filtros_layout.addWidget(self.btn_nueva)
+        layout_tarjeta.addLayout(filtros_layout)
+
+        # --- Tabla de Devoluciones ---
+        self.tabla = QTableWidget(0, 6)
+        self.tabla.setHorizontalHeaderLabels([
+            "N° Devolución", "Cliente", "Fecha", "Productos", "Estado", "Acciones"
+        ])
+        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.tabla.setShowGrid(False)
+        self.tabla.setStyleSheet("""
+            QTableWidget {
+                background-color: transparent;
+                border: none;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                color: #1B4314;
+            }
+            QHeaderView::section {
+                background-color: #E2E8F0;
+                color: #64748B;
+                font-weight: bold;
+                font-size: 12px;
+                border: none;
+                padding: 12px;
+            }
+            QTableWidget::item {
+                border-bottom: 1px solid #E2E8F0;
+                padding: 10px;
+            }
+            QTableWidget::item:selected {
+                background-color: #ECFDF5;
+                color: #008F39;
+            }
+        """)
+        self.tabla.setColumnWidth(5, 150)
+        
+        layout_tarjeta.addWidget(self.tabla)
+        layout_principal.addWidget(tarjeta_principal)
+
+    def cargar_datos(self):
+        """Carga datos de devoluciones."""
+        self.tabla.setRowCount(0)
+        
+        # Datos de prueba
+        datos = [
+            ("DEV-001", "Supermercado El Éxito", "2026-06-21", "3 unidades", "Pendiente", "Ver"),
+            ("DEV-002", "Distribuidora La 14", "2026-06-20", "1 caja", "Aprobada", "Ver"),
+            ("DEV-003", "Almacenes Tía", "2026-06-19", "5 unidades", "Rechazada", "Ver"),
+            ("DEV-004", "D1 S.A.S.", "2026-06-18", "2 unidades", "Pendiente", "Ver"),
+        ]
+
+        if self.conexion:
+            try:
+                cursor = self.conexion.cursor()
+                cursor.execute("""
+                    SELECT id_devolucion, cliente, fecha, productos, estado 
+                    FROM devoluciones 
+                    ORDER BY fecha DESC 
+                    LIMIT 20
+                """)
+                resultados = cursor.fetchall()
+                if resultados:
+                    datos = []
+                    for row in resultados:
+                        datos.append((
+                            f"DEV-{row[0]}",
+                            row[1],
+                            row[2].strftime("%Y-%m-%d") if hasattr(row[2], 'strftime') else str(row[2]),
+                            row[3],
+                            row[4],
+                            "Ver"
+                        ))
+                cursor.close()
+            except Exception as e:
+                print(f"Error cargando devoluciones: {e}")
+
+        # Llenar la tabla
+        for fila_idx, row_data in enumerate(datos):
+            self.tabla.insertRow(fila_idx)
+            for col_idx, valor in enumerate(row_data):
+                item = QTableWidgetItem(str(valor))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                # Colores para el estado
+                if col_idx == 4:
+                    if valor == "Pendiente":
+                        item.setForeground(QColor("#EAB308"))
+                    elif valor == "Aprobada":
+                        item.setForeground(QColor("#008F39"))
+                    elif valor == "Rechazada":
+                        item.setForeground(QColor("#DC2626"))
+                self.tabla.setItem(fila_idx, col_idx, item)
+
+    def filtrar_tabla(self, texto=None):
+        """Filtra la tabla por texto y estado."""
+        texto_busqueda = self.txt_buscador.text().lower() if texto is None else texto.lower()
+        estado_filtro = self.cmb_estado.currentText()
+        
+        for fila in range(self.tabla.rowCount()):
+            mostrar = True
+            
+            # Filtro por texto
+            if texto_busqueda:
+                coincide = False
+                for col in range(self.tabla.columnCount() - 1):
+                    item = self.tabla.item(fila, col)
+                    if item and texto_busqueda in item.text().lower():
+                        coincide = True
+                        break
+                mostrar = mostrar and coincide
+            
+            # Filtro por estado
+            if estado_filtro != "Todos":
+                item_estado = self.tabla.item(fila, 4)
+                if item_estado and item_estado.text() != estado_filtro:
+                    mostrar = False
+            
+            self.tabla.setRowHidden(fila, not mostrar)
+
+    def simular_nueva_devolucion(self):
+        QMessageBox.information(
+            self, 
+            "Nueva Devolución", 
+            "Se abrirá el formulario para crear una nueva devolución.\n\n"
+            "Funcionalidad en desarrollo."
+        )

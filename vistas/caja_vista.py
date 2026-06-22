@@ -3,13 +3,19 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QSpinBox,
     QPushButton, QLabel, QFrame, QTableWidget, QListWidget,
     QTableWidgetItem, QHeaderView, QMessageBox, QDialog,
-    QGraphicsDropShadowEffect, QStackedLayout, QCompleter
+    QGraphicsDropShadowEffect, QStackedLayout, QStackedWidget, QCompleter
 )
 from PySide6.QtCore import Qt, QPoint, QStringListModel
 from PySide6.QtGui import QFont, QColor, QPainter, QBrush, QFontDatabase
 
+# Importamos las vistas
+from vistas.facturaelectronica_vista import FacturaElectronicaVista
+from vistas.reciboproveedores_vista import ReciboProveedoresVista
+from vistas.devoluciones_vista import DevolucionesVista
+
+
 # ══════════════════════════════════════════════════════════════════════════════
-# NUEVO DIÁLOGO: AGREGAR PRODUCTO (CON AUTOCOMPLETADO DE BD)
+# DIÁLOGO AGREGAR FACTURA
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoAgregarFactura(QDialog):
     def __init__(self, conexion=None, parent=None):
@@ -19,7 +25,6 @@ class DialogoAgregarFactura(QDialog):
         self._conexion = conexion
         self.resultado = None
         
-        # Diccionario para almacenar los productos de la BD: { "NOMBRE": {"id": 1, "precio": 1500} }
         self.productos_db = {}
         self.producto_actual = None
 
@@ -27,12 +32,9 @@ class DialogoAgregarFactura(QDialog):
         layout_fondo.setContentsMargins(0, 0, 0, 0)
         layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # ── Tarjeta Central Blanca (MÁS GRANDE Y CON BORDES CORREGIDOS) ──
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        # Ventana más grande para mejor visibilidad
-        self.card.setFixedSize(650, 680) 
-        # El ID #MainCard asegura que solo este fondo tenga los bordes y no afecte a los hijos
+        self.card.setFixedSize(650, 680)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
@@ -47,7 +49,6 @@ class DialogoAgregarFactura(QDialog):
         sombra.setOffset(0, 10)
         self.card.setGraphicsEffect(sombra)
 
-        # Márgenes amplios (40px) para que NADA pise los bordes redondeados
         layout_card = QVBoxLayout(self.card)
         layout_card.setContentsMargins(40, 40, 40, 40)
         layout_card.setSpacing(24)
@@ -57,7 +58,7 @@ class DialogoAgregarFactura(QDialog):
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        # ── HEADER ──
+        # HEADER
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("AGREGAR A LA FACTURA")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -81,7 +82,6 @@ class DialogoAgregarFactura(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # ── ESTILO GLOBAL PARA INPUTS ──
         estilo_input = """
             QLineEdit, QSpinBox {
                 background-color: #F8FAF9; border: 2px solid #D1E2D9;
@@ -91,7 +91,7 @@ class DialogoAgregarFactura(QDialog):
             QSpinBox::up-button, QSpinBox::down-button { width: 30px; }
         """
 
-        # ── NOMBRE DEL PRODUCTO (CON AUTOCOMPLETADO) ──
+        # NOMBRE DEL PRODUCTO
         box_nombre = QVBoxLayout()
         box_nombre.setSpacing(8)
         lbl_nom = QLabel("NOMBRE DEL PRODUCTO")
@@ -109,11 +109,10 @@ class DialogoAgregarFactura(QDialog):
         box_nombre.addWidget(self.txt_nombre)
         layout_card.addLayout(box_nombre)
 
-        # ── FILA: CANTIDAD Y PESO ──
+        # FILA: CANTIDAD Y PESO
         fila_cantidades = QHBoxLayout()
         fila_cantidades.setSpacing(20)
 
-        # Col Cantidad
         col_cant = QVBoxLayout()
         col_cant.setSpacing(8)
         lbl_cant = QLabel("CANTIDAD (Und)")
@@ -128,7 +127,6 @@ class DialogoAgregarFactura(QDialog):
         col_cant.addWidget(lbl_cant)
         col_cant.addWidget(self.spin_cant)
 
-        # Col Peso
         col_peso = QVBoxLayout()
         col_peso.setSpacing(8)
         lbl_peso = QLabel("PESO (Gramos)")
@@ -148,7 +146,7 @@ class DialogoAgregarFactura(QDialog):
         fila_cantidades.addLayout(col_peso)
         layout_card.addLayout(fila_cantidades)
 
-        # ── PRECIO UNITARIO (AUTOMÁTICO) ──
+        # PRECIO UNITARIO
         box_precio = QVBoxLayout()
         box_precio.setSpacing(8)
         lbl_precio = QLabel("PRECIO UNITARIO / KG (Tomado de la BD)")
@@ -168,7 +166,7 @@ class DialogoAgregarFactura(QDialog):
         box_precio.addWidget(self.txt_precio)
         layout_card.addLayout(box_precio)
 
-        # ── TOTAL CALCULADO ──
+        # TOTAL CALCULADO
         fila_total = QHBoxLayout()
         self.lbl_info_total = QLabel("Total a sumar:")
         self.lbl_info_total.setFont(_f(12, QFont.Weight.Medium))
@@ -181,7 +179,7 @@ class DialogoAgregarFactura(QDialog):
         fila_total.addWidget(self.lbl_total_calc)
         layout_card.addLayout(fila_total)
 
-        # ── FOOTER BOTONES ──
+        # FOOTER BOTONES
         layout_footer = QHBoxLayout()
         btn_cancelar = QPushButton("CANCELAR")
         btn_cancelar.setFont(_f(12, QFont.Weight.Bold))
@@ -209,14 +207,12 @@ class DialogoAgregarFactura(QDialog):
 
         layout_fondo.addWidget(self.card)
 
-        # Cargar datos de la Base de Datos y configurar el autocompletado
         self._cargar_productos_bd()
 
     def _cargar_productos_bd(self):
-        # 1. Escudo de seguridad
         if not self._conexion:
             print("Error: El diálogo recibió una conexión vacía (None).")
-            return 
+            return
 
         try:
             cursor = self._conexion.cursor()
@@ -224,14 +220,11 @@ class DialogoAgregarFactura(QDialog):
             
             filas = cursor.fetchall()
             for fila in filas:
-                # 2. EVALUACIÓN INTELIGENTE: Detectar si es Diccionario o Tupla
                 if isinstance(fila, dict):
-                    # Si tu BD devuelve diccionarios (por el KeyError: 0 que vimos)
                     pid = fila.get("id_producto")
                     nombre = str(fila.get("nombre_producto")).upper()
                     precio = float(fila.get("precio_venta_prod"))
                 else:
-                    # Si devuelve listas o tuplas tradicionales
                     pid = fila[0]
                     nombre = str(fila[1]).upper()
                     precio = float(fila[2])
@@ -242,43 +235,26 @@ class DialogoAgregarFactura(QDialog):
                 }
             cursor.close()
             
-            # Configurar motor autocompletado
-            self.modelo_completer = QStringListModel(list(self.productos_db.keys()))
+            lista_nombres = list(self.productos_db.keys())
+            self.modelo_completer = QStringListModel(lista_nombres)
             self.completer = QCompleter(self.modelo_completer, self)
+            self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
-            self.completer.activated.connect(self._al_seleccionar)
             self.txt_nombre.setCompleter(self.completer)
             
         except Exception as e:
-            # Usamos repr() para que si hay otro error, nos dé el nombre completo y no solo un '0'
             print(f"Error inesperado al cargar productos: {repr(e)}")
 
-        # Configurar Autocompletado
-        lista_nombres = list(self.productos_db.keys())
-        self.modelo_completer = QStringListModel(lista_nombres)
-        self.completer = QCompleter(self.modelo_completer, self)
-        
-        # Filtra sin importar mayúsculas/minúsculas y busca en cualquier parte de la palabra
-        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        
-        # Aplicamos el completer al input
-        self.txt_nombre.setCompleter(self.completer)
-
     def _verificar_producto(self):
-        """Revisa si lo que escribió el usuario coincide con algún producto de la BD"""
         texto_ingresado = self.txt_nombre.text().upper().strip()
         
         if texto_ingresado in self.productos_db:
-            # Producto encontrado en la BD
             self.producto_actual = self.productos_db[texto_ingresado]
             self.producto_actual["nombre"] = texto_ingresado
             
-            # Autocompletar el precio
             precio = self.producto_actual["precio"]
             self.txt_precio.setText(f"${int(precio):,}")
             
-            # Habilitar botón y establecer por defecto 1 unidad
             self.btn_anadir.setEnabled(True)
             if self.spin_cant.value() == 0 and self.spin_peso.value() == 0:
                 self.spin_cant.setValue(1)
@@ -287,7 +263,6 @@ class DialogoAgregarFactura(QDialog):
                 QLineEdit { background-color: #E8F5EE; border: 2px solid #17813D; border-radius: 14px; padding: 0 16px; color: #17813D; font-weight: bold; }
             """)
         else:
-            # Aún no se selecciona un producto válido
             self.producto_actual = None
             self.txt_precio.setText("$0")
             self.btn_anadir.setEnabled(False)
@@ -308,7 +283,6 @@ class DialogoAgregarFactura(QDialog):
         cant = self.spin_cant.value()
         peso_g = self.spin_peso.value()
 
-        # Calcula el total de unidades + el total en base al peso
         total = (precio_base * cant) + (precio_base * (peso_g / 1000.0))
         self.lbl_total_calc.setText(f"${int(total):,}")
 
@@ -350,7 +324,7 @@ class DialogoAgregarFactura(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO DE ELIMINAR 
+# DIÁLOGO ELIMINAR
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoEliminar(QDialog):
     def __init__(self, productos, parent=None):
@@ -361,16 +335,12 @@ class DialogoEliminar(QDialog):
         self.indice_seleccionado = -1
 
         layout_fondo = QVBoxLayout(self)
-        # SOLUCCIÓN 1: Damos margen de 24px para que la sombra y las esquinas no se corten contra el borde de la ventana
         layout_fondo.setContentsMargins(24, 24, 24, 24)
         layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # ── Tarjeta Central ──
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(650, 680) 
-        
-        # SOLUCIÓN 2: Forzamos a Qt a usar el motor de renderizado de hojas de estilo para evitar el fondo rectangular nativo
+        self.card.setFixedSize(650, 680)
         self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.card.setStyleSheet("QFrame#MainCard { background-color: #FFFFFF; border-radius: 28px; border: 2px solid #D1E2D9; }")
         
@@ -388,7 +358,6 @@ class DialogoEliminar(QDialog):
             font = QFont("Montserrat", size, weight)
             return font
 
-        # ── HEADER ──
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("QUITAR DE LA FACTURA")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -404,7 +373,6 @@ class DialogoEliminar(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # ── CONTENIDO ──
         lbl_info = QLabel("SELECCIONA EL PRODUCTO A ELIMINAR")
         lbl_info.setFont(_f(11, QFont.Weight.Bold))
         lbl_info.setStyleSheet("color: #708077; background: transparent;")
@@ -435,7 +403,7 @@ class DialogoEliminar(QDialog):
             self.lista.setFixedHeight(340)
             
             for p in productos:
-                self.lista.addItem(f"ID {p['id']}   ·   {p['nombre'].upper()}   ·   ${int(p['precio']):,}")
+                self.lista.addItem(f"ID {p['id']}   ·   {p['nombre'].upper()}   ·   ${int(p['precio_total']):,}")
                 
             self.lista.currentRowChanged.connect(self._verificar_seleccion)
             layout_card.addWidget(self.lista)
@@ -468,6 +436,10 @@ class DialogoEliminar(QDialog):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor(40, 55, 45, 95))
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO MODIFICAR
+# ══════════════════════════════════════════════════════════════════════════════
 class DialogoModificar(QDialog):
     def __init__(self, productos, parent=None):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -477,16 +449,12 @@ class DialogoModificar(QDialog):
         self.resultado = None
 
         layout_fondo = QVBoxLayout(self)
-        # SOLUCCIÓN 1: Damos margen de 24px para la correcta renderización de la sombra y esquinas
         layout_fondo.setContentsMargins(24, 24, 24, 24)
         layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # ── Tarjeta Central ──
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(650, 680) 
-        
-        # SOLUCIÓN 2: Forzamos a Qt a renderizar correctamente los bordes curvos
+        self.card.setFixedSize(650, 680)
         self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.card.setStyleSheet("QFrame#MainCard { background-color: #FFFFFF; border-radius: 28px; border: 2px solid #D1E2D9; }")
         
@@ -504,7 +472,6 @@ class DialogoModificar(QDialog):
             font = QFont("Montserrat", size, weight)
             return font
 
-        # ── HEADER ──
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("EDITAR ITEM DE FACTURA")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -520,7 +487,6 @@ class DialogoModificar(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # ── FILTRO / BUSCADOR ──
         lbl_buscar = QLabel("BUSCAR ITEM EN LA FACTURA")
         lbl_buscar.setFont(_f(11, QFont.Weight.Bold))
         lbl_buscar.setStyleSheet("color: #708077; background: transparent;")
@@ -533,7 +499,6 @@ class DialogoModificar(QDialog):
         self.txt_buscar.textChanged.connect(self._buscar)
         layout_card.addWidget(self.txt_buscar)
 
-        # ── LISTA DE ÍTEMS ──
         self.lista = QListWidget()
         self.lista.setStyleSheet(
             "QListWidget { background-color: #F8FAF9; border: 2px solid #D1E2D9; border-radius: 14px; padding: 8px; outline: none; }"
@@ -551,11 +516,9 @@ class DialogoModificar(QDialog):
         self.lista.currentRowChanged.connect(self._cargar_valores_item)
         layout_card.addWidget(self.lista)
 
-        # ── FORMULARIO DE EDICIÓN ──
         fila_form = QHBoxLayout()
         fila_form.setSpacing(20)
 
-        # Columna Cantidad
         col_cant = QVBoxLayout()
         col_cant.setSpacing(6)
         lbl_cant = QLabel("NUEVA CANTIDAD")
@@ -571,7 +534,6 @@ class DialogoModificar(QDialog):
         col_cant.addWidget(lbl_cant)
         col_cant.addWidget(self.spin_cant)
 
-        # Columna Precio
         col_prec = QVBoxLayout()
         col_prec.setSpacing(6)
         lbl_prec = QLabel("NUEVO PRECIO (OPCIONAL)")
@@ -588,7 +550,6 @@ class DialogoModificar(QDialog):
         fila_form.addLayout(col_prec)
         layout_card.addLayout(fila_form)
 
-        # ── BOTÓN GUARDAR ──
         self.btn_guardar = QPushButton("GUARDAR CAMBIOS")
         self.btn_guardar.setFixedHeight(60)
         self.btn_guardar.setEnabled(False)
@@ -639,18 +600,19 @@ class DialogoModificar(QDialog):
         }
         self.accept()
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # VISTA PRINCIPAL DE CAJA
 # ══════════════════════════════════════════════════════════════════════════════
 class CajaVista(QWidget):
     def __init__(self, controlador_flujo):
         super().__init__()
-        self.controlador     = controlador_flujo
+        self.controlador = controlador_flujo
         self.productos_venta = []
-        self.total_actual    = 0
+        self.total_actual = 0
 
-        ruta_vistas     = os.path.dirname(os.path.abspath(__file__))
-        ruta_raiz       = os.path.dirname(ruta_vistas)
+        ruta_vistas = os.path.dirname(os.path.abspath(__file__))
+        ruta_raiz = os.path.dirname(ruta_vistas)
         carpeta_fuentes = os.path.join(ruta_raiz, "fuentes")
 
         for f in ("Montserrat-Bold.ttf", "Montserrat-Regular.ttf", "Montserrat-Medium.ttf", "Montserrat-Black.ttf"):
@@ -663,20 +625,19 @@ class CajaVista(QWidget):
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        self.fuente_heavy   = _f(34, QFont.Weight.Bold)
+        self.fuente_heavy = _f(34, QFont.Weight.Bold)
         self.fuente_titulos = _f(22, QFont.Weight.Black)
-        self.fuente_tags    = _f(9,  QFont.Weight.Bold)
-        self.fuente_nav     = _f(11, QFont.Weight.Black)
-        self.fuente_btns    = _f(11, QFont.Weight.Black)
+        self.fuente_tags = _f(9, QFont.Weight.Bold)
+        self.fuente_nav = _f(11, QFont.Weight.Black)
+        self.fuente_btns = _f(11, QFont.Weight.Black)
 
-        self.COLOR_FONDO   = "#F0F4F2"
-        self.BRAND         = "#17813D"
+        self.COLOR_FONDO = "#F0F4F2"
+        self.BRAND = "#17813D"
 
         layout_principal = QVBoxLayout(self)
         layout_principal.setContentsMargins(12, 13, 12, 13)
         layout_principal.setSpacing(0)
 
-        # Contenedor Principal
         self.contenedor_blanco = QFrame()
         self.contenedor_blanco.setObjectName("ContenedorCaja")
         self.contenedor_blanco.setStyleSheet("""
@@ -710,22 +671,38 @@ class CajaVista(QWidget):
         layout_navbar.setContentsMargins(0, 0, 20, 0)
         layout_navbar.setSpacing(0)
 
-        tab_on  = "QPushButton { background:transparent; color:#17813D; font-family:'Montserrat'; font-size:11px; font-weight:900; border:none; border-bottom:3px solid #17813D; padding:0 30px; height:68px; }"
+        tab_on = "QPushButton { background:transparent; color:#17813D; font-family:'Montserrat'; font-size:11px; font-weight:900; border:none; border-bottom:3px solid #17813D; padding:0 30px; height:68px; }"
         tab_off = "QPushButton { background:transparent; color:#9CA3AF; font-family:'Montserrat'; font-size:11px; font-weight:800; border:none; border-bottom:3px solid transparent; padding:0 24px; height:68px; } QPushButton:hover { color:#17813D; }"
+
+        # ============================================================
+        # CREACIÓN DE BOTONES DE NAVEGACIÓN CON SUS CONEXIONES
+        # ============================================================
+        self.btn_caja = QPushButton("CAJA")
+        self.btn_caja.setStyleSheet(tab_on)
+        self.btn_caja.setFont(self.fuente_nav)
+        self.btn_caja.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.btn_factura = QPushButton("FACTURA\nELECTRÓNICA")
+        self.btn_factura.setStyleSheet(tab_off)
+        self.btn_factura.setFont(self.fuente_nav)
+        self.btn_factura.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.btn_devoluciones = QPushButton("DEVOLUCIONES")
+        self.btn_devoluciones.setStyleSheet(tab_off)
+        self.btn_devoluciones.setFont(self.fuente_nav)
+        self.btn_devoluciones.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.btn_recibo = QPushButton("RECIBO\nPROVEEDORES")
+        self.btn_recibo.setStyleSheet(tab_off)
+        self.btn_recibo.setFont(self.fuente_nav)
+        self.btn_recibo.setCursor(Qt.CursorShape.PointingHandCursor)
 
         tabs = QHBoxLayout()
         tabs.setSpacing(0)
-        b_caja = QPushButton("CAJA")
-        b_caja.setStyleSheet(tab_on)
-        for b, txt in [(QPushButton("FACTURA\nELECTRÓNICA"), ""), (QPushButton("DEVOLUCIONES"), ""), (QPushButton("RECIBO\nPROVEEDORES"), "")]:
-            b.setStyleSheet(tab_off)
-            b.setFont(self.fuente_nav)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            tabs.addWidget(b)
-
-        b_caja.setFont(self.fuente_nav)
-        b_caja.setCursor(Qt.CursorShape.PointingHandCursor)
-        tabs.insertWidget(0, b_caja)
+        tabs.addWidget(self.btn_caja)
+        tabs.addWidget(self.btn_factura)
+        tabs.addWidget(self.btn_devoluciones)
+        tabs.addWidget(self.btn_recibo)
 
         layout_meta = QVBoxLayout()
         layout_meta.setSpacing(0)
@@ -778,7 +755,17 @@ class CajaVista(QWidget):
         layout_navbar.addLayout(layout_usuario)
         layout_contenedor.addWidget(navbar)
 
-        # ── CUERPO ──
+        # ── STACKED WIDGET (CONTENIDO DINÁMICO) ──
+        self.stack_central = QStackedWidget()
+        layout_contenedor.addWidget(self.stack_central)
+
+        # 1. Pantalla CAJA (contenido original)
+        self.pantalla_caja = QFrame()
+        layout_caja_contenido = QVBoxLayout(self.pantalla_caja)
+        layout_caja_contenido.setContentsMargins(0, 0, 0, 0)
+        layout_caja_contenido.setSpacing(0)
+        
+        # CUERPO DE CAJA (extraído del código original)
         cuerpo = QHBoxLayout()
         cuerpo.setContentsMargins(0, 0, 0, 0)
         cuerpo.setSpacing(0)
@@ -910,9 +897,9 @@ class CajaVista(QWidget):
 
         cuerpo.addWidget(panel_cobros)
         cuerpo.addWidget(area_tabla)
-        layout_contenedor.addLayout(cuerpo, 1)
+        layout_caja_contenido.addLayout(cuerpo, 1)
 
-        # ── BARRA INFERIOR ──
+        # ── BARRA INFERIOR DE CAJA ──
         barra_inferior = QFrame()
         barra_inferior.setFixedHeight(92)
         barra_inferior.setStyleSheet("""
@@ -950,8 +937,8 @@ class CajaVista(QWidget):
                 b.setStyleSheet("QPushButton { background:#FFFFFF; color:#9CA3AF; border:2px solid #EEEFF2; border-radius:16px; font-family:'Montserrat'; font-size:11px; font-weight:900; } QPushButton:hover { color:#17813D; border-color:#A9DDBC; }")
             return b
 
-        self.btn_agregar   = _btn_sec("BUSCAR Y AGREGAR", 190, destacado=True)
-        self.btn_eliminar  = _btn_sec("ELIMINAR",  128)
+        self.btn_agregar = _btn_sec("BUSCAR Y AGREGAR", 190, destacado=True)
+        self.btn_eliminar = _btn_sec("ELIMINAR", 128)
 
         self.btn_agregar.clicked.connect(self.abrir_buscador_agregar)
         self.btn_eliminar.clicked.connect(self.abrir_eliminar)
@@ -965,26 +952,63 @@ class CajaVista(QWidget):
         layout_inferior.addStretch()
         layout_inferior.addLayout(layout_bsec)
 
-        layout_contenedor.addWidget(barra_inferior)
+        layout_caja_contenido.addWidget(barra_inferior)
+
+        # Agregar pantalla de caja al stack
+        self.stack_central.addWidget(self.pantalla_caja)
+
+        # 2. Pantalla FACTURA ELECTRÓNICA
+        conexion_db = getattr(self.controlador, "conexion", None)
+        self.pantalla_factura = FacturaElectronicaVista(conexion=conexion_db)
+        self.stack_central.addWidget(self.pantalla_factura)
+
+        # 3. Pantalla DEVOLUCIONES
+        self.pantalla_devoluciones = DevolucionesVista(conexion=conexion_db)
+        self.stack_central.addWidget(self.pantalla_devoluciones)
+
+        # 4. Pantalla RECIBO PROVEEDORES
+        self.pantalla_recibo = ReciboProveedoresVista(conexion=conexion_db)
+        self.stack_central.addWidget(self.pantalla_recibo)
+
+        # ============================================================
+        # CONEXIONES DE LOS BOTONES DE NAVEGACIÓN
+        # ============================================================
+        self.btn_caja.clicked.connect(lambda: self.cambiar_pestana(0))
+        self.btn_factura.clicked.connect(lambda: self.cambiar_pestana(1))
+        self.btn_devoluciones.clicked.connect(lambda: self.cambiar_pestana(2))
+        self.btn_recibo.clicked.connect(lambda: self.cambiar_pestana(3))
+
+        # Establecer la pantalla inicial (Caja)
+        self.stack_central.setCurrentIndex(0)
+
         layout_principal.addWidget(self.contenedor_blanco)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # MÉTODO PARA CAMBIAR DE PESTAÑA Y ACTUALIZAR ESTILOS
+    # ══════════════════════════════════════════════════════════════════════════
+    def cambiar_pestana(self, indice):
+        """Cambia la pestaña activa y actualiza los estilos de los botones."""
+        self.stack_central.setCurrentIndex(indice)
+        
+        # Estilos para cada botón
+        tab_on = "QPushButton { background:transparent; color:#17813D; font-family:'Montserrat'; font-size:11px; font-weight:900; border:none; border-bottom:3px solid #17813D; padding:0 30px; height:68px; }"
+        tab_off = "QPushButton { background:transparent; color:#9CA3AF; font-family:'Montserrat'; font-size:11px; font-weight:800; border:none; border-bottom:3px solid transparent; padding:0 24px; height:68px; } QPushButton:hover { color:#17813D; }"
+        
+        self.btn_caja.setStyleSheet(tab_on if indice == 0 else tab_off)
+        self.btn_factura.setStyleSheet(tab_on if indice == 1 else tab_off)
+        self.btn_devoluciones.setStyleSheet(tab_on if indice == 2 else tab_off)
+        self.btn_recibo.setStyleSheet(tab_on if indice == 3 else tab_off)
 
     # ══════════════════════════════════════════════════════════════════════════
     # ACCIONES
     # ══════════════════════════════════════════════════════════════════════════
     def abrir_buscador_agregar(self):
-        # 1. Imprimimos todo lo que tiene el controlador para investigar
-        print("🔍 Buscando conexión... Variables en el controlador:", dir(self.controlador))
-        
-        # 2. Intentamos obtener la conexión (quizás se llame diferente a "conexion")
         conexion_bd = getattr(self.controlador, "conexion", None)
-
-        # 3. FRENO DE EMERGENCIA: Si no hay conexión, detenemos el proceso aquí
         if conexion_bd is None:
             QMessageBox.critical(self, "Error de Conexión", 
-                                 "No se encontró la conexión a la base de datos.\\n\\nRevisa la consola (terminal) para ver los nombres reales de las variables en tu controlador.")
-            return # <-- ESTO ES CLAVE: Evita que el programa continúe y se rompa
+                                 "No se encontró la conexión a la base de datos.")
+            return
         
-        # 4. Si la conexión existe, abrimos el diálogo normalmente
         dlg = DialogoAgregarFactura(conexion_bd, self)
         if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
             self.productos_venta.append(dlg.resultado)
@@ -1000,7 +1024,7 @@ class CajaVista(QWidget):
 
     def actualizar_usuario(self, nombre, rol):
         nombre_display = str(nombre).strip().title()
-        rol_display    = str(rol).strip().upper()
+        rol_display = str(rol).strip().upper()
         self.lbl_nombre_cajero.setText(nombre_display)
         self.lbl_rol_caja.setText(rol_display)
         iniciales = "".join([n[0] for n in nombre_display.split()[:2]]).upper()
