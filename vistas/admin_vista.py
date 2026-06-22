@@ -106,11 +106,12 @@ class AdminDashboardQt(QWidget):
 
         self.mod_ventas = BotonAnimado("VENTAS", self)
         self.mod_inventarios = BotonAnimado("INVENTARIOS", self)
-        self.mod_finanzas = BotonAnimado("FINANZAS", self)
+        self.mod_finanzas = BotonAnimado("FINANZAS", self)  # NUEVO
         self.mod_cuenta = BotonAnimado("CUENTA", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
         self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
+        self.mod_finanzas.clicked.connect(self.abrir_modulo_finanzas)  # NUEVO
         self.mod_cuenta.clicked.connect(self.abrir_cuenta)
 
         self.lbl_avatar = QLabel("", self)
@@ -255,7 +256,7 @@ class AdminDashboardQt(QWidget):
             ancho_card,
             alto_card,
             radio,
-            font_card,
+            max(13, self.sx(22)),  # ajustar tamaño de fuente para FINANZAS
         )
 
         self.mod_inventarios.fijar_geometria(
@@ -321,6 +322,13 @@ class AdminDashboardQt(QWidget):
         if self.controlador:
             self.controlador.cambiar_pantalla(
                 "Inventario",
+                datos_usuario=self.datos_usuario
+            )
+
+    def abrir_modulo_finanzas(self):  # NUEVO MÉTODO
+        if self.controlador:
+            self.controlador.cambiar_pantalla(
+                "Finanzas",
                 datos_usuario=self.datos_usuario
             )
 

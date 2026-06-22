@@ -1,3 +1,5 @@
+-- BASE DE DATOS PALMA
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. TABLA: rol
@@ -10,7 +12,6 @@ CREATE TABLE `rol` (
 INSERT INTO `rol` (`id_rol`, `descripcion_rol`) VALUES
 (1, 'Administrador'),
 (2, 'Cajero');
-
 
 -- 2. TABLA: empleados
 CREATE TABLE `empleados` (
@@ -28,7 +29,6 @@ INSERT INTO `empleados` (`id_empleado`, `nombre_empleado`, `id_rol`, `fecha_ingr
 (2, 'edwin armando acosta soriano', 1, '2023-03-01 08:00:00', 3200000.00),
 (3, 'Joseph Alejandro Hernández', 2, '2023-06-10 08:00:00', 2000000.00),
 (4, 'Mariana Zarate Pachote', 2, '2022-11-20 08:00:00', 2000000.00);
-
 
 -- 3. TABLA: usuarios
 CREATE TABLE `usuarios` (
@@ -49,7 +49,6 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 (3, 2, 3, 'alejandrohernandez', '335577'),
 (4, 2, 4, 'marianazarate', '446688');
 
-
 -- 4. TABLA: categoria
 CREATE TABLE `categoria` (
   `id_categoria` INT(11) NOT NULL AUTO_INCREMENT,
@@ -64,7 +63,6 @@ INSERT INTO `categoria` (`id_categoria`, `nombre_categoria`) VALUES
 (4, 'Lácteos'),
 (5, 'Bebidas'),
 (6, 'Aseo y limpieza personal');
-
 
 -- 5. TABLA: clientes
 CREATE TABLE `clientes` (
@@ -90,7 +88,6 @@ INSERT INTO `clientes` (`id_cliente`, `nombre_cliente`, `documento_identidad`, `
 (7, 'Ricardo Esteban Pinto', '1080910200', '3223334455', 'ricardo.pinto@email.com', 'Carrera 20 # 33-17', 'Pereira', 'Risaralda'),
 (8, 'Natalia Marcela Herrera', '1091011300', '3334445566', 'natalia.herrera@email.com', 'Av. Las Palmas # 5-9', 'Cartagena', 'Bolívar');
 
-
 -- 6. TABLA: estado_producto
 CREATE TABLE `estado_producto` (
   `id_estado` INT(11) NOT NULL AUTO_INCREMENT,
@@ -103,7 +100,6 @@ INSERT INTO `estado_producto` (`id_estado`, `nombre_estado`) VALUES
 (2, 'Vencido'),
 (3, 'Descontinuado'),
 (4, 'Dañado');
-
 
 -- 7. TABLA: proveedores
 CREATE TABLE `proveedores` (
@@ -122,7 +118,6 @@ INSERT INTO `proveedores` (`id_proveedor`, `nombre_empresa`, `nit`, `telefono_pr
 (1, 'Distribuidora El Campo SAS', '900111222-1', '6011234567', 'ventas@elcampo.com', 'Bodega 5, Zona Industrial Norte', 'Bogotá'),
 (2, 'Lácteos del Valle Ltda', '800333444-2', '6024569870', 'pedidos@lacteosvalle.com', 'Km 3 Vía Cali-Palmira', 'Cali'),
 (3, 'Proviser Higiene y Aseo SAS', '901555666-3', '6055558877', 'comercial@proviser.com', 'Carrera 50 # 30-40', 'Medellín');
-
 
 -- 8. TABLA: productos
 CREATE TABLE `productos` (
@@ -232,7 +227,6 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (90, 'Jabón Líquido Manos 500ml', 'Protex', 6, 1, 8900.00, 3),
 (91, 'Desodorante Original Barra', 'Rexona', 6, 1, 11200.00, 3);
 
-
 -- 9. TABLA: inventarios
 CREATE TABLE `inventarios` (
   `id_inventario` INT(11) NOT NULL AUTO_INCREMENT,
@@ -244,99 +238,98 @@ CREATE TABLE `inventarios` (
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `inventarios` (`id_producto`, `stock_actual`, `condicion`, `timestamp_ultima_actualizacion`) VALUES
-(1, 150, 'Buena', '2026-04-06 14:46:59'),
-(2, 200, 'Buena', '2026-04-06 14:46:59'),
-(3, 80, 'Buena', '2026-04-06 14:46:59'),
-(4, 300, 'Buena', '2026-04-06 14:46:59'),
-(5, 120, 'Buena', '2026-04-06 14:46:59'),
-(6, 100, 'Buena', '2026-04-06 14:46:59'),
-(7, 10, 'Vencida', '2026-04-06 14:46:59'),
-(8, 60, 'Buena', '2026-04-06 14:46:59'),
-(9, 180, 'Buena', '2026-04-06 14:51:06'),
-(10, 90, 'Buena', '2026-04-06 14:51:06'),
-(11, 130, 'Buena', '2026-04-06 14:51:06'),
-(12, 85, 'Buena', CURRENT_TIMESTAMP), 
-(13, 120, 'Buena', CURRENT_TIMESTAMP), 
-(14, 60, 'Buena', CURRENT_TIMESTAMP), 
-(15, 75, 'Buena', CURRENT_TIMESTAMP), 
-(16, 40, 'Buena', CURRENT_TIMESTAMP), 
-(17, 95, 'Buena', CURRENT_TIMESTAMP), 
-(18, 110, 'Buena', CURRENT_TIMESTAMP), 
-(19, 80, 'Buena', CURRENT_TIMESTAMP), 
-(20, 35, 'Buena', CURRENT_TIMESTAMP), 
-(21, 90, 'Buena', CURRENT_TIMESTAMP), 
-(22, 250, 'Buena', CURRENT_TIMESTAMP), 
-(23, 180, 'Buena', CURRENT_TIMESTAMP), 
-(24, 300, 'Buena', CURRENT_TIMESTAMP), 
-(25, 45, 'Buena', CURRENT_TIMESTAMP), 
-(26, 70, 'Buena', CURRENT_TIMESTAMP), 
-(27, 65, 'Buena', CURRENT_TIMESTAMP), 
-(28, 50, 'Buena', CURRENT_TIMESTAMP), 
-(29, 105, 'Buena', CURRENT_TIMESTAMP), 
-(30, 90, 'Buena', CURRENT_TIMESTAMP), 
-(31, 55, 'Buena', CURRENT_TIMESTAMP), 
-(32, 60, 'Buena', CURRENT_TIMESTAMP), 
-(33, 140, 'Buena', CURRENT_TIMESTAMP), 
-(34, 30, 'Buena', CURRENT_TIMESTAMP), 
-(35, 85, 'Buena', CURRENT_TIMESTAMP), 
-(36, 40, 'Buena', CURRENT_TIMESTAMP), 
-(37, 50, 'Buena', CURRENT_TIMESTAMP), 
-(38, 115, 'Buena', CURRENT_TIMESTAMP), 
-(39, 25, 'Buena', CURRENT_TIMESTAMP), 
-(40, 40, 'Buena', CURRENT_TIMESTAMP), 
-(41, 15, 'Buena', CURRENT_TIMESTAMP), 
-(42, 60, 'Buena', CURRENT_TIMESTAMP), 
-(43, 40, 'Buena', CURRENT_TIMESTAMP), 
-(44, 130, 'Buena', CURRENT_TIMESTAMP), 
-(45, 140, 'Buena', CURRENT_TIMESTAMP), 
-(46, 200, 'Buena', CURRENT_TIMESTAMP), 
-(47, 180, 'Buena', CURRENT_TIMESTAMP), 
-(48, 220, 'Buena', CURRENT_TIMESTAMP), 
-(49, 190, 'Buena', CURRENT_TIMESTAMP), 
-(50, 150, 'Buena', CURRENT_TIMESTAMP), 
-(51, 95, 'Buena', CURRENT_TIMESTAMP), 
-(52, 400, 'Buena', CURRENT_TIMESTAMP), 
-(53, 350, 'Buena', CURRENT_TIMESTAMP), 
-(54, 280, 'Buena', CURRENT_TIMESTAMP), 
-(55, 100, 'Buena', CURRENT_TIMESTAMP), 
-(56, 85, 'Buena', CURRENT_TIMESTAMP), 
-(57, 60, 'Buena', CURRENT_TIMESTAMP), 
-(58, 45, 'Buena', CURRENT_TIMESTAMP), 
-(59, 130, 'Buena', CURRENT_TIMESTAMP), 
-(60, 70, 'Buena', CURRENT_TIMESTAMP), 
-(61, 110, 'Buena', CURRENT_TIMESTAMP), 
-(62, 90, 'Buena', CURRENT_TIMESTAMP), 
-(63, 85, 'Buena', CURRENT_TIMESTAMP), 
-(64, 120, 'Buena', CURRENT_TIMESTAMP), 
-(65, 80, 'Buena', CURRENT_TIMESTAMP), 
-(66, 75, 'Buena', CURRENT_TIMESTAMP), 
-(67, 65, 'Buena', CURRENT_TIMESTAMP), 
-(68, 55, 'Buena', CURRENT_TIMESTAMP), 
-(69, 90, 'Buena', CURRENT_TIMESTAMP), 
-(70, 50, 'Buena', CURRENT_TIMESTAMP), 
-(71, 70, 'Buena', CURRENT_TIMESTAMP), 
-(72, 160, 'Buena', CURRENT_TIMESTAMP), 
-(73, 80, 'Buena', CURRENT_TIMESTAMP), 
-(74, 100, 'Buena', CURRENT_TIMESTAMP), 
-(75, 110, 'Buena', CURRENT_TIMESTAMP), 
-(76, 150, 'Buena', CURRENT_TIMESTAMP), 
-(77, 120, 'Buena', CURRENT_TIMESTAMP), 
-(78, 95, 'Buena', CURRENT_TIMESTAMP), 
-(79, 140, 'Buena', CURRENT_TIMESTAMP), 
-(80, 45, 'Buena', CURRENT_TIMESTAMP), 
-(81, 70, 'Buena', CURRENT_TIMESTAMP), 
-(82, 85, 'Buena', CURRENT_TIMESTAMP), 
-(83, 120, 'Buena', CURRENT_TIMESTAMP), 
-(84, 100, 'Buena', CURRENT_TIMESTAMP), 
-(85, 60, 'Buena', CURRENT_TIMESTAMP), 
-(86, 80, 'Buena', CURRENT_TIMESTAMP), 
-(87, 150, 'Buena', CURRENT_TIMESTAMP), 
-(88, 90, 'Buena', CURRENT_TIMESTAMP), 
-(89, 110, 'Buena', CURRENT_TIMESTAMP), 
-(90, 65, 'Buena', CURRENT_TIMESTAMP), 
-(91, 75, 'Buena', CURRENT_TIMESTAMP);
-
+INSERT INTO `inventarios` (`id_inventario`, `id_producto`, `stock_actual`, `condicion`, `timestamp_ultima_actualizacion`) VALUES
+(1, 1, 150, 'Buena', '2026-04-06 14:46:59'),
+(2, 2, 200, 'Buena', '2026-04-06 14:46:59'),
+(3, 3, 80, 'Buena', '2026-04-06 14:46:59'),
+(4, 4, 300, 'Buena', '2026-04-06 14:46:59'),
+(5, 5, 120, 'Buena', '2026-04-06 14:46:59'),
+(6, 6, 100, 'Buena', '2026-04-06 14:46:59'),
+(7, 7, 10, 'Vencida', '2026-04-06 14:46:59'),
+(8, 8, 60, 'Buena', '2026-04-06 14:46:59'),
+(9, 9, 180, 'Buena', '2026-04-06 14:51:06'),
+(10, 10, 90, 'Buena', '2026-04-06 14:51:06'),
+(11, 11, 130, 'Buena', '2026-04-06 14:51:06'),
+(12, 12, 85, 'Buena', CURRENT_TIMESTAMP),
+(13, 13, 120, 'Buena', CURRENT_TIMESTAMP),
+(14, 14, 60, 'Buena', CURRENT_TIMESTAMP),
+(15, 15, 75, 'Buena', CURRENT_TIMESTAMP),
+(16, 16, 40, 'Buena', CURRENT_TIMESTAMP),
+(17, 17, 95, 'Buena', CURRENT_TIMESTAMP),
+(18, 18, 110, 'Buena', CURRENT_TIMESTAMP),
+(19, 19, 80, 'Buena', CURRENT_TIMESTAMP),
+(20, 20, 35, 'Buena', CURRENT_TIMESTAMP),
+(21, 21, 90, 'Buena', CURRENT_TIMESTAMP),
+(22, 22, 250, 'Buena', CURRENT_TIMESTAMP),
+(23, 23, 180, 'Buena', CURRENT_TIMESTAMP),
+(24, 24, 300, 'Buena', CURRENT_TIMESTAMP),
+(25, 25, 45, 'Buena', CURRENT_TIMESTAMP),
+(26, 26, 70, 'Buena', CURRENT_TIMESTAMP),
+(27, 27, 65, 'Buena', CURRENT_TIMESTAMP),
+(28, 28, 50, 'Buena', CURRENT_TIMESTAMP),
+(29, 29, 105, 'Buena', CURRENT_TIMESTAMP),
+(30, 30, 90, 'Buena', CURRENT_TIMESTAMP),
+(31, 31, 55, 'Buena', CURRENT_TIMESTAMP),
+(32, 32, 60, 'Buena', CURRENT_TIMESTAMP),
+(33, 33, 140, 'Buena', CURRENT_TIMESTAMP),
+(34, 34, 30, 'Buena', CURRENT_TIMESTAMP),
+(35, 35, 85, 'Buena', CURRENT_TIMESTAMP),
+(36, 36, 40, 'Buena', CURRENT_TIMESTAMP),
+(37, 37, 50, 'Buena', CURRENT_TIMESTAMP),
+(38, 38, 115, 'Buena', CURRENT_TIMESTAMP),
+(39, 39, 25, 'Buena', CURRENT_TIMESTAMP),
+(40, 40, 40, 'Buena', CURRENT_TIMESTAMP),
+(41, 41, 15, 'Buena', CURRENT_TIMESTAMP),
+(42, 42, 60, 'Buena', CURRENT_TIMESTAMP),
+(43, 43, 40, 'Buena', CURRENT_TIMESTAMP),
+(44, 44, 130, 'Buena', CURRENT_TIMESTAMP),
+(45, 45, 140, 'Buena', CURRENT_TIMESTAMP),
+(46, 46, 200, 'Buena', CURRENT_TIMESTAMP),
+(47, 47, 180, 'Buena', CURRENT_TIMESTAMP),
+(48, 48, 220, 'Buena', CURRENT_TIMESTAMP),
+(49, 49, 190, 'Buena', CURRENT_TIMESTAMP),
+(50, 50, 150, 'Buena', CURRENT_TIMESTAMP),
+(51, 51, 95, 'Buena', CURRENT_TIMESTAMP),
+(52, 52, 400, 'Buena', CURRENT_TIMESTAMP),
+(53, 53, 350, 'Buena', CURRENT_TIMESTAMP),
+(54, 54, 280, 'Buena', CURRENT_TIMESTAMP),
+(55, 55, 100, 'Buena', CURRENT_TIMESTAMP),
+(56, 56, 85, 'Buena', CURRENT_TIMESTAMP),
+(57, 57, 60, 'Buena', CURRENT_TIMESTAMP),
+(58, 58, 45, 'Buena', CURRENT_TIMESTAMP),
+(59, 59, 130, 'Buena', CURRENT_TIMESTAMP),
+(60, 60, 70, 'Buena', CURRENT_TIMESTAMP),
+(61, 61, 110, 'Buena', CURRENT_TIMESTAMP),
+(62, 62, 90, 'Buena', CURRENT_TIMESTAMP),
+(63, 63, 85, 'Buena', CURRENT_TIMESTAMP),
+(64, 64, 120, 'Buena', CURRENT_TIMESTAMP),
+(65, 65, 80, 'Buena', CURRENT_TIMESTAMP),
+(66, 66, 75, 'Buena', CURRENT_TIMESTAMP),
+(67, 67, 65, 'Buena', CURRENT_TIMESTAMP),
+(68, 68, 55, 'Buena', CURRENT_TIMESTAMP),
+(69, 69, 90, 'Buena', CURRENT_TIMESTAMP),
+(70, 70, 50, 'Buena', CURRENT_TIMESTAMP),
+(71, 71, 70, 'Buena', CURRENT_TIMESTAMP),
+(72, 72, 160, 'Buena', CURRENT_TIMESTAMP),
+(73, 73, 80, 'Buena', CURRENT_TIMESTAMP),
+(74, 74, 100, 'Buena', CURRENT_TIMESTAMP),
+(75, 75, 110, 'Buena', CURRENT_TIMESTAMP),
+(76, 76, 150, 'Buena', CURRENT_TIMESTAMP),
+(77, 77, 120, 'Buena', CURRENT_TIMESTAMP),
+(78, 78, 95, 'Buena', CURRENT_TIMESTAMP),
+(79, 79, 140, 'Buena', CURRENT_TIMESTAMP),
+(80, 80, 45, 'Buena', CURRENT_TIMESTAMP),
+(81, 81, 70, 'Buena', CURRENT_TIMESTAMP),
+(82, 82, 85, 'Buena', CURRENT_TIMESTAMP),
+(83, 83, 120, 'Buena', CURRENT_TIMESTAMP),
+(84, 84, 100, 'Buena', CURRENT_TIMESTAMP),
+(85, 85, 60, 'Buena', CURRENT_TIMESTAMP),
+(86, 86, 80, 'Buena', CURRENT_TIMESTAMP),
+(87, 87, 150, 'Buena', CURRENT_TIMESTAMP),
+(88, 88, 90, 'Buena', CURRENT_TIMESTAMP),
+(89, 89, 110, 'Buena', CURRENT_TIMESTAMP),
+(90, 90, 65, 'Buena', CURRENT_TIMESTAMP),
+(91, 91, 75, 'Buena', CURRENT_TIMESTAMP);
 
 -- 10. TABLA: factura_compra
 CREATE TABLE `factura_compra` (
@@ -355,7 +348,6 @@ INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedo
 (1, 'FC-2024-001', 1, 4, '2024-01-10 09:00:00', 850000.00),
 (2, 'FC-2024-002', 2, 4, '2024-02-05 10:30:00', 640000.00),
 (3, 'FC-2024-003', 3, 1, '2024-03-12 11:00:00', 1150000.00);
-
 
 -- 11. TABLA: facturas
 CREATE TABLE `facturas` (
@@ -377,7 +369,6 @@ INSERT INTO `facturas` (`id_factura`, `id_empleado`, `id_cliente`, `fecha_fac`, 
 (5, 2, 5, '2024-04-02 11:20:00', 34500.00),
 (6, 3, 6, '2024-04-05 15:00:00', 27400.00),
 (7, 2, 7, '2024-04-08 10:10:00', 19800.00);
-
 
 -- 12. TABLA: detalle_factura
 CREATE TABLE `detalle_factura` (
@@ -410,7 +401,6 @@ INSERT INTO `detalle_factura` (`id_detalle`, `id_factura`, `id_producto`, `canti
 (15, 7, 4, 3, 2000.00, 6000.00),
 (16, 7, 9, 6, 2200.00, 13200.00);
 
-
 -- 13. TABLA: tipo_movimiento
 CREATE TABLE `tipo_movimiento` (
   `id_tipo_mov` INT(11) NOT NULL AUTO_INCREMENT,
@@ -423,8 +413,7 @@ INSERT INTO `tipo_movimiento` (`id_tipo_mov`, `nombre_tipo_movimiento`) VALUES
 (2, 'Salida'),
 (3, 'Devolución');
 
-
--- 14. TABLA: movimientos
+-- 14. TABLA: movimientos (modificada)
 CREATE TABLE `movimientos` (
   `id_movimiento` INT(11) NOT NULL AUTO_INCREMENT,
   `id_inventario` INT(11) DEFAULT NULL,
@@ -432,6 +421,7 @@ CREATE TABLE `movimientos` (
   `id_empleado` INT(11) DEFAULT NULL,
   `id_factura` INT(11) DEFAULT NULL,
   `id_fac_compra` INT(11) DEFAULT NULL,
+  `id_devolucion` INT(11) DEFAULT NULL,  -- Nueva columna
   `cantidad_movimiento` INT(11) DEFAULT NULL,
   `fecha_movimiento` DATETIME DEFAULT CURRENT_TIMESTAMP(),
   PRIMARY KEY (`id_movimiento`),
@@ -439,29 +429,96 @@ CREATE TABLE `movimientos` (
   KEY `id_tipo_mov` (`id_tipo_mov`),
   KEY `id_empleado` (`id_empleado`),
   KEY `id_factura` (`id_factura`),
-  KEY `id_fac_compra` (`id_fac_compra`)
+  KEY `id_fac_compra` (`id_fac_compra`),
+  KEY `id_devolucion` (`id_devolucion`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `movimientos` (`id_movimiento`, `id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
-(1, 1, 1, 4, NULL, 1, 200, '2024-01-10 09:30:00'),
-(2, 6, 1, 4, NULL, 1, 150, '2024-01-10 09:35:00'),
-(3, 2, 1, 4, NULL, 2, 300, '2024-02-05 11:00:00'),
-(4, 7, 1, 4, NULL, 2, 100, '2024-02-05 11:10:00'),
-(5, 5, 1, 1, NULL, 3, 200, '2024-03-12 11:30:00'),
-(6, 8, 1, 1, NULL, 3, 100, '2024-03-12 11:35:00'),
-(7, 1, 2, 2, 1, NULL, 2, '2024-03-15 10:15:00'),
-(8, 3, 2, 3, 2, NULL, 1, '2024-03-16 14:30:00'),
-(9, 9, 1, 4, NULL, 1, 250, '2024-04-01 08:30:00'),
-(10, 10, 1, 1, NULL, 3, 120, '2024-04-01 08:45:00'),
-(11, 11, 1, 4, NULL, 2, 200, '2024-04-01 09:00:00'),
-(12, 9, 2, 2, 5, NULL, 3, '2024-04-02 11:20:00'),
-(13, 2, 2, 3, 6, NULL, 4, '2024-04-05 15:00:00'),
-(14, 4, 2, 2, 7, NULL, 3, '2024-04-08 10:10:00');
+INSERT INTO `movimientos` (`id_movimiento`, `id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
+(1, 1, 1, 4, NULL, 1, NULL, 200, '2024-01-10 09:30:00'),
+(2, 6, 1, 4, NULL, 1, NULL, 150, '2024-01-10 09:35:00'),
+(3, 2, 1, 4, NULL, 2, NULL, 300, '2024-02-05 11:00:00'),
+(4, 7, 1, 4, NULL, 2, NULL, 100, '2024-02-05 11:10:00'),
+(5, 5, 1, 1, NULL, 3, NULL, 200, '2024-03-12 11:30:00'),
+(6, 8, 1, 1, NULL, 3, NULL, 100, '2024-03-12 11:35:00'),
+(7, 1, 2, 2, 1, NULL, NULL, 2, '2024-03-15 10:15:00'),
+(8, 3, 2, 3, 2, NULL, NULL, 1, '2024-03-16 14:30:00'),
+(9, 9, 1, 4, NULL, 1, NULL, 250, '2024-04-01 08:30:00'),
+(10, 10, 1, 1, NULL, 3, NULL, 120, '2024-04-01 08:45:00'),
+(11, 11, 1, 4, NULL, 2, NULL, 200, '2024-04-01 09:00:00'),
+(12, 9, 2, 2, 5, NULL, NULL, 3, '2024-04-02 11:20:00'),
+(13, 2, 2, 3, 6, NULL, NULL, 4, '2024-04-05 15:00:00'),
+(14, 4, 2, 2, 7, NULL, NULL, 3, '2024-04-08 10:10:00');
 
+-- ============================================================
+-- NUEVAS TABLAS: DEVOLUCIONES Y DETALLE_DEVOLUCION
+-- ============================================================
 
--- ========================================================
+-- 15. TABLA: devoluciones (cabecera)
+CREATE TABLE `devoluciones` (
+  `id_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
+  `tipo_devolucion` ENUM('venta', 'compra') NOT NULL COMMENT 'Indica si la devolución es de una venta o de una compra',
+  `id_factura` INT(11) DEFAULT NULL COMMENT 'FK a facturas (si es devolución de venta)',
+  `id_fac_compra` INT(11) DEFAULT NULL COMMENT 'FK a factura_compra (si es devolución a proveedor)',
+  `id_empleado` INT(11) NOT NULL COMMENT 'Empleado que registra la devolución',
+  `fecha_devolucion` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `motivo` TEXT,
+  `estado` ENUM('Pendiente', 'Aprobada', 'Rechazada', 'Completada') DEFAULT 'Pendiente',
+  `monto_total` DECIMAL(10,2) DEFAULT NULL COMMENT 'Suma de los subtotales del detalle',
+  PRIMARY KEY (`id_devolucion`),
+  KEY `id_factura` (`id_factura`),
+  KEY `id_fac_compra` (`id_fac_compra`),
+  KEY `id_empleado` (`id_empleado`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 16. TABLA: detalle_devolucion (líneas)
+CREATE TABLE `detalle_devolucion` (
+  `id_detalle_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_devolucion` INT(11) NOT NULL,
+  `id_producto` INT(11) NOT NULL,
+  `cantidad` INT(11) NOT NULL,
+  `precio_unitario` DECIMAL(10,2) NOT NULL COMMENT 'Precio al que se devuelve (el de venta o compra)',
+  `subtotal` DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
+  PRIMARY KEY (`id_detalle_devolucion`),
+  KEY `id_devolucion` (`id_devolucion`),
+  KEY `id_producto` (`id_producto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- DATOS DE EJEMPLO PARA DEVOLUCIONES
+-- ============================================================
+
+-- Devolución de venta (cliente devuelve productos de la factura 1)
+INSERT INTO `devoluciones` (`tipo_devolucion`, `id_factura`, `id_fac_compra`, `id_empleado`, `fecha_devolucion`, `motivo`, `estado`, `monto_total`) VALUES
+('venta', 1, NULL, 2, '2024-03-16 09:00:00', 'Producto en mal estado', 'Completada', 9000.00);
+
+INSERT INTO `detalle_devolucion` (`id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
+(1, 1, 1, 4500.00),  -- devuelve 1 unidad de manzana
+(1, 4, 2, 2000.00);  -- devuelve 2 unidades de agua mineral
+
+-- Devolución de compra (se devuelve mercancía al proveedor, factura de compra 2)
+INSERT INTO `devoluciones` (`tipo_devolucion`, `id_factura`, `id_fac_compra`, `id_empleado`, `fecha_devolucion`, `motivo`, `estado`, `monto_total`) VALUES
+('compra', NULL, 2, 4, '2024-02-10 14:30:00', 'Producto vencido al recibir', 'Aprobada', 3200.00);
+
+INSERT INTO `detalle_devolucion` (`id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
+(2, 2, 1, 3200.00);  -- se devuelve 1 litro de leche
+
+-- ============================================================
+-- MOVIMIENTOS ASOCIADOS A LAS DEVOLUCIONES (para ajustar inventario)
+-- ============================================================
+
+-- Movimiento para la devolución de venta (el stock aumenta porque el cliente devuelve)
+INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
+(1, 3, 2, 1, NULL, 1, 1, '2024-03-16 09:05:00'),  -- id_inventario=1 (Manzana)
+(4, 3, 2, 1, NULL, 1, 2, '2024-03-16 09:05:00');  -- id_inventario=4 (Agua Mineral)
+
+-- Movimiento para la devolución de compra (el stock disminuye porque se devuelve al proveedor)
+INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
+(2, 3, 4, NULL, 2, 2, -1, '2024-02-10 14:35:00');  -- cantidad negativa para reflejar salida
+
+-- ============================================================
 -- RESTRICCIONES (RELACIONES ENTRE TABLAS)
--- ========================================================
+-- ============================================================
+
 ALTER TABLE `empleados` ADD CONSTRAINT `empleados_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 
 ALTER TABLE `usuarios` 
@@ -492,7 +549,18 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `movimientos_ibfk_2` FOREIGN KEY (`id_tipo_mov`) REFERENCES `tipo_movimiento` (`id_tipo_mov`),
   ADD CONSTRAINT `movimientos_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
   ADD CONSTRAINT `movimientos_ibfk_4` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
-  ADD CONSTRAINT `movimientos_ibfk_5` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`);
+  ADD CONSTRAINT `movimientos_ibfk_5` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`),
+  ADD CONSTRAINT `movimientos_ibfk_6` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE SET NULL;
+
+-- Restricciones de las nuevas tablas
+ALTER TABLE `devoluciones` 
+  ADD CONSTRAINT `devoluciones_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `devoluciones_ibfk_2` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `devoluciones_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`);
+
+ALTER TABLE `detalle_devolucion` 
+  ADD CONSTRAINT `detalle_devolucion_ibfk_1` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detalle_devolucion_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
 
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;

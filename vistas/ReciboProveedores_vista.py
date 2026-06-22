@@ -17,14 +17,10 @@ class ReciboProveedoresVista(QWidget):
         self.cargar_datos()
 
     def init_ui(self):
-        # Layout principal de la pantalla
         layout_principal = QVBoxLayout(self)
         layout_principal.setContentsMargins(0, 0, 0, 0)
         layout_principal.setSpacing(20)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 1. ENCABEZADO SUPERIOR
-        # ══════════════════════════════════════════════════════════════════════════════
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 10)
@@ -45,9 +41,6 @@ class ReciboProveedoresVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 2. CONTENEDOR PRINCIPAL BLANCO (ESTILO TARJETA CAJA)
-        # ══════════════════════════════════════════════════════════════════════════════
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -68,7 +61,6 @@ class ReciboProveedoresVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # --- Buscador ---
         buscador_layout = QHBoxLayout()
         
         self.txt_buscador = QLineEdit()
@@ -116,7 +108,6 @@ class ReciboProveedoresVista(QWidget):
         buscador_layout.addWidget(self.btn_registrar)
         layout_tarjeta.addLayout(buscador_layout)
 
-        # --- Tabla de Proveedores (Estilo Caja) ---
         self.tabla = QTableWidget(0, 5)
         self.tabla.setHorizontalHeaderLabels(["ID", "Proveedor", "Producto Suministrado", "Última Entrega", "Estado"])
         self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -153,39 +144,57 @@ class ReciboProveedoresVista(QWidget):
         layout_principal.addWidget(tarjeta_principal)
 
     def cargar_datos(self):
-        """Carga datos reales si hay BD, de lo contrario datos de prueba."""
         self.tabla.setRowCount(0)
         
-        # Datos de prueba (Mock)
-        datos = [
+        datos_mock = [
             ("PRV-001", "DistriHortalizas La Granja", "Tomate, Cebolla, Papa", "2026-06-20", "Activo"),
             ("PRV-002", "Frutas del Valle SAS", "Manzana, Pera, Uva", "2026-06-18", "Activo"),
             ("PRV-003", "Empaques y Plásticos Bogotá", "Bolsas, Bandejas", "2026-06-05", "Pendiente"),
         ]
 
-        # Si hay base de datos conectada, intentamos jalar info real
         if self.conexion:
             try:
                 cursor = self.conexion.cursor()
-                # Ajusta esta query según tus tablas reales
-                cursor.execute("SELECT id_proveedor, nombre, categoria, fecha_registro, estado FROM proveedores LIMIT 20")
+                # Consulta con columnas reales de la tabla proveedores
+                query = """
+                    SELECT id_proveedor, nombre_empresa, ciudad, telefono_principal, nit
+                    FROM proveedores
+                    LIMIT 20
+                """
+                cursor.execute(query)
                 resultados = cursor.fetchall()
                 if resultados:
-                    datos = resultados
+                    datos = []
+                    for row in resultados:
+                        # Simulamos productos y fecha
+                        productos = "Varios"  # Podrías obtener de otra tabla
+                        fecha = "2026-06-22"  # Mock
+                        estado = "Activo" if row[4] else "Pendiente"
+                        datos.append((
+                            f"PRV-{row[0]}",
+                            row[1],
+                            productos,
+                            fecha,
+                            estado
+                        ))
+                    self.llenar_tabla(datos)
+                    cursor.close()
+                    return
                 cursor.close()
             except Exception as e:
                 print(f"No se pudo cargar desde MySQL, usando mock. Error: {e}")
 
-        # Llenar la tabla visualmente
+        self.llenar_tabla(datos_mock)
+
+    def llenar_tabla(self, datos):
+        self.tabla.setRowCount(len(datos))
         for fila_idx, row_data in enumerate(datos):
-            self.tabla.insertRow(fila_idx)
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.tabla.setItem(fila_idx, col_idx, item)
 
     def filtrar_tabla(self, texto):
-        """Oculta las filas que no coinciden con la búsqueda."""
         texto = texto.lower()
         for fila in range(self.tabla.rowCount()):
             coincide = False

@@ -18,14 +18,10 @@ class DevolucionesVista(QWidget):
         self.cargar_datos()
 
     def init_ui(self):
-        # Layout principal
         layout_principal = QVBoxLayout(self)
         layout_principal.setContentsMargins(0, 0, 0, 0)
         layout_principal.setSpacing(20)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 1. ENCABEZADO SUPERIOR
-        # ══════════════════════════════════════════════════════════════════════════════
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 10)
@@ -46,9 +42,6 @@ class DevolucionesVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 2. CONTENEDOR PRINCIPAL BLANCO
-        # ══════════════════════════════════════════════════════════════════════════════
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -69,7 +62,6 @@ class DevolucionesVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # --- Filtros ---
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(15)
 
@@ -141,7 +133,6 @@ class DevolucionesVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
-        # --- Tabla de Devoluciones ---
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Devolución", "Cliente", "Fecha", "Productos", "Estado", "Acciones"
@@ -181,10 +172,9 @@ class DevolucionesVista(QWidget):
         layout_principal.addWidget(tarjeta_principal)
 
     def cargar_datos(self):
-        """Carga datos de devoluciones."""
         self.tabla.setRowCount(0)
         
-        # Datos de prueba
+        # Datos de prueba (mock) porque la tabla devoluciones no existe
         datos = [
             ("DEV-001", "Supermercado El Éxito", "2026-06-21", "3 unidades", "Pendiente", "Ver"),
             ("DEV-002", "Distribuidora La 14", "2026-06-20", "1 caja", "Aprobada", "Ver"),
@@ -192,38 +182,14 @@ class DevolucionesVista(QWidget):
             ("DEV-004", "D1 S.A.S.", "2026-06-18", "2 unidades", "Pendiente", "Ver"),
         ]
 
-        if self.conexion:
-            try:
-                cursor = self.conexion.cursor()
-                cursor.execute("""
-                    SELECT id_devolucion, cliente, fecha, productos, estado 
-                    FROM devoluciones 
-                    ORDER BY fecha DESC 
-                    LIMIT 20
-                """)
-                resultados = cursor.fetchall()
-                if resultados:
-                    datos = []
-                    for row in resultados:
-                        datos.append((
-                            f"DEV-{row[0]}",
-                            row[1],
-                            row[2].strftime("%Y-%m-%d") if hasattr(row[2], 'strftime') else str(row[2]),
-                            row[3],
-                            row[4],
-                            "Ver"
-                        ))
-                cursor.close()
-            except Exception as e:
-                print(f"Error cargando devoluciones: {e}")
+        self.llenar_tabla(datos)
 
-        # Llenar la tabla
+    def llenar_tabla(self, datos):
+        self.tabla.setRowCount(len(datos))
         for fila_idx, row_data in enumerate(datos):
-            self.tabla.insertRow(fila_idx)
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # Colores para el estado
                 if col_idx == 4:
                     if valor == "Pendiente":
                         item.setForeground(QColor("#EAB308"))
@@ -234,14 +200,11 @@ class DevolucionesVista(QWidget):
                 self.tabla.setItem(fila_idx, col_idx, item)
 
     def filtrar_tabla(self, texto=None):
-        """Filtra la tabla por texto y estado."""
         texto_busqueda = self.txt_buscador.text().lower() if texto is None else texto.lower()
         estado_filtro = self.cmb_estado.currentText()
         
         for fila in range(self.tabla.rowCount()):
             mostrar = True
-            
-            # Filtro por texto
             if texto_busqueda:
                 coincide = False
                 for col in range(self.tabla.columnCount() - 1):
@@ -250,13 +213,10 @@ class DevolucionesVista(QWidget):
                         coincide = True
                         break
                 mostrar = mostrar and coincide
-            
-            # Filtro por estado
             if estado_filtro != "Todos":
                 item_estado = self.tabla.item(fila, 4)
                 if item_estado and item_estado.text() != estado_filtro:
                     mostrar = False
-            
             self.tabla.setRowHidden(fila, not mostrar)
 
     def simular_nueva_devolucion(self):

@@ -19,14 +19,10 @@ class FacturaElectronicaVista(QWidget):
         self.cargar_datos()
 
     def init_ui(self):
-        # Layout principal
         layout_principal = QVBoxLayout(self)
         layout_principal.setContentsMargins(0, 0, 0, 0)
         layout_principal.setSpacing(20)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 1. ENCABEZADO SUPERIOR
-        # ══════════════════════════════════════════════════════════════════════════════
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 10)
@@ -47,9 +43,6 @@ class FacturaElectronicaVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # 2. CONTENEDOR PRINCIPAL BLANCO (ESTILO TARJETA)
-        # ══════════════════════════════════════════════════════════════════════════════
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -70,11 +63,9 @@ class FacturaElectronicaVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # --- Filtros y búsqueda ---
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(15)
 
-        # Buscador
         self.txt_buscador = QLineEdit()
         self.txt_buscador.setPlaceholderText("Buscar factura por número o cliente...")
         self.txt_buscador.setFixedHeight(46)
@@ -95,7 +86,6 @@ class FacturaElectronicaVista(QWidget):
         """)
         self.txt_buscador.textChanged.connect(self.filtrar_tabla)
 
-        # Filtro de estado
         self.cmb_estado = QComboBox()
         self.cmb_estado.addItems(["Todos", "Pagada", "Pendiente", "Anulada"])
         self.cmb_estado.setFixedHeight(46)
@@ -119,7 +109,6 @@ class FacturaElectronicaVista(QWidget):
         """)
         self.cmb_estado.currentTextChanged.connect(self.filtrar_tabla)
 
-        # Botón Nueva Factura
         self.btn_nueva = QPushButton("+ NUEVA FACTURA")
         self.btn_nueva.setFixedHeight(46)
         self.btn_nueva.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -145,7 +134,6 @@ class FacturaElectronicaVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
-        # --- Tabla de Facturas ---
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Factura", "Cliente", "Fecha", "Total", "Estado", "Acciones"
@@ -185,11 +173,10 @@ class FacturaElectronicaVista(QWidget):
         layout_principal.addWidget(tarjeta_principal)
 
     def cargar_datos(self):
-        """Carga datos de facturas."""
         self.tabla.setRowCount(0)
         
-        # Datos de prueba
-        datos = [
+        # Datos de prueba (mock) en caso de que la consulta falle
+        datos_mock = [
             ("FAC-001", "Supermercado El Éxito", "2026-06-21", "$1,250,000", "Pagada", "Ver | PDF"),
             ("FAC-002", "Distribuidora La 14", "2026-06-20", "$850,000", "Pendiente", "Ver | PDF"),
             ("FAC-003", "Almacenes Tía", "2026-06-19", "$2,100,000", "Pagada", "Ver | PDF"),
@@ -197,39 +184,46 @@ class FacturaElectronicaVista(QWidget):
             ("FAC-005", "Oxxo Colombia", "2026-06-17", "$1,500,000", "Pagada", "Ver | PDF"),
         ]
 
-        # Si hay base de datos, intentar cargar datos reales
         if self.conexion:
             try:
                 cursor = self.conexion.cursor()
-                cursor.execute("""
-                    SELECT id_factura, cliente, fecha, total, estado 
-                    FROM facturas 
-                    ORDER BY fecha DESC 
+                query = """
+                    SELECT f.id_factura, c.nombre_cliente, f.fecha_fac, f.total_fac,
+                           CASE WHEN f.total_fac > 0 THEN 'Pagada' ELSE 'Pendiente' END AS estado
+                    FROM facturas f
+                    LEFT JOIN clientes c ON f.id_cliente = c.id_cliente
+                    ORDER BY f.fecha_fac DESC
                     LIMIT 20
-                """)
+                """
+                cursor.execute(query)
                 resultados = cursor.fetchall()
                 if resultados:
                     datos = []
                     for row in resultados:
                         datos.append((
                             f"FAC-{row[0]}",
-                            row[1],
+                            row[1] or "Cliente genérico",
                             row[2].strftime("%Y-%m-%d") if hasattr(row[2], 'strftime') else str(row[2]),
-                            f"${int(row[3]):,}",
+                            f"${int(row[3]):,}" if row[3] else "$0",
                             row[4],
                             "Ver | PDF"
                         ))
+                    self.llenar_tabla(datos)
+                    cursor.close()
+                    return
                 cursor.close()
             except Exception as e:
                 print(f"Error cargando facturas: {e}")
+        
+        # Si no hay conexión o falla, usar datos mock
+        self.llenar_tabla(datos_mock)
 
-        # Llenar la tabla
+    def llenar_tabla(self, datos):
+        self.tabla.setRowCount(len(datos))
         for fila_idx, row_data in enumerate(datos):
-            self.tabla.insertRow(fila_idx)
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # Colores para el estado
                 if col_idx == 4:
                     if valor == "Pagada":
                         item.setForeground(QColor("#008F39"))
@@ -240,29 +234,23 @@ class FacturaElectronicaVista(QWidget):
                 self.tabla.setItem(fila_idx, col_idx, item)
 
     def filtrar_tabla(self, texto=None):
-        """Filtra la tabla por texto y estado."""
         texto_busqueda = self.txt_buscador.text().lower() if texto is None else texto.lower()
         estado_filtro = self.cmb_estado.currentText()
         
         for fila in range(self.tabla.rowCount()):
             mostrar = True
-            
-            # Filtro por texto
             if texto_busqueda:
                 coincide = False
-                for col in range(self.tabla.columnCount() - 1):  # Excluir columna de acciones
+                for col in range(self.tabla.columnCount() - 1):
                     item = self.tabla.item(fila, col)
                     if item and texto_busqueda in item.text().lower():
                         coincide = True
                         break
                 mostrar = mostrar and coincide
-            
-            # Filtro por estado
             if estado_filtro != "Todos":
                 item_estado = self.tabla.item(fila, 4)
                 if item_estado and item_estado.text() != estado_filtro:
                     mostrar = False
-            
             self.tabla.setRowHidden(fila, not mostrar)
 
     def simular_nueva_factura(self):

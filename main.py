@@ -14,6 +14,7 @@ from vistas.facturaelectronica_vista import FacturaElectronicaVista
 from vistas.reciboproveedores_vista import ReciboProveedoresVista
 from vistas.inventario_vista import InventarioVista
 from vistas.proveedor_vista import ProveedoresVista
+from vistas.finanzas_vista import FinanzasVista
 
 load_dotenv()
 
@@ -47,19 +48,19 @@ class MainWindow(QMainWindow):
         self.admin_view = AdminDashboardQt(self, datos_usuario={})
         self.cajero_view = CajeroDashboardQt(self, datos_usuario={})
         self.caja_view = CajaVista(self)
-        # INSERCIÓN 2: Instanciar la vista de facturación
         self.factura_view = FacturaElectronicaVista(conexion=self.conexion)
         self.inventario_view = InventarioVista(self, conexion)
         self.proveedores_view = ProveedoresVista(self, conexion)
+        self.finanzas_view = FinanzasVista(self, conexion)
 
         self.stack.addWidget(self.login_view)
         self.stack.addWidget(self.admin_view)
         self.stack.addWidget(self.cajero_view)
         self.stack.addWidget(self.caja_view)
-        # INSERCIÓN 3: Agregar la vista al stack
         self.stack.addWidget(self.factura_view)
         self.stack.addWidget(self.inventario_view)
         self.stack.addWidget(self.proveedores_view)
+        self.stack.addWidget(self.finanzas_view)
 
         self.stack.setCurrentWidget(self.login_view)
         
@@ -118,6 +119,9 @@ class MainWindow(QMainWindow):
         elif nombre_pantalla == "Proveedores":
             self.stack.setCurrentWidget(self.proveedores_view)
 
+        elif nombre_pantalla == "Finanzas":
+            self.stack.setCurrentWidget(self.finanzas_view)
+
         else:
             self.usuario_actual = None
             self.stack.setCurrentWidget(self.login_view)
@@ -131,13 +135,17 @@ if __name__ == "__main__":
     
     if conexion:
         try:
+            # Verificar conexión sin necesidad de fetchone()
             with conexion.cursor() as cursor:
                 cursor.execute("SELECT 1")
-                cursor.fetchone()
+                # Si llegamos aquí, la conexión es válida
             ventana = MainWindow(conexion)
             sys.exit(app.exec())
         except Exception as e:
-            print(f"Error al verificar conexión: {e}")
+            print(f"Error al verificar conexión: {repr(e)}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
     else:
         print("No se pudo conectar a la base de datos. Verifica tu archivo .env")
         sys.exit(1)
