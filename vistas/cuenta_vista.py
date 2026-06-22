@@ -1,12 +1,12 @@
 import os
-<<<<<<< HEAD
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QFrame,
     QPushButton, QLabel, QDialog, QGraphicsDropShadowEffect,
-    QScrollArea, QMessageBox, QSizePolicy
+    QScrollArea, QMessageBox, QSizePolicy, QComboBox, QDoubleSpinBox,
+    QApplication
 )
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QFont, QColor, QFontDatabase, QPainter
+from PySide6.QtCore import Qt, QPoint, QTimer
+from PySide6.QtGui import QFont, QColor, QFontDatabase
 
 
 def _mf(size, weight):
@@ -14,36 +14,671 @@ def _mf(size, weight):
     f.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
     return f
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CLASE PERSONALIZADA PARA FORZAR UN FONDO SÓLIDO Y EVITAR QUE LA SOMBRA SE FILTRE
-# ══════════════════════════════════════════════════════════════════════════════
-class TarjetaFondo(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-    def paintEvent(self, event):
-        # Esto dibuja un bloque blanco absoluto a nivel de píxel. 
-        # La sombra no podrá atravesarlo.
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#FFFFFF"))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(self.rect(), 22, 22)
+def _geometria_ventana_real(widget):
+    """
+    Devuelve (x, y, ancho, alto) en coordenadas GLOBALES de la ventana
+    de la aplicación que realmente está visible en pantalla.
+
+    BUG QUE CORRIGE: widget.window() a veces devuelve geometrías
+    incorrectas o diminutas (p.ej. 400x300) cuando se llama desde
+    showEvent() de un QDialog FramelessWindowHint recién creado, porque
+    en ese instante exacto Qt aún no resolvió por completo la cadena de
+    ventanas top-level. En vez de confiar en window(), subimos
+    manualmente por widget.parentWidget() hasta encontrar el widget
+    de mayor nivel disponible, y si ninguno tiene un tamaño razonable
+    (> 200x200), usamos la geometría física de la pantalla principal
+    como última garantía — nunca un número pequeño inventado.
+    """
+    candidato = widget
+    mejor = None
+    while candidato is not None:
+        w, h = candidato.width(), candidato.height()
+        if w > 200 and h > 200:
+            mejor = candidato
+        candidato = candidato.parentWidget()
+
+    if mejor is not None:
+        pos = mejor.mapToGlobal(QPoint(0, 0))
+        return pos.x(), pos.y(), mejor.width(), mejor.height()
+
+    # Último recurso: geometría completa de la pantalla física
+    screen = QApplication.primaryScreen()
+    if screen:
+        geo = screen.availableGeometry()
+        return geo.x(), geo.y(), geo.width(), geo.height()
+
+    return 0, 0, 1280, 800
+
+
+SS_INPUT = (
+    "QLineEdit { background:#EDF7F1; color:#1F2937; border:2px solid transparent;"
+    " border-radius:14px; padding:0 16px; }"
+    " QLineEdit:focus { border:2px solid #17813D; }"
+)
+SS_COMBO = (
+    "QComboBox { background:#EDF7F1; color:#1F2937; border:2px solid transparent;"
+    " border-radius:14px; padding:0 16px; }"
+    " QComboBox:focus { border:2px solid #17813D; }"
+    " QComboBox::drop-down { border:none; width:30px; }"
+    " QComboBox QAbstractItemView { background:#FFFFFF; color:#1F2937;"
+    " border:1px solid #A9DDBC; border-radius:10px; selection-background-color:#17813D;"
+    " selection-color:#FFFFFF; padding:4px; }"
+)
+SS_DSPIN = (
+    "QDoubleSpinBox { background:#EDF7F1; color:#1F2937; border:2px solid transparent;"
+    " border-radius:14px; padding:0 12px; }"
+    " QDoubleSpinBox:focus { border:2px solid #17813D; }"
+    " QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width:22px; }"
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO BASE — mismo patrón estético usado en caja_vista.py
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoBase(QDialog):
+    def __init__(self, titulo, ancho=480, parent=None):
+        super().__init__(parent,
+                         Qt.WindowType.FramelessWindowHint |
+                         Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
+
+        self._overlay = QFrame(self)
+        self._overlay.setObjectName("Overlay")
+        self._overlay.setStyleSheet(
+            "QFrame#Overlay { background:rgba(0,0,0,0.45); border:none; }"
+        )
+
+        self.card = QFrame(self)
+        self.card.setObjectName("DialogCard")
+        self.card.setFixedWidth(ancho)
+        self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.card.setStyleSheet(
+            "QFrame#DialogCard { background-color:#FFFFFF;"
+            " border-radius:26px; border:none; }"
+        )
+        sombra = QGraphicsDropShadowEffect(self.card)
+        sombra.setBlurRadius(50)
+        sombra.setColor(QColor(0, 0, 0, 65))
+        sombra.setOffset(0, 14)
+        self.card.setGraphicsEffect(sombra)
+
+        self.layout_card = QVBoxLayout(self.card)
+        self.layout_card.setContentsMargins(32, 26, 32, 30)
+        self.layout_card.setSpacing(14)
+
+        fila = QHBoxLayout()
+        fila.setContentsMargins(0, 0, 0, 0)
+        lbl = QLabel(titulo)
+        lbl.setFont(_mf(16, QFont.Weight.Black))
+        lbl.setStyleSheet("color:#17813D; background:transparent;")
+        btn_x = QPushButton("✕")
+        btn_x.setFixedSize(30, 30)
+        btn_x.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_x.setFont(_mf(10, QFont.Weight.Bold))
+        btn_x.setStyleSheet(
+            "QPushButton { background:transparent; color:#9CA3AF; border:none; }"
+            "QPushButton:hover { color:#DC2626; }"
+        )
+        btn_x.clicked.connect(self.reject)
+        fila.addWidget(lbl); fila.addStretch(); fila.addWidget(btn_x)
+        self.layout_card.addLayout(fila)
+
+    def _lbl(self, texto):
+        l = QLabel(texto)
+        l.setFont(_mf(8, QFont.Weight.Black))
+        l.setStyleSheet("color:#17813D; background:transparent; letter-spacing:0.5px;")
+        return l
+
+    def _input(self, placeholder="", password=False):
+        t = QLineEdit()
+        t.setPlaceholderText(placeholder)
+        t.setFont(_mf(13, QFont.Weight.Medium))
+        t.setFixedHeight(50)
+        t.setStyleSheet(SS_INPUT)
+        if password:
+            t.setEchoMode(QLineEdit.EchoMode.Password)
+        return t
+
+    def _combo(self, items):
+        c = QComboBox()
+        c.addItems(items)
+        c.setFont(_mf(13, QFont.Weight.Medium))
+        c.setFixedHeight(50)
+        c.setStyleSheet(SS_COMBO)
+        c.setCursor(Qt.CursorShape.PointingHandCursor)
+        return c
+
+    def _dspin(self, mn=0.0, mx=99999999.0, dec=0, prefix="$ "):
+        s = QDoubleSpinBox()
+        s.setRange(mn, mx)
+        s.setDecimals(dec)
+        s.setPrefix(prefix)
+        s.setSingleStep(50000)
+        s.setFont(_mf(13, QFont.Weight.Medium))
+        s.setFixedHeight(50)
+        s.setStyleSheet(SS_DSPIN)
+        return s
+
+    def _btn_ok(self, texto, bg="#17813D", hv="#228E49"):
+        b = QPushButton(texto)
+        b.setFixedHeight(50)
+        b.setFont(_mf(12, QFont.Weight.Black))
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        b.setStyleSheet(
+            "QPushButton {{ background:{b}; color:#FFFFFF; border:none;"
+            " border-radius:16px; letter-spacing:0.5px; }}"
+            "QPushButton:hover {{ background:{h}; }}".format(b=bg, h=hv)
+        )
+        return b
+
+    def _btn_cancel(self, texto="CANCELAR"):
+        b = QPushButton(texto)
+        b.setFixedHeight(46)
+        b.setFont(_mf(11, QFont.Weight.Bold))
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        b.setStyleSheet(
+            "QPushButton { background:transparent; color:#9CA3AF; border:none; }"
+            "QPushButton:hover { color:#17813D; }"
+        )
+        b.clicked.connect(self.reject)
+        return b
+
+    def _reposicionar(self):
+        self.card.adjustSize()
+        cw, ch = self.card.width(), self.card.height()
+        self.card.move((self.width() - cw)//2, max(16, (self.height() - ch)//2))
+        # Asegura que ambos queden visibles y por encima de cualquier
+        # widget previo; sin esto a veces el card queda invisible aunque
+        # tenga geometria correcta (bug de stacking order en Windows).
+        self._overlay.show()
+        self._overlay.raise_()
+        self.card.show()
+        self.card.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._overlay.setGeometry(0, 0, self.width(), self.height())
+        self._reposicionar()
+
+    def _ajustar_geometria_completa(self):
+        """
+        Usa _geometria_ventana_real() en vez de self.window(), que es
+        poco confiable en el primer frame de un FramelessWindowHint
+        creado dinámicamente — evita el bug de quedar atascado en un
+        tamaño pequeño (400x300) que parecía una 'ventana fantasma'.
+        """
+        x, y, ancho, alto = _geometria_ventana_real(self.parent() or self)
+        self.setGeometry(x, y, ancho, alto)
+        self._overlay.setGeometry(0, 0, self.width(), self.height())
+        self._reposicionar()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._ajustar_geometria_completa()
+        QTimer.singleShot(0, self._ajustar_geometria_completa)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO — NUEVO USUARIO
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoNuevoUsuario(DialogoBase):
+    """
+    Crea un registro en `empleados` y otro vinculado en `usuarios`.
+    Campos según tu BD:
+      empleados: nombre_empleado, id_rol, monto_pago  (fecha_ingreso = ahora, automática)
+      usuarios : username_log, contrasena_log, id_rol, id_empleado
+    """
+    def __init__(self, conexion=None, parent=None):
+        super().__init__("NUEVO USUARIO", ancho=480, parent=parent)
+        self.resultado  = None
+        self._conexion  = conexion
+
+        # Nombre completo del empleado
+        self.layout_card.addWidget(self._lbl("NOMBRE COMPLETO"))
+        self.txt_nombre = self._input("Ej: Carlos Andrés Gómez")
+        self.layout_card.addWidget(self.txt_nombre)
+
+        # Usuario / contraseña
+        fila1 = QHBoxLayout(); fila1.setSpacing(14)
+        col_u = QVBoxLayout(); col_u.setSpacing(6)
+        col_u.addWidget(self._lbl("NOMBRE DE USUARIO"))
+        self.txt_usuario = self._input("Ej: carlosgomez")
+        col_u.addWidget(self.txt_usuario)
+
+        col_p = QVBoxLayout(); col_p.setSpacing(6)
+        col_p.addWidget(self._lbl("CONTRASEÑA"))
+        self.txt_password = self._input("••••••", password=True)
+        col_p.addWidget(self.txt_password)
+
+        fila1.addLayout(col_u); fila1.addLayout(col_p)
+        self.layout_card.addLayout(fila1)
+
+        # Rol / salario
+        fila2 = QHBoxLayout(); fila2.setSpacing(14)
+        col_r = QVBoxLayout(); col_r.setSpacing(6)
+        col_r.addWidget(self._lbl("ROL DE USUARIO"))
+        self.combo_rol = self._combo(["ADMINISTRADOR", "CAJERO"])
+        col_r.addWidget(self.combo_rol)
+
+        col_s = QVBoxLayout(); col_s.setSpacing(6)
+        col_s.addWidget(self._lbl("SALARIO (MONTO DE PAGO)"))
+        self.spin_salario = self._dspin(0, 99999999, 0, "$ ")
+        self.spin_salario.setValue(1300000)
+        col_s.addWidget(self.spin_salario)
+
+        fila2.addLayout(col_r); fila2.addLayout(col_s)
+        self.layout_card.addLayout(fila2)
+
+        self.layout_card.addSpacing(4)
+        fila_b = QHBoxLayout()
+        fila_b.addStretch()
+        fila_b.addWidget(self._btn_cancel())
+        btn_crear = self._btn_ok("CREAR USUARIO")
+        btn_crear.setFixedWidth(170)
+        btn_crear.clicked.connect(self._confirmar)
+        fila_b.addWidget(btn_crear)
+        self.layout_card.addLayout(fila_b)
+
+    def _confirmar(self):
+        nombre   = self.txt_nombre.text().strip()
+        usuario  = self.txt_usuario.text().strip()
+        password = self.txt_password.text().strip()
+        rol_txt  = self.combo_rol.currentText()
+        salario  = self.spin_salario.value()
+
+        if not nombre:
+            QMessageBox.warning(self, "Falta información", "Ingresa el nombre completo.")
+            self.txt_nombre.setFocus(); return
+        if not usuario:
+            QMessageBox.warning(self, "Falta información", "Ingresa el nombre de usuario.")
+            self.txt_usuario.setFocus(); return
+        if not password:
+            QMessageBox.warning(self, "Falta información", "Ingresa una contraseña.")
+            self.txt_password.setFocus(); return
+
+        id_rol = 1 if rol_txt == "ADMINISTRADOR" else 2
+
+        if not self._conexion:
+            QMessageBox.critical(self, "Sin conexión",
+                "No hay conexión activa a la base de datos.")
+            return
+
+        try:
+            with self._conexion.cursor() as cur:
+                # Verificar que el username no exista ya
+                cur.execute(
+                    "SELECT id_usuario FROM usuarios WHERE username_log = %s",
+                    (usuario,)
+                )
+                if cur.fetchone():
+                    QMessageBox.warning(self, "Usuario duplicado",
+                        "Ya existe un usuario con ese nombre de usuario.")
+                    return
+
+                # 1. Crear el empleado
+                cur.execute(
+                    "INSERT INTO empleados (nombre_empleado, id_rol, monto_pago)"
+                    " VALUES (%s, %s, %s)",
+                    (nombre, id_rol, salario)
+                )
+                id_empleado = cur.lastrowid
+
+                # 2. Crear el usuario vinculado a ese empleado
+                cur.execute(
+                    "INSERT INTO usuarios"
+                    " (id_rol, id_empleado, username_log, contrasena_log)"
+                    " VALUES (%s, %s, %s, %s)",
+                    (id_rol, id_empleado, usuario, password)
+                )
+                self._conexion.commit()
+
+            self.resultado = {
+                "nombre"     : nombre,
+                "usuario"    : usuario,
+                "rol"        : rol_txt,
+                "id_empleado": id_empleado,
+            }
+            self.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error al guardar",
+                "No se pudo crear el usuario:\n{}".format(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO — CAMBIAR CONTRASEÑA
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoCambiarPassword(DialogoBase):
+    """
+    Busca un usuario por nombre o username y permite asignarle una
+    nueva contraseña, escrita dos veces para confirmar.
+    """
+    def __init__(self, usuarios, conexion=None, parent=None):
+        super().__init__("CAMBIAR CONTRASEÑA", ancho=460, parent=parent)
+        self.resultado   = None
+        self._conexion   = conexion
+        self._usuarios   = usuarios
+        self._seleccionado = None
+
+        self.layout_card.addWidget(self._lbl("SELECCIONA EL USUARIO"))
+        self.combo_usuario = self._combo(
+            ["{}  ·  {}".format(u["nombre"], u["rol"]) for u in usuarios]
+        )
+        self.layout_card.addWidget(self.combo_usuario)
+
+        self.layout_card.addSpacing(4)
+
+        self.layout_card.addWidget(self._lbl("NUEVA CONTRASEÑA"))
+        self.txt_pass1 = self._input("Escribe la nueva contraseña...", password=True)
+        self.layout_card.addWidget(self.txt_pass1)
+
+        self.layout_card.addWidget(self._lbl("CONFIRMAR CONTRASEÑA"))
+        self.txt_pass2 = self._input("Repite la contraseña...", password=True)
+        self.layout_card.addWidget(self.txt_pass2)
+
+        self.layout_card.addSpacing(4)
+        fila_b = QHBoxLayout()
+        fila_b.addStretch()
+        fila_b.addWidget(self._btn_cancel())
+        btn_ok = self._btn_ok("ACTUALIZAR")
+        btn_ok.setFixedWidth(150)
+        btn_ok.clicked.connect(self._confirmar)
+        fila_b.addWidget(btn_ok)
+        self.layout_card.addLayout(fila_b)
+
+    def _confirmar(self):
+        if not self._usuarios:
+            self.reject(); return
+
+        idx = self.combo_usuario.currentIndex()
+        usuario = self._usuarios[idx]
+
+        p1 = self.txt_pass1.text().strip()
+        p2 = self.txt_pass2.text().strip()
+
+        if not p1:
+            QMessageBox.warning(self, "Falta información", "Ingresa la nueva contraseña.")
+            self.txt_pass1.setFocus(); return
+        if p1 != p2:
+            QMessageBox.warning(self, "No coinciden",
+                "Las contraseñas escritas no son iguales.")
+            self.txt_pass2.setFocus(); return
+
+        if not self._conexion:
+            QMessageBox.critical(self, "Sin conexión",
+                "No hay conexión activa a la base de datos.")
+            return
+
+        try:
+            with self._conexion.cursor() as cur:
+                cur.execute(
+                    "UPDATE usuarios SET contrasena_log = %s WHERE id_usuario = %s",
+                    (p1, usuario["id"])
+                )
+                self._conexion.commit()
+            self.resultado = usuario
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error al guardar",
+                "No se pudo actualizar la contraseña:\n{}".format(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO — ELIMINAR USUARIO  (checkboxes, mismo patrón que caja_vista.py)
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoEliminarUsuario(DialogoBase):
+    def __init__(self, usuarios, conexion=None, parent=None):
+        super().__init__("ELIMINAR USUARIO", ancho=480, parent=parent)
+        self._conexion = conexion
+        self._usuarios = usuarios
+        self.eliminados = []
+
+        self.layout_card.addWidget(self._lbl("SELECCIONA LOS USUARIOS A ELIMINAR"))
+        self.layout_card.addSpacing(4)
+
+        scroll_frame = QFrame()
+        scroll_frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        scroll_frame.setStyleSheet(
+            "QFrame { background:#F8FAF9; border:2px dashed #C8E6D4;"
+            " border-radius:16px; }"
+        )
+        scroll_layout = QVBoxLayout(scroll_frame)
+        scroll_layout.setContentsMargins(16, 14, 16, 14)
+        scroll_layout.setSpacing(8)
+
+        self._checks = []
+
+        if not usuarios:
+            lbl_v = QLabel("NO HAY USUARIOS PARA ELIMINAR")
+            lbl_v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_v.setFont(_mf(10, QFont.Weight.Bold))
+            lbl_v.setStyleSheet("color:#C5D4CC; background:transparent;")
+            lbl_v.setFixedHeight(100)
+            scroll_layout.addWidget(lbl_v)
+        else:
+            from PySide6.QtWidgets import QCheckBox
+            for u in usuarios:
+                fila = QHBoxLayout()
+                fila.setContentsMargins(0, 0, 0, 0)
+                fila.setSpacing(12)
+
+                chk = QCheckBox()
+                chk.setFixedSize(22, 22)
+                chk.setStyleSheet(
+                    "QCheckBox::indicator { width:20px; height:20px;"
+                    " border-radius:6px; border:2px solid #A9DDBC; background:#FFFFFF; }"
+                    "QCheckBox::indicator:checked { background:#DC2626; border:2px solid #DC2626; }"
+                )
+                self._checks.append((u, chk))
+
+                lbl_nom = QLabel(u["nombre"])
+                lbl_nom.setFont(_mf(12, QFont.Weight.Bold))
+                lbl_nom.setStyleSheet("color:#1F2937; background:transparent;")
+
+                lbl_rol = QLabel(u["rol"])
+                lbl_rol.setFont(_mf(9, QFont.Weight.Black))
+                lbl_rol.setStyleSheet("color:#9CA3AF; background:transparent;")
+                lbl_rol.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+                fila.addWidget(chk)
+                fila.addWidget(lbl_nom, 1)
+                fila.addWidget(lbl_rol)
+
+                contenedor = QFrame()
+                contenedor.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+                contenedor.setStyleSheet(
+                    "QFrame { background:#FFFFFF; border-radius:12px; border:none; }"
+                )
+                contenedor.setFixedHeight(52)
+                QHBoxLayout(contenedor).addLayout(fila)
+                contenedor.layout().setContentsMargins(12, 0, 12, 0)
+                scroll_layout.addWidget(contenedor)
+
+        scroll_frame.setMinimumHeight(
+            min(len(usuarios) * 60 + 28, 280) if usuarios else 130
+        )
+        self.layout_card.addWidget(scroll_frame)
+
+        self.layout_card.addSpacing(8)
+        btn_elim = self._btn_ok("ELIMINAR USUARIO(S)", "#DC6468", "#C0484B")
+        btn_elim.clicked.connect(self._confirmar)
+        self.layout_card.addWidget(btn_elim)
+
+    def _confirmar(self):
+        seleccionados = [u for u, chk in self._checks if chk.isChecked()]
+        if not seleccionados:
+            self.reject(); return
+
+        if not self._conexion:
+            QMessageBox.critical(self, "Sin conexión",
+                "No hay conexión activa a la base de datos.")
+            return
+
+        resp = QMessageBox.question(
+            self, "Confirmar eliminación",
+            "¿Eliminar {} usuario(s) seleccionado(s)? Esta acción no se puede deshacer.".format(
+                len(seleccionados)),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if resp != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            with self._conexion.cursor() as cur:
+                for u in seleccionados:
+                    cur.execute(
+                        "DELETE FROM usuarios WHERE id_usuario = %s", (u["id"],)
+                    )
+                self._conexion.commit()
+            self.eliminados = seleccionados
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error al eliminar",
+                "No se pudieron eliminar los usuarios:\n{}".format(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO — MODIFICAR USUARIO
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoModificarUsuario(DialogoBase):
+    """
+    Busca un usuario por nombre o username y permite editar:
+    nombre completo, rol, salario y nombre de usuario.
+    La contraseña se cambia desde el diálogo de Cambiar Contraseña.
+    """
+    def __init__(self, usuarios, conexion=None, parent=None):
+        super().__init__("MODIFICAR USUARIO", ancho=480, parent=parent)
+        self.resultado  = None
+        self._conexion  = conexion
+        self._usuarios  = usuarios
+
+        self.layout_card.addWidget(self._lbl("SELECCIONA EL USUARIO"))
+        self.combo_usuario = self._combo(
+            ["{}  ·  {}".format(u["nombre"], u["rol"]) for u in usuarios]
+        )
+        self.combo_usuario.currentIndexChanged.connect(self._cargar_datos)
+        self.layout_card.addWidget(self.combo_usuario)
+
+        self.layout_card.addWidget(self._lbl("NOMBRE COMPLETO"))
+        self.txt_nombre = self._input("Nombre completo")
+        self.layout_card.addWidget(self.txt_nombre)
+
+        fila1 = QHBoxLayout(); fila1.setSpacing(14)
+        col_u = QVBoxLayout(); col_u.setSpacing(6)
+        col_u.addWidget(self._lbl("NOMBRE DE USUARIO"))
+        self.txt_usuario = self._input("Usuario de acceso")
+        col_u.addWidget(self.txt_usuario)
+
+        col_r = QVBoxLayout(); col_r.setSpacing(6)
+        col_r.addWidget(self._lbl("ROL"))
+        self.combo_rol = self._combo(["ADMINISTRADOR", "CAJERO"])
+        col_r.addWidget(self.combo_rol)
+
+        fila1.addLayout(col_u); fila1.addLayout(col_r)
+        self.layout_card.addLayout(fila1)
+
+        self.layout_card.addWidget(self._lbl("SALARIO (MONTO DE PAGO)"))
+        self.spin_salario = self._dspin(0, 99999999, 0, "$ ")
+        self.layout_card.addWidget(self.spin_salario)
+
+        self.layout_card.addSpacing(4)
+        fila_b = QHBoxLayout()
+        fila_b.addStretch()
+        fila_b.addWidget(self._btn_cancel())
+        btn_g = self._btn_ok("GUARDAR CAMBIOS")
+        btn_g.setFixedWidth(170)
+        btn_g.clicked.connect(self._confirmar)
+        fila_b.addWidget(btn_g)
+        self.layout_card.addLayout(fila_b)
+
+        if usuarios:
+            self._cargar_datos(0)
+
+    def _cargar_datos(self, idx):
+        if idx < 0 or idx >= len(self._usuarios):
+            return
+        u = self._usuarios[idx]
+        self.txt_nombre.setText(u["nombre"])
+        self.txt_usuario.setText(u.get("username", ""))
+        self.combo_rol.setCurrentText(u["rol"])
+        self.spin_salario.setValue(u.get("salario", 0) or 0)
+
+    def _confirmar(self):
+        if not self._usuarios:
+            self.reject(); return
+
+        idx = self.combo_usuario.currentIndex()
+        u   = self._usuarios[idx]
+
+        nombre   = self.txt_nombre.text().strip()
+        usuario  = self.txt_usuario.text().strip()
+        rol_txt  = self.combo_rol.currentText()
+        salario  = self.spin_salario.value()
+        id_rol   = 1 if rol_txt == "ADMINISTRADOR" else 2
+
+        if not nombre:
+            QMessageBox.warning(self, "Falta información", "Ingresa el nombre completo.")
+            self.txt_nombre.setFocus(); return
+        if not usuario:
+            QMessageBox.warning(self, "Falta información", "Ingresa el nombre de usuario.")
+            self.txt_usuario.setFocus(); return
+
+        if not self._conexion:
+            QMessageBox.critical(self, "Sin conexión",
+                "No hay conexión activa a la base de datos.")
+            return
+
+        try:
+            with self._conexion.cursor() as cur:
+                # Username único, salvo que sea el mismo usuario
+                cur.execute(
+                    "SELECT id_usuario FROM usuarios"
+                    " WHERE username_log = %s AND id_usuario != %s",
+                    (usuario, u["id"])
+                )
+                if cur.fetchone():
+                    QMessageBox.warning(self, "Usuario duplicado",
+                        "Ya existe otro usuario con ese nombre de usuario.")
+                    return
+
+                cur.execute(
+                    "UPDATE empleados SET nombre_empleado=%s, id_rol=%s, monto_pago=%s"
+                    " WHERE id_empleado=("
+                    "   SELECT id_empleado FROM usuarios WHERE id_usuario=%s"
+                    ")",
+                    (nombre, id_rol, salario, u["id"])
+                )
+                cur.execute(
+                    "UPDATE usuarios SET username_log=%s, id_rol=%s WHERE id_usuario=%s",
+                    (usuario, id_rol, u["id"])
+                )
+                self._conexion.commit()
+
+            self.resultado = {
+                "id"     : u["id"],
+                "nombre" : nombre,
+                "usuario": usuario,
+                "rol"    : rol_txt,
+            }
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error al guardar",
+                "No se pudo modificar el usuario:\n{}".format(e))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DIÁLOGO PRINCIPAL — CONFIGURACIÓN DE CUENTA
 # ══════════════════════════════════════════════════════════════════════════════
 class CuentaDialog(QDialog):
+
     def __init__(self, conexion=None, datos_usuario=None, parent=None):
         super().__init__(parent,
                          Qt.WindowType.FramelessWindowHint |
                          Qt.WindowType.Dialog)
-        
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setStyleSheet("QDialog { background: transparent; border: none; }")
 
         self._conexion       = conexion
         self._datos_usuario  = datos_usuario or {}
@@ -62,18 +697,24 @@ class CuentaDialog(QDialog):
         self.BRAND       = "#17813D"
         self.BRAND_LIGHT = "#228E49"
 
-        # ── Overlay (Fondo oscuro semitransparente) ──────────────────────
+        # ── Overlay ──────────────────────────────────────────────────────
         self._overlay = QFrame(self)
         self._overlay.setObjectName("Overlay")
         self._overlay.setStyleSheet(
             "QFrame#Overlay { background:rgba(0,0,0,0.45); border:none; }"
         )
 
-        # ── Tarjeta grande (USAMOS LA NUEVA CLASE NATIVA) ────────────────
-        self.card = TarjetaFondo(self)
+        # ── Tarjeta grande ───────────────────────────────────────────────
+        self.card = QFrame(self)
         self.card.setObjectName("CuentaCard")
-        # Ya no usamos background-color por CSS aquí, la clase se encarga.
-        
+        self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.card.setStyleSheet(
+            "QFrame#CuentaCard {"
+            " background-color:#FFFFFF;"
+            " border-radius:22px;"
+            " border:none;"
+            "}"
+        )
         sombra = QGraphicsDropShadowEffect(self.card)
         sombra.setBlurRadius(50)
         sombra.setColor(QColor(0, 0, 0, 65))
@@ -135,7 +776,7 @@ class CuentaDialog(QDialog):
         ls.setContentsMargins(20, 20, 20, 20)
         ls.setSpacing(14)
 
-        # ── Card admin de cuenta ──────────────────────────────────────────
+        # ── Card admin de cuenta — CORREGIDA: badge ya no flota suelto ─────
         card_admin = QFrame()
         card_admin.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_admin.setFixedHeight(74)
@@ -183,7 +824,7 @@ class CuentaDialog(QDialog):
         lca.addLayout(col_admin, 1)
         ls.addWidget(card_admin)
 
-        # ── Card estado del software ──────────────────────────────────────
+        # ── Card estado del software — CORREGIDA: tamaño fijo, sin scroll ──
         card_estado = QFrame()
         card_estado.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_estado.setFixedHeight(190)
@@ -259,9 +900,9 @@ class CuentaDialog(QDialog):
         cuerpo.addWidget(sidebar)
 
         # ── CONTENIDO PRINCIPAL ──────────────────────────────────────────
-        contenido = QWidget()
-        # Se establece totalmente transparente para que deje ver el fondo blanco nativo
-        contenido.setStyleSheet("background: transparent;")
+        contenido = QFrame()
+        contenido.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        contenido.setStyleSheet("QFrame { background:#FFFFFF; border:none; }")
         lcont = QVBoxLayout(contenido)
         lcont.setContentsMargins(32, 24, 32, 20)
         lcont.setSpacing(10)
@@ -289,12 +930,29 @@ class CuentaDialog(QDialog):
                 )
             return b
 
+        # Barra de búsqueda — filtra en vivo por nombre o rol, a la IZQUIERDA de los filtros
+        self.txt_buscar_usuario = QLineEdit()
+        self.txt_buscar_usuario.setPlaceholderText("Buscar por nombre o rol...")
+        self.txt_buscar_usuario.setFont(_mf(10, QFont.Weight.Medium))
+        self.txt_buscar_usuario.setFixedSize(210, 34)
+        self.txt_buscar_usuario.setStyleSheet(
+            "QLineEdit { background:#F3F5F4; color:#1F2937; border:2px solid transparent;"
+            " border-radius:9px; padding:0 14px; }"
+            " QLineEdit:focus { border:2px solid #17813D; background:#FFFFFF; }"
+        )
+        self.txt_buscar_usuario.textChanged.connect(self._filtrar_usuarios)
+
         btn_todos   = _filtro_btn("TODOS", activo=True)
         btn_ultimos = _filtro_btn("ÚLTIMOS ACCESOS")
         btn_por_rol = _filtro_btn("POR ROL  ▾")
 
+        btn_todos.clicked.connect(self._filtro_todos)
+        btn_ultimos.clicked.connect(self._filtro_ultimos_accesos)
+        btn_por_rol.clicked.connect(self._filtro_por_rol)
+
         fila_filtros = QHBoxLayout()
-        fila_filtros.setSpacing(6)
+        fila_filtros.setSpacing(8)
+        fila_filtros.addWidget(self.txt_buscar_usuario)
         fila_filtros.addWidget(btn_todos)
         fila_filtros.addWidget(btn_ultimos)
         fila_filtros.addWidget(btn_por_rol)
@@ -325,11 +983,9 @@ class CuentaDialog(QDialog):
         sep.setStyleSheet("background:#EEF0F2; border:none;")
         lcont.addWidget(sep)
 
-        # ── Lista de usuarios ────────────────────────────────────────────
+        # ── Lista de usuarios — SIN scroll si caben, igual que la imagen ───
         self.contenedor_filas = QWidget()
-        # Mantenemos transparente para aprovechar el fondo inquebrantable de la TarjetaFondo
-        self.contenedor_filas.setStyleSheet("background: transparent;")
-        
+        self.contenedor_filas.setStyleSheet("background:#FFFFFF;")
         self.layout_filas = QVBoxLayout(self.contenedor_filas)
         self.layout_filas.setContentsMargins(0, 0, 0, 0)
         self.layout_filas.setSpacing(0)
@@ -385,19 +1041,16 @@ class CuentaDialog(QDialog):
                 )
             return b
 
-        self.btn_password    = _bsec("CAMBIAR CONTRASEÑA", 188, verde=True)
-        self.btn_eliminar_u  = _bsec("ELIMINAR USUARIO",   158)
-        self.btn_modificar_u = _bsec("MODIFICAR USUARIO",  165)
-        self.btn_buscar_u    = _bsec("BUSCAR",             110)
+        self.btn_password    = _bsec("CAMBIAR CONTRASEÑA", 195, verde=True)
+        self.btn_eliminar_u  = _bsec("ELIMINAR USUARIO",   165)
+        self.btn_modificar_u = _bsec("MODIFICAR USUARIO",  172)
 
         self.btn_password.clicked.connect(self.abrir_cambiar_password)
         self.btn_eliminar_u.clicked.connect(self.abrir_eliminar_usuario)
         self.btn_modificar_u.clicked.connect(self.abrir_modificar_usuario)
-        self.btn_buscar_u.clicked.connect(self.abrir_buscar_usuario)
 
         lbs = QHBoxLayout(); lbs.setSpacing(10)
-        for b in [self.btn_password, self.btn_eliminar_u,
-                  self.btn_modificar_u, self.btn_buscar_u]:
+        for b in [self.btn_password, self.btn_eliminar_u, self.btn_modificar_u]:
             lbs.addWidget(b)
 
         li.addWidget(self.btn_nuevo)
@@ -417,7 +1070,7 @@ class CuentaDialog(QDialog):
                 with self._conexion.cursor() as cur:
                     cur.execute("""
                         SELECT u.id_usuario, u.username_log, u.id_rol,
-                               e.nombre_empleado
+                               e.nombre_empleado, e.monto_pago
                         FROM usuarios u
                         LEFT JOIN empleados e ON e.id_empleado = u.id_empleado
                         ORDER BY u.id_usuario ASC
@@ -425,35 +1078,102 @@ class CuentaDialog(QDialog):
                     filas = cur.fetchall()
                     for f in filas:
                         if isinstance(f, dict):
-                            uid    = f["id_usuario"]
-                            uname  = f["username_log"]
-                            idrol  = f["id_rol"]
-                            nombre = f.get("nombre_empleado") or uname
+                            uid     = f["id_usuario"]
+                            uname   = f["username_log"]
+                            idrol   = f["id_rol"]
+                            nombre  = f.get("nombre_empleado") or uname
+                            salario = f.get("monto_pago") or 0
                         else:
-                            uid, uname, idrol, nombre = f[0], f[1], f[2], f[3] or f[1]
+                            uid, uname, idrol = f[0], f[1], f[2]
+                            nombre  = f[3] or f[1]
+                            salario = f[4] or 0
                         self._usuarios_cache.append({
-                            "id"     : uid,
-                            "nombre" : str(nombre).strip().title(),
-                            "rol"    : "ADMINISTRADOR" if str(idrol) == "1" else "CAJERO",
-                            "acceso" : "—",
+                            "id"      : uid,
+                            "nombre"  : str(nombre).strip().title(),
+                            "username": uname,
+                            "rol"     : "ADMINISTRADOR" if str(idrol) == "1" else "CAJERO",
+                            "salario" : float(salario),
+                            "acceso"  : "—",
                         })
             except Exception:
                 self._usuarios_cache = []
 
+        if hasattr(self, "txt_buscar_usuario"):
+            self.txt_buscar_usuario.blockSignals(True)
+            self.txt_buscar_usuario.clear()
+            self.txt_buscar_usuario.blockSignals(False)
+
         self._renderizar_usuarios()
 
-    def _renderizar_usuarios(self):
+    def _renderizar_usuarios(self, lista=None):
+        if lista is None:
+            lista = self._usuarios_cache
+
         while self.layout_filas.count():
             item = self.layout_filas.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
 
-        for u in self._usuarios_cache:
+        if not lista:
+            lbl_vacio = QLabel("NO SE ENCONTRARON USUARIOS")
+            lbl_vacio.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_vacio.setFont(_mf(11, QFont.Weight.Bold))
+            lbl_vacio.setStyleSheet(
+                "color:#C5D4CC; background:transparent; padding:40px 0;"
+            )
+            self.layout_filas.addWidget(lbl_vacio)
+            return
+
+        for u in lista:
             fila = self._crear_fila_usuario(u)
             self.layout_filas.addWidget(fila)
 
+    def _filtrar_usuarios(self, texto):
+        """Filtra en vivo la lista de usuarios por nombre o rol (texto libre)."""
+        texto = texto.strip().lower()
+        if not texto:
+            self._renderizar_usuarios()
+            return
+        filtrados = [
+            u for u in self._usuarios_cache
+            if texto in u["nombre"].lower() or texto in u["rol"].lower()
+        ]
+        self._renderizar_usuarios(filtrados)
+
+    def _filtro_todos(self):
+        """Boton TODOS: limpia cualquier filtro y muestra la lista completa."""
+        self.txt_buscar_usuario.blockSignals(True)
+        self.txt_buscar_usuario.clear()
+        self.txt_buscar_usuario.blockSignals(False)
+        self._renderizar_usuarios()
+
+    def _filtro_por_rol(self):
+        """
+        Boton POR ROL: alterna entre mostrar solo ADMINISTRADOR o solo CAJERO.
+        Nota: la BD no registra fecha/hora de ultimo acceso, asi que
+        ULTIMOS ACCESOS ordena alfabeticamente como aproximacion honesta
+        en vez de inventar fechas falsas.
+        """
+        self._rol_filtro_actual = getattr(self, "_rol_filtro_actual", None)
+        if self._rol_filtro_actual == "ADMINISTRADOR":
+            self._rol_filtro_actual = "CAJERO"
+        else:
+            self._rol_filtro_actual = "ADMINISTRADOR"
+        filtrados = [u for u in self._usuarios_cache if u["rol"] == self._rol_filtro_actual]
+        self._renderizar_usuarios(filtrados)
+
+    def _filtro_ultimos_accesos(self):
+        ordenados = sorted(self._usuarios_cache, key=lambda u: u["nombre"])
+        self._renderizar_usuarios(ordenados)
+
     def _crear_fila_usuario(self, u):
+        """
+        CORRECCIÓN: el borde inferior se aplica al QFrame completo (toda
+        la fila), no a un widget interno — por eso antes se veía como un
+        subrayado corto bajo el texto del nombre en vez de una línea
+        completa separando cada fila.
+        """
         fila = QFrame()
         fila.setObjectName("FilaUsuario")
         fila.setFixedHeight(64)
@@ -496,7 +1216,7 @@ class CuentaDialog(QDialog):
         contenedor_nombre.setStyleSheet("background:transparent;")
         contenedor_nombre.setLayout(col_nombre)
 
-        # Columna rol
+        # Columna rol — CORREGIDA: ancho suficiente para "ADMINISTRADOR" completo
         badge = QLabel(u["rol"])
         badge.setFont(_mf(8, QFont.Weight.Black))
         badge.setFixedHeight(26)
@@ -547,27 +1267,52 @@ class CuentaDialog(QDialog):
     # ACCIONES
     # ══════════════════════════════════════════════════════════════════════
     def abrir_nuevo_usuario(self):
-        QMessageBox.information(self, "Nuevo usuario",
-            "Aquí se abrirá el formulario para crear un nuevo usuario.")
+        dlg = DialogoNuevoUsuario(self._conexion, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
+            QMessageBox.information(
+                self, "Usuario creado",
+                "El usuario '{}' fue creado correctamente.".format(dlg.resultado["usuario"])
+            )
+            self._cargar_usuarios()
 
     def abrir_cambiar_password(self):
-        QMessageBox.information(self, "Cambiar contraseña",
-            "Selecciona un usuario y aquí podrás cambiar su contraseña.")
+        if not self._usuarios_cache:
+            QMessageBox.information(self, "Cambiar contraseña",
+                "No hay usuarios registrados.")
+            return
+        dlg = DialogoCambiarPassword(self._usuarios_cache, self._conexion, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
+            QMessageBox.information(
+                self, "Contraseña actualizada",
+                "La contraseña de '{}' fue actualizada correctamente.".format(
+                    dlg.resultado["nombre"])
+            )
 
     def abrir_eliminar_usuario(self):
-        QMessageBox.information(self, "Eliminar usuario",
-            "Selecciona un usuario de la lista para eliminarlo.")
+        dlg = DialogoEliminarUsuario(self._usuarios_cache, self._conexion, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.eliminados:
+            QMessageBox.information(
+                self, "Usuario(s) eliminado(s)",
+                "{} usuario(s) eliminado(s) correctamente.".format(len(dlg.eliminados))
+            )
+            self._cargar_usuarios()
 
     def abrir_modificar_usuario(self):
-        QMessageBox.information(self, "Modificar usuario",
-            "Selecciona un usuario de la lista para modificar sus datos.")
-
-    def abrir_buscar_usuario(self):
-        QMessageBox.information(self, "Buscar usuario",
-            "Aquí se abrirá el buscador de usuarios.")
+        if not self._usuarios_cache:
+            QMessageBox.information(self, "Modificar usuario",
+                "No hay usuarios registrados.")
+            return
+        dlg = DialogoModificarUsuario(self._usuarios_cache, self._conexion, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
+            QMessageBox.information(
+                self, "Usuario modificado",
+                "Los datos de '{}' fueron actualizados correctamente.".format(
+                    dlg.resultado["nombre"])
+            )
+            self._cargar_usuarios()
 
     # ══════════════════════════════════════════════════════════════════════
-    # POSICIONAMIENTO
+    # POSICIONAMIENTO — márgenes simétricos + fix de geometría diferida
     # ══════════════════════════════════════════════════════════════════════
     def _reposicionar(self):
         margen = 16
@@ -576,6 +1321,12 @@ class CuentaDialog(QDialog):
             self.width() - margen * 2,
             self.height() - margen * 2
         )
+        # Misma corrección que en DialogoBase: garantiza que overlay y
+        # card queden visibles y al frente, evitando el bug de "ventana
+        # invisible que sigue bloqueando clicks".
+        self._overlay.show()
+        self._overlay.raise_()
+        self.card.show()
         self.card.raise_()
 
     def resizeEvent(self, event):
@@ -583,325 +1334,15 @@ class CuentaDialog(QDialog):
         self._overlay.setGeometry(0, 0, self.width(), self.height())
         self._reposicionar()
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        if self.parent():
-            p = self.parent()
-            pos = p.mapToGlobal(QPoint(0, 0))
-            self.setGeometry(pos.x(), pos.y(), p.width(), p.height())
+    def _ajustar_geometria_completa(self):
+        x, y, ancho, alto = _geometria_ventana_real(self.parent() or self)
+        self.setGeometry(x, y, ancho, alto)
         self._overlay.setGeometry(0, 0, self.width(), self.height())
         self._reposicionar()
-=======
-import sys
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QFontDatabase, QColor
-from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QComboBox, 
-    QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, 
-    QGraphicsDropShadowEffect, QFrame
-)
 
-class NuevoUsuarioDialog(QDialog):
-    """Ventana emergente modal para agregar un nuevo usuario según la base de datos."""
-    def __init__(self, conexion=None, parent=None):
-        super().__init__(parent)
-        self.conexion = conexion
-        
-        # Tamaño exacto y deshabilitar bordes de forma compatible
-        self.setFixedSize(460, 580)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        
-        self.init_ui()
-        self.cargar_datos_iniciales()
-
-    def init_ui(self):
-        # Contenedor con bordes redondeados y fondo limpio blanco
-        self.contenedor = QFrame(self)
-        self.contenedor.setGeometry(10, 10, 440, 560)
-        self.contenedor.setStyleSheet("""
-            QFrame {
-                background-color: #FFFFFF;
-                border: 2px solid #E2E8F0;
-                border-radius: 24px;
-            }
-        """)
-        
-        # Efecto de sombra corregido con QColor directo para evitar fallos de tipo
-        sombra = QGraphicsDropShadowEffect(self)
-        sombra.setBlurRadius(15)
-        sombra.setXOffset(0)
-        sombra.setYOffset(5)
-        sombra.setColor(QColor(0, 0, 0, 160))
-        self.contenedor.setGraphicsEffect(sombra)
-
-        # Layout Principal
-        layout = QVBoxLayout(self.contenedor)
-        layout.setContentsMargins(35, 30, 35, 30)
-        layout.setSpacing(14)
-
-        # TÍTULO DEL MODAL (Grosor ExtraBold/Black seguro)
-        lbl_titulo = QLabel("NUEVO USUARIO", self.contenedor)
-        lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Bold))
-        lbl_titulo.setStyleSheet("color: #008F39; border: none;")
-        lbl_titulo.setAlignment(Qt.AlignCenter)
-        layout.addWidget(lbl_titulo)
-        layout.addSpacing(5)
-
-        # Hoja de estilos compartida para entradas de texto y comboboxes
-        estilo_campos = """
-            QLineEdit, QComboBox {
-                background-color: #F8FAFC;
-                color: #1B4314;
-                border: 2px solid #E2E8F0;
-                border-radius: 12px;
-                padding: 10px 14px;
-                font-family: 'Montserrat';
-                font-size: 13px;
-                font-weight: 600;
-            }
-            QLineEdit:focus, QComboBox:focus {
-                border: 2px solid #008F39;
-                background-color: #FFFFFF;
-            }
-            QComboBox::drop-down {
-                border: none;
-                padding-right: 15px;
-            }
-            QComboBox::down-arrow {
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #008F39;
-                margin-right: 10px;
-            }
-        """
-
-        # CAMPO 1: SELECCIONAR EMPLEADO (id_empleado)
-        lbl_empleado = QLabel("VINCULAR EMPLEADO", self.contenedor)
-        lbl_empleado.setFont(QFont("Montserrat", 11, QFont.Bold))
-        lbl_empleado.setStyleSheet("color: #1B4314; border: none;")
-        layout.addWidget(lbl_empleado)
-        
-        self.combo_empleado = QComboBox(self.contenedor)
-        self.combo_empleado.setStyleSheet(estilo_campos)
-        layout.addWidget(self.combo_empleado)
-
-        # CAMPO 2: USERNAME (username_log)
-        lbl_username = QLabel("NOMBRE DE USUARIO", self.contenedor)
-        lbl_username.setFont(QFont("Montserrat", 11, QFont.Bold))
-        lbl_username.setStyleSheet("color: #1B4314; border: none;")
-        layout.addWidget(lbl_username)
-        
-        self.txt_username = QLineEdit(self.contenedor)
-        self.txt_username.setPlaceholderText("Ej: nicolas.herran")
-        self.txt_username.setStyleSheet(estilo_campos)
-        layout.addWidget(self.txt_username)
-
-        # CAMPO 3: CONTRASEÑA (contrasena_log)
-        lbl_password = QLabel("CONTRASEÑA DE ACCESO", self.contenedor)
-        lbl_password.setFont(QFont("Montserrat", 11, QFont.Bold))
-        lbl_password.setStyleSheet("color: #1B4314; border: none;")
-        layout.addWidget(lbl_password)
-        
-        self.txt_password = QLineEdit(self.contenedor)
-        self.txt_password.setEchoMode(QLineEdit.Password)
-        self.txt_password.setPlaceholderText("••••••••••••")
-        self.txt_password.setStyleSheet(estilo_campos)
-        layout.addWidget(self.txt_password)
-
-        # CAMPO 4: ASIGNAR ROL (id_rol)
-        lbl_rol = QLabel("ROL DE SISTEMA", self.contenedor)
-        lbl_rol.setFont(QFont("Montserrat", 11, QFont.Bold))
-        lbl_rol.setStyleSheet("color: #1B4314; border: none;")
-        layout.addWidget(lbl_rol)
-        
-        self.combo_rol = QComboBox(self.contenedor)
-        self.combo_rol.setStyleSheet(estilo_campos)
-        layout.addWidget(self.combo_rol)
-
-        layout.addSpacing(15)
-
-        # BOTONES DE ACCIÓN (CANCELAR / GUARDAR)
-        layout_botones = QHBoxLayout()
-        layout_botones.setSpacing(15)
-
-        self.btn_cancelar = QPushButton("CANCELAR", self.contenedor)
-        self.btn_cancelar.setFont(QFont("Montserrat", 12, QFont.Bold))
-        self.btn_cancelar.setCursor(Qt.PointingHandCursor)
-        self.btn_cancelar.setFixedHeight(45)
-        self.btn_cancelar.setStyleSheet("""
-            QPushButton {
-                background-color: #F1F5F9;
-                color: #64748B;
-                border: none;
-                border-radius: 12px;
-            }
-            QPushButton:hover {
-                background-color: #E2E8F0;
-                color: #334155;
-            }
-        """)
-
-        self.btn_guardar = QPushButton("GUARDAR", self.contenedor)
-        self.btn_guardar.setFont(QFont("Montserrat", 12, QFont.Bold))
-        self.btn_guardar.setCursor(Qt.PointingHandCursor)
-        self.btn_guardar.setFixedHeight(45)
-        self.btn_guardar.setStyleSheet("""
-            QPushButton {
-                background-color: #008F39;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 12px;
-            }
-            QPushButton:hover {
-                background-color: #1B4314;
-            }
-        """)
-
-        layout_botones.addWidget(self.btn_cancelar)
-        layout_botones.addWidget(self.btn_guardar)
-        layout.addLayout(layout_botones)
-
-        self.btn_cancelar.clicked.connect(self.reject)
-        self.btn_guardar.clicked.connect(self.guardar_registro)
-
-    def cargar_datos_iniciales(self):
-        """Puebla los campos desde la base de datos."""
-        if not self.conexion:
-            self.combo_rol.addItem("Administrador", 1)
-            self.combo_rol.addItem("Cajero", 2)
-            self.combo_empleado.addItem("Nicolás Eduardo Herrán Daza", 1)
-            return
-
-        try:
-            cursor = self.conexion.cursor()
-            cursor.execute("SELECT id_rol, descripcion_rol FROM rol")
-            for id_rol, desc in cursor.fetchall():
-                self.combo_rol.addItem(str(desc).capitalize(), id_rol)
-
-            cursor.execute("SELECT id_empleado, nombre_empleado FROM empleados")
-            for id_emp, nombre in cursor.fetchall():
-                self.combo_empleado.addItem(str(nombre).title(), id_emp)
-
-            cursor.close()
-        except Exception as e:
-            print(f"Error cargando relaciones en el modal: {e}")
-
-    def guardar_registro(self):
-        username = self.txt_username.text().strip()
-        contrasena = self.txt_password.text().strip()
-        id_rol = self.combo_rol.currentData()
-        id_empleado = self.combo_empleado.currentData()
-
-        if not username or not contrasena:
-            QMessageBox.warning(self, "Atención", "Por favor, complete todos los campos de texto.")
-            return
-
-        if not self.conexion:
-            QMessageBox.information(self, "Prueba Realizada", f"Usuario temporal creado:\nUser: {username}")
-            self.accept()
-            return
-
-        try:
-            cursor = self.conexion.cursor()
-            query = """
-                INSERT INTO usuarios (id_rol, id_empleado, username_log, contrasena_log)
-                VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(query, (id_rol, id_empleado, username, contrasena))
-            self.conexion.commit()
-            cursor.close()
-
-            QMessageBox.information(self, "Éxito", f"El usuario '{username}' ha sido registrado correctamente.")
-            self.accept()
-        except Exception as e:
-            self.conexion.rollback()
-            QMessageBox.critical(self, "Error SQL", f"No se pudo guardar el registro.\nDetalle: {e}")
-
-
-class CuentaVista(QWidget):
-    """Módulo Principal de Cuenta/Perfil adaptado como QWidget."""
-    def __init__(self, conexion=None, parent=None):
-        super().__init__(parent)
-        self.conexion = conexion
-        self.cargar_fuentes_sistema()
-        self.init_ui()
-
-    def cargar_fuentes_sistema(self):
-        ruta_fuentes = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fuentes")
-        for f in ["Montserrat-Regular.ttf", "Montserrat-Bold.ttf", "Montserrat-ExtraBold.ttf", "Montserrat-Black.ttf"]:
-            full_path = os.path.join(ruta_fuentes, f)
-            if os.path.exists(full_path):
-                QFontDatabase.addApplicationFont(full_path)
-
-    def init_ui(self):
-        layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(20, 20, 20, 20)
-        
-        tarjeta = QFrame(self)
-        tarjeta.setStyleSheet("""
-            QFrame {
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 20px;
-            }
-        """)
-        layout_tarjeta = QVBoxLayout(tarjeta)
-        layout_tarjeta.setContentsMargins(30, 30, 30, 30)
-        layout_tarjeta.setSpacing(20)
-
-        lbl_seccion = QLabel("GESTIÓN DE CUENTAS DE USUARIO", tarjeta)
-        lbl_seccion.setFont(QFont("Montserrat", 18, QFont.Bold))
-        lbl_seccion.setStyleSheet("color: #1B4314; border: none;")
-        layout_tarjeta.addWidget(lbl_seccion)
-
-        lbl_desc = QLabel("Administra las credenciales de ingreso y los privilegios de los empleados del sistema Palma.", tarjeta)
-        lbl_desc.setFont(QFont("Montserrat", 11, QFont.Medium))
-        lbl_desc.setStyleSheet("color: #64748B; border: none;")
-        lbl_desc.setWordWrap(True)
-        layout_tarjeta.addWidget(lbl_desc)
-        
-        layout_tarjeta.addSpacing(10)
-
-        self.btn_nuevo_usuario = QPushButton("NUEVO USUARIO", tarjeta)
-        self.btn_nuevo_usuario.setFont(QFont("Montserrat", 12, QFont.Bold))
-        self.btn_nuevo_usuario.setCursor(Qt.PointingHandCursor)
-        self.btn_nuevo_usuario.setFixedHeight(50)
-        self.btn_nuevo_usuario.setStyleSheet("""
-            QPushButton {
-                background-color: #008F39;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 15px;
-                padding-left: 20px;
-                padding-right: 20px;
-            }
-            QPushButton:hover {
-                background-color: #1B4314;
-            }
-        """)
-        
-        self.btn_nuevo_usuario.clicked.connect(self.abrir_popup_nuevo_usuario)
-        layout_tarjeta.addWidget(self.btn_nuevo_usuario, alignment=Qt.AlignLeft)
-        
-        layout_principal.addWidget(tarjeta)
-        layout_principal.addStretch()
-
-    def abrir_popup_nuevo_usuario(self):
-        modal = NuevoUsuarioDialog(conexion=self.conexion, parent=self)
-        modal.exec()
-
-
-# ALIAS DE COMPATIBILIDAD: Mapea CuentaDialog a CuentaVista para evitar fallos de importación externos
-CuentaDialog = CuentaVista 
-
-
-if __name__ == "__main__":
-    from PySide6.QtWidgets import QApplication
-    app = QApplication(sys.argv)
-    ventana_test = CuentaVista()
-    ventana_test.setWindowTitle("Módulo de Cuenta - Palma")
-    ventana_test.resize(800, 600)
-    ventana_test.show()
-    sys.exit(app.exec())
->>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._ajustar_geometria_completa()
+        # Recalcula en el siguiente ciclo del event loop, cuando Qt ya
+        # garantiza que el padre tiene su geometría final resuelta.
+        QTimer.singleShot(0, self._ajustar_geometria_completa)

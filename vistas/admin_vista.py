@@ -6,10 +6,7 @@ from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QTimer, Qt
 from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget
 from vistas.cuenta_vista import CuentaDialog
-<<<<<<< HEAD
 from vistas.inventario_vista import InventarioVista
-=======
->>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
 
 
 class BotonAnimado(QPushButton):
@@ -113,10 +110,7 @@ class AdminDashboardQt(QWidget):
         self.mod_cuenta = BotonAnimado("CUENTA", self)
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
-<<<<<<< HEAD
-=======
         self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
->>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
         self.mod_cuenta.clicked.connect(self.abrir_cuenta)
 
         self.lbl_avatar = QLabel("", self)
@@ -323,19 +317,12 @@ class AdminDashboardQt(QWidget):
                 datos_usuario=self.datos_usuario
             )
 
-<<<<<<< HEAD
-    def abrir_cuenta(self):
-        conexion = getattr(self.controlador, "conexion", None)
-        dlg = CuentaDialog(conexion, self.datos_usuario, self)
-        dlg.exec()
-=======
     def abrir_modulo_inventario(self):
         if self.controlador:
             self.controlador.cambiar_pantalla(
                 "Inventario",
                 datos_usuario=self.datos_usuario
             )
->>>>>>> f0062eecea3c5726da4ce4697535c48929d0f028
 
     def abrir_cuenta(self):
         conexion = getattr(self.controlador, "conexion", None)

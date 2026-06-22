@@ -10,6 +10,7 @@ from vistas.login_vista import LoginVista
 from vistas.admin_vista import AdminDashboardQt
 from vistas.caja_vista import CajaVista
 from vistas.cajero_vista import CajeroDashboardQt
+from vistas.facturaelectronica_vista import FacturaElectronicaVista
 from vistas.inventario_vista import InventarioVista
 from vistas.proveedor_vista import ProveedoresVista
 
@@ -45,6 +46,8 @@ class MainWindow(QMainWindow):
         self.admin_view = AdminDashboardQt(self, datos_usuario={})
         self.cajero_view = CajeroDashboardQt(self, datos_usuario={})
         self.caja_view = CajaVista(self)
+        # INSERCIÓN 2: Instanciar la vista de facturación
+        self.factura_view = FacturaElectronicaVista(conexion=self.conexion)
         self.inventario_view = InventarioVista(self, conexion)
         self.proveedores_view = ProveedoresVista(self, conexion)
 
@@ -52,6 +55,8 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.admin_view)
         self.stack.addWidget(self.cajero_view)
         self.stack.addWidget(self.caja_view)
+        # INSERCIÓN 3: Agregar la vista al stack
+        self.stack.addWidget(self.factura_view)
         self.stack.addWidget(self.inventario_view)
         self.stack.addWidget(self.proveedores_view)
 
@@ -62,15 +67,9 @@ class MainWindow(QMainWindow):
         self.show()
 
     def congelar_tamano_pantalla(self):
-        # Detecta la pantalla en la que se está ejecutando la aplicación actualmente
         pantalla = QGuiApplication.primaryScreen()
-        # availableGeometry() excluye la barra de tareas de Windows
         area_util = pantalla.availableGeometry()
-        
-        # Asigna la posición inicial (X, Y) arriba a la izquierda del espacio útil
         self.move(area_util.topLeft())
-        
-        # Fija el tamaño idéntico para impedir que layouts internos deformen la ventana
         self.setFixedSize(area_util.size())
 
     def cambiar_pantalla(self, nombre_pantalla, datos_usuario=None):
@@ -109,6 +108,9 @@ class MainWindow(QMainWindow):
                 )
             self.stack.setCurrentWidget(self.caja_view)
             
+        elif nombre_pantalla == "Facturacion":
+            self.stack.setCurrentWidget(self.factura_view)
+            
         elif nombre_pantalla == "Inventario":
             self.stack.setCurrentWidget(self.inventario_view)
  
@@ -123,28 +125,18 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    # Probar la conexión antes de crear la ventana
     print("Conectando a la base de datos...")
     conexion = conexion_db()
     
     if conexion:
-        print("Conexión establecida correctamente")
-        # Probar que la conexión funciona
         try:
             with conexion.cursor() as cursor:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
-            print("Conexión verificada")
+            ventana = MainWindow(conexion)
+            sys.exit(app.exec())
         except Exception as e:
             print(f"Error al verificar conexión: {e}")
-            conexion = None
-    else:
-        print("No se pudo establecer conexión")
-    
-    if conexion:
-        ventana = MainWindow(conexion)
-        # La ventana ya se muestra mediante self.show() en el __init__
-        sys.exit(app.exec())
     else:
         print("No se pudo conectar a la base de datos. Verifica tu archivo .env")
         sys.exit(1)

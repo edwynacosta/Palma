@@ -1,9 +1,3 @@
-"""
-PALMA Software - Módulo: Recibo Proveedores
-Base de datos: SQLite (palma_software.db)
-Pantalla completa, CRUD completo, filtros rápidos, notas y estado de envío.
-"""
-
 import tkinter as tk
 from tkinter import ttk, messagebox, font as tkfont
 import sqlite3
