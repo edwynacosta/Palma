@@ -1,8 +1,16 @@
--- BASE DE DATOS PALMA
+-- ============================================================
+-- BASE DE DATOS: PALMA (VERSIÓN NUBE / AIVEN OPTIMIZADA)
+-- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+START TRANSACTION;
 
+-- ------------------------------------------------------------
 -- 1. TABLA: rol
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `rol`;
 CREATE TABLE `rol` (
   `id_rol` INT(11) NOT NULL AUTO_INCREMENT,
   `descripcion_rol` VARCHAR(100) NOT NULL,
@@ -13,43 +21,10 @@ INSERT INTO `rol` (`id_rol`, `descripcion_rol`) VALUES
 (1, 'Administrador'),
 (2, 'Cajero');
 
--- 2. TABLA: empleados
-CREATE TABLE `empleados` (
-  `id_empleado` INT(10) NOT NULL AUTO_INCREMENT,
-  `nombre_empleado` VARCHAR(150) NOT NULL,
-  `id_rol` INT(11) DEFAULT NULL,
-  `fecha_ingreso` DATETIME DEFAULT CURRENT_TIMESTAMP(),
-  `monto_pago` DECIMAL(10,2) DEFAULT NULL,
-  PRIMARY KEY (`id_empleado`),
-  KEY `id_rol` (`id_rol`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `empleados` (`id_empleado`, `nombre_empleado`, `id_rol`, `fecha_ingreso`, `monto_pago`) VALUES
-(1, 'nicolas eduardo herran daza', 1, '2023-01-15 08:00:00', 3500000.00),
-(2, 'edwin armando acosta soriano', 1, '2023-03-01 08:00:00', 3200000.00),
-(3, 'Joseph Alejandro Hernández', 2, '2023-06-10 08:00:00', 2000000.00),
-(4, 'Mariana Zarate Pachote', 2, '2022-11-20 08:00:00', 2000000.00);
-
--- 3. TABLA: usuarios
-CREATE TABLE `usuarios` (
-  `id_usuario` INT(11) NOT NULL AUTO_INCREMENT,
-  `id_rol` INT(11) DEFAULT NULL,
-  `id_empleado` INT(10) DEFAULT NULL,
-  `username_log` VARCHAR(50) DEFAULT NULL,
-  `contrasena_log` VARCHAR(255) DEFAULT NULL,
-  PRIMARY KEY (`id_usuario`),
-  UNIQUE KEY `username_log` (`username_log`),
-  KEY `id_empleado` (`id_empleado`),
-  KEY `id_rol` (`id_rol`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
-(1, 1, 1, 'nicolasherran', '113355'),
-(2, 1, 2, 'edwinacosta', '224466'),
-(3, 2, 3, 'alejandrohernandez', '335577'),
-(4, 2, 4, 'marianazarate', '446688');
-
--- 4. TABLA: categoria
+-- ------------------------------------------------------------
+-- 2. TABLA: categoria
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `categoria`;
 CREATE TABLE `categoria` (
   `id_categoria` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre_categoria` VARCHAR(100) NOT NULL,
@@ -64,7 +39,41 @@ INSERT INTO `categoria` (`id_categoria`, `nombre_categoria`) VALUES
 (5, 'Bebidas'),
 (6, 'Aseo y limpieza personal');
 
+-- ------------------------------------------------------------
+-- 3. TABLA: estado_producto
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `estado_producto`;
+CREATE TABLE `estado_producto` (
+  `id_estado` INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre_estado` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`id_estado`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `estado_producto` (`id_estado`, `nombre_estado`) VALUES
+(1, 'Disponible'),
+(2, 'Vencido'),
+(3, 'Descontinuado'),
+(4, 'Dañado');
+
+-- ------------------------------------------------------------
+-- 4. TABLA: tipo_movimiento
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `tipo_movimiento`;
+CREATE TABLE `tipo_movimiento` (
+  `id_tipo_mov` INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre_tipo_movimiento` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`id_tipo_mov`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `tipo_movimiento` (`id_tipo_mov`, `nombre_tipo_movimiento`) VALUES
+(1, 'Entrada'),
+(2, 'Salida'),
+(3, 'Devolución');
+
+-- ------------------------------------------------------------
 -- 5. TABLA: clientes
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `clientes`;
 CREATE TABLE `clientes` (
   `id_cliente` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre_cliente` VARCHAR(150) NOT NULL,
@@ -88,20 +97,10 @@ INSERT INTO `clientes` (`id_cliente`, `nombre_cliente`, `documento_identidad`, `
 (7, 'Ricardo Esteban Pinto', '1080910200', '3223334455', 'ricardo.pinto@email.com', 'Carrera 20 # 33-17', 'Pereira', 'Risaralda'),
 (8, 'Natalia Marcela Herrera', '1091011300', '3334445566', 'natalia.herrera@email.com', 'Av. Las Palmas # 5-9', 'Cartagena', 'Bolívar');
 
--- 6. TABLA: estado_producto
-CREATE TABLE `estado_producto` (
-  `id_estado` INT(11) NOT NULL AUTO_INCREMENT,
-  `nombre_estado` VARCHAR(50) NOT NULL,
-  PRIMARY KEY (`id_estado`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT INTO `estado_producto` (`id_estado`, `nombre_estado`) VALUES
-(1, 'Disponible'),
-(2, 'Vencido'),
-(3, 'Descontinuado'),
-(4, 'Dañado');
-
--- 7. TABLA: proveedores
+-- ------------------------------------------------------------
+-- 6. TABLA: proveedores
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `proveedores`;
 CREATE TABLE `proveedores` (
   `id_proveedor` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre_empresa` VARCHAR(150) NOT NULL,
@@ -119,7 +118,52 @@ INSERT INTO `proveedores` (`id_proveedor`, `nombre_empresa`, `nit`, `telefono_pr
 (2, 'Lácteos del Valle Ltda', '800333444-2', '6024569870', 'pedidos@lacteosvalle.com', 'Km 3 Vía Cali-Palmira', 'Cali'),
 (3, 'Proviser Higiene y Aseo SAS', '901555666-3', '6055558877', 'comercial@proviser.com', 'Carrera 50 # 30-40', 'Medellín');
 
--- 8. TABLA: productos
+-- ------------------------------------------------------------
+-- 7. TABLA: empleados
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `empleados`;
+CREATE TABLE `empleados` (
+  `id_empleado` INT(10) NOT NULL AUTO_INCREMENT,
+  `nombre_empleado` VARCHAR(150) NOT NULL,
+  `id_rol` INT(11) DEFAULT NULL,
+  `fecha_ingreso` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `monto_pago` DECIMAL(10,2) DEFAULT NULL,
+  PRIMARY KEY (`id_empleado`),
+  KEY `id_rol` (`id_rol`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `empleados` (`id_empleado`, `nombre_empleado`, `id_rol`, `fecha_ingreso`, `monto_pago`) VALUES
+(1, 'nicolas eduardo herran daza', 1, '2023-01-15 08:00:00', 3500000.00),
+(2, 'edwin armando acosta soriano', 1, '2023-03-01 08:00:00', 3200000.00),
+(3, 'Joseph Alejandro Hernández', 2, '2023-06-10 08:00:00', 2000000.00),
+(4, 'Mariana Zarate Pachote', 2, '2022-11-20 08:00:00', 2000000.00);
+
+-- ------------------------------------------------------------
+-- 8. TABLA: usuarios
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `usuarios`;
+CREATE TABLE `usuarios` (
+  `id_usuario` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_rol` INT(11) DEFAULT NULL,
+  `id_empleado` INT(10) DEFAULT NULL,
+  `username_log` VARCHAR(50) DEFAULT NULL,
+  `contrasena_log` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id_usuario`),
+  UNIQUE KEY `username_log` (`username_log`),
+  KEY `id_empleado` (`id_empleado`),
+  KEY `id_rol` (`id_rol`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `contrasena_log`) VALUES
+(1, 1, 1, 'nicolasherran', '113355'),
+(2, 1, 2, 'edwinacosta', '224466'),
+(3, 2, 3, 'alejandrohernandez', '335577'),
+(4, 2, 4, 'marianazarate', '446688');
+
+-- ------------------------------------------------------------
+-- 9. TABLA: productos
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `productos`;
 CREATE TABLE `productos` (
   `id_producto` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre_producto` VARCHAR(150) NOT NULL,
@@ -227,13 +271,16 @@ INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id
 (90, 'Jabón Líquido Manos 500ml', 'Protex', 6, 1, 8900.00, 3),
 (91, 'Desodorante Original Barra', 'Rexona', 6, 1, 11200.00, 3);
 
--- 9. TABLA: inventarios
+-- ------------------------------------------------------------
+-- 10. TABLA: inventarios
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `inventarios`;
 CREATE TABLE `inventarios` (
   `id_inventario` INT(11) NOT NULL AUTO_INCREMENT,
   `id_producto` INT(11) DEFAULT NULL,
   `stock_actual` INT(11) DEFAULT NULL,
   `condicion` VARCHAR(100) DEFAULT NULL,
-  `timestamp_ultima_actualizacion` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+  `timestamp_ultima_actualizacion` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_inventario`),
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -331,7 +378,10 @@ INSERT INTO `inventarios` (`id_inventario`, `id_producto`, `stock_actual`, `cond
 (90, 90, 65, 'Buena', CURRENT_TIMESTAMP),
 (91, 91, 75, 'Buena', CURRENT_TIMESTAMP);
 
--- 10. TABLA: factura_compra
+-- ------------------------------------------------------------
+-- 11. TABLA: factura_compra
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `factura_compra`;
 CREATE TABLE `factura_compra` (
   `id_fac_compra` INT(11) NOT NULL AUTO_INCREMENT,
   `numero_fac_compra` VARCHAR(50) DEFAULT NULL,
@@ -349,12 +399,15 @@ INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedo
 (2, 'FC-2024-002', 2, 4, '2024-02-05 10:30:00', 640000.00),
 (3, 'FC-2024-003', 3, 1, '2024-03-12 11:00:00', 1150000.00);
 
--- 11. TABLA: facturas
+-- ------------------------------------------------------------
+-- 12. TABLA: facturas
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `facturas`;
 CREATE TABLE `facturas` (
   `id_factura` INT(11) NOT NULL AUTO_INCREMENT,
   `id_empleado` INT(11) DEFAULT NULL,
   `id_cliente` INT(11) DEFAULT NULL,
-  `fecha_fac` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+  `fecha_fac` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `total_fac` DECIMAL(10,2) DEFAULT NULL,
   PRIMARY KEY (`id_factura`),
   KEY `id_empleado` (`id_empleado`),
@@ -370,7 +423,10 @@ INSERT INTO `facturas` (`id_factura`, `id_empleado`, `id_cliente`, `fecha_fac`, 
 (6, 3, 6, '2024-04-05 15:00:00', 27400.00),
 (7, 2, 7, '2024-04-08 10:10:00', 19800.00);
 
--- 12. TABLA: detalle_factura
+-- ------------------------------------------------------------
+-- 13. TABLA: detalle_factura
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `detalle_factura`;
 CREATE TABLE `detalle_factura` (
   `id_detalle` INT(11) NOT NULL AUTO_INCREMENT,
   `id_factura` INT(11) DEFAULT NULL,
@@ -401,19 +457,55 @@ INSERT INTO `detalle_factura` (`id_detalle`, `id_factura`, `id_producto`, `canti
 (15, 7, 4, 3, 2000.00, 6000.00),
 (16, 7, 9, 6, 2200.00, 13200.00);
 
--- 13. TABLA: tipo_movimiento
-CREATE TABLE `tipo_movimiento` (
-  `id_tipo_mov` INT(11) NOT NULL AUTO_INCREMENT,
-  `nombre_tipo_movimiento` VARCHAR(50) NOT NULL,
-  PRIMARY KEY (`id_tipo_mov`)
+-- ------------------------------------------------------------
+-- 14. TABLA: devoluciones (Cabecera)
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `devoluciones`;
+CREATE TABLE `devoluciones` (
+  `id_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
+  `tipo_devolucion` ENUM('venta', 'compra') NOT NULL COMMENT 'Indica si es venta o compra',
+  `id_factura` INT(11) DEFAULT NULL COMMENT 'FK a facturas',
+  `id_fac_compra` INT(11) DEFAULT NULL COMMENT 'FK a factura_compra',
+  `id_empleado` INT(11) NOT NULL COMMENT 'Empleado que registra',
+  `fecha_devolucion` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `motivo` TEXT,
+  `estado` ENUM('Pendiente', 'Aprobada', 'Rechazada', 'Completada') DEFAULT 'Pendiente',
+  `monto_total` DECIMAL(10,2) DEFAULT NULL,
+  PRIMARY KEY (`id_devolucion`),
+  KEY `id_factura` (`id_factura`),
+  KEY `id_fac_compra` (`id_fac_compra`),
+  KEY `id_empleado` (`id_empleado`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `tipo_movimiento` (`id_tipo_mov`, `nombre_tipo_movimiento`) VALUES
-(1, 'Entrada'),
-(2, 'Salida'),
-(3, 'Devolución');
+INSERT INTO `devoluciones` (`id_devolucion`, `tipo_devolucion`, `id_factura`, `id_fac_compra`, `id_empleado`, `fecha_devolucion`, `motivo`, `estado`, `monto_total`) VALUES
+(1, 'venta', 1, NULL, 2, '2024-03-16 09:00:00', 'Producto en mal estado', 'Completada', 9000.00),
+(2, 'compra', NULL, 2, 4, '2024-02-10 14:30:00', 'Producto vencido al recibir', 'Aprobada', 3200.00);
 
--- 14. TABLA: movimientos (modificada)
+-- ------------------------------------------------------------
+-- 15. TABLA: detalle_devolucion
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `detalle_devolucion`;
+CREATE TABLE `detalle_devolucion` (
+  `id_detalle_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_devolucion` INT(11) NOT NULL,
+  `id_producto` INT(11) NOT NULL,
+  `cantidad` INT(11) NOT NULL,
+  `precio_unitario` DECIMAL(10,2) NOT NULL,
+  `subtotal` DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
+  PRIMARY KEY (`id_detalle_devolucion`),
+  KEY `id_devolucion` (`id_devolucion`),
+  KEY `id_producto` (`id_producto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `detalle_devolucion` (`id_detalle_devolucion`, `id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
+(1, 1, 1, 1, 4500.00),
+(2, 1, 4, 2, 2000.00),
+(3, 2, 2, 1, 3200.00);
+
+-- ------------------------------------------------------------
+-- 16. TABLA: movimientos
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `movimientos`;
 CREATE TABLE `movimientos` (
   `id_movimiento` INT(11) NOT NULL AUTO_INCREMENT,
   `id_inventario` INT(11) DEFAULT NULL,
@@ -421,9 +513,9 @@ CREATE TABLE `movimientos` (
   `id_empleado` INT(11) DEFAULT NULL,
   `id_factura` INT(11) DEFAULT NULL,
   `id_fac_compra` INT(11) DEFAULT NULL,
-  `id_devolucion` INT(11) DEFAULT NULL,  -- Nueva columna
+  `id_devolucion` INT(11) DEFAULT NULL,
   `cantidad_movimiento` INT(11) DEFAULT NULL,
-  `fecha_movimiento` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+  `fecha_movimiento` DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_movimiento`),
   KEY `id_inventario` (`id_inventario`),
   KEY `id_tipo_mov` (`id_tipo_mov`),
@@ -433,93 +525,34 @@ CREATE TABLE `movimientos` (
   KEY `id_devolucion` (`id_devolucion`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `movimientos` (`id_movimiento`, `id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
-(1, 1, 1, 4, NULL, 1, NULL, 200, '2024-01-10 09:30:00'),
-(2, 6, 1, 4, NULL, 1, NULL, 150, '2024-01-10 09:35:00'),
-(3, 2, 1, 4, NULL, 2, NULL, 300, '2024-02-05 11:00:00'),
-(4, 7, 1, 4, NULL, 2, NULL, 100, '2024-02-05 11:10:00'),
-(5, 5, 1, 1, NULL, 3, NULL, 200, '2024-03-12 11:30:00'),
-(6, 8, 1, 1, NULL, 3, NULL, 100, '2024-03-12 11:35:00'),
-(7, 1, 2, 2, 1, NULL, NULL, 2, '2024-03-15 10:15:00'),
-(8, 3, 2, 3, 2, NULL, NULL, 1, '2024-03-16 14:30:00'),
-(9, 9, 1, 4, NULL, 1, NULL, 250, '2024-04-01 08:30:00'),
-(10, 10, 1, 1, NULL, 3, NULL, 120, '2024-04-01 08:45:00'),
-(11, 11, 1, 4, NULL, 2, NULL, 200, '2024-04-01 09:00:00'),
-(12, 9, 2, 2, 5, NULL, NULL, 3, '2024-04-02 11:20:00'),
-(13, 2, 2, 3, 6, NULL, NULL, 4, '2024-04-05 15:00:00'),
-(14, 4, 2, 2, 7, NULL, NULL, 3, '2024-04-08 10:10:00');
-
--- ============================================================
--- NUEVAS TABLAS: DEVOLUCIONES Y DETALLE_DEVOLUCION
--- ============================================================
-
--- 15. TABLA: devoluciones (cabecera)
-CREATE TABLE `devoluciones` (
-  `id_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
-  `tipo_devolucion` ENUM('venta', 'compra') NOT NULL COMMENT 'Indica si la devolución es de una venta o de una compra',
-  `id_factura` INT(11) DEFAULT NULL COMMENT 'FK a facturas (si es devolución de venta)',
-  `id_fac_compra` INT(11) DEFAULT NULL COMMENT 'FK a factura_compra (si es devolución a proveedor)',
-  `id_empleado` INT(11) NOT NULL COMMENT 'Empleado que registra la devolución',
-  `fecha_devolucion` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `motivo` TEXT,
-  `estado` ENUM('Pendiente', 'Aprobada', 'Rechazada', 'Completada') DEFAULT 'Pendiente',
-  `monto_total` DECIMAL(10,2) DEFAULT NULL COMMENT 'Suma de los subtotales del detalle',
-  PRIMARY KEY (`id_devolucion`),
-  KEY `id_factura` (`id_factura`),
-  KEY `id_fac_compra` (`id_fac_compra`),
-  KEY `id_empleado` (`id_empleado`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- 16. TABLA: detalle_devolucion (líneas)
-CREATE TABLE `detalle_devolucion` (
-  `id_detalle_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
-  `id_devolucion` INT(11) NOT NULL,
-  `id_producto` INT(11) NOT NULL,
-  `cantidad` INT(11) NOT NULL,
-  `precio_unitario` DECIMAL(10,2) NOT NULL COMMENT 'Precio al que se devuelve (el de venta o compra)',
-  `subtotal` DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
-  PRIMARY KEY (`id_detalle_devolucion`),
-  KEY `id_devolucion` (`id_devolucion`),
-  KEY `id_producto` (`id_producto`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ============================================================
--- DATOS DE EJEMPLO PARA DEVOLUCIONES
--- ============================================================
-
--- Devolución de venta (cliente devuelve productos de la factura 1)
-INSERT INTO `devoluciones` (`tipo_devolucion`, `id_factura`, `id_fac_compra`, `id_empleado`, `fecha_devolucion`, `motivo`, `estado`, `monto_total`) VALUES
-('venta', 1, NULL, 2, '2024-03-16 09:00:00', 'Producto en mal estado', 'Completada', 9000.00);
-
-INSERT INTO `detalle_devolucion` (`id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
-(1, 1, 1, 4500.00),  -- devuelve 1 unidad de manzana
-(1, 4, 2, 2000.00);  -- devuelve 2 unidades de agua mineral
-
--- Devolución de compra (se devuelve mercancía al proveedor, factura de compra 2)
-INSERT INTO `devoluciones` (`tipo_devolucion`, `id_factura`, `id_fac_compra`, `id_empleado`, `fecha_devolucion`, `motivo`, `estado`, `monto_total`) VALUES
-('compra', NULL, 2, 4, '2024-02-10 14:30:00', 'Producto vencido al recibir', 'Aprobada', 3200.00);
-
-INSERT INTO `detalle_devolucion` (`id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
-(2, 2, 1, 3200.00);  -- se devuelve 1 litro de leche
-
--- ============================================================
--- MOVIMIENTOS ASOCIADOS A LAS DEVOLUCIONES (para ajustar inventario)
--- ============================================================
-
--- Movimiento para la devolución de venta (el stock aumenta porque el cliente devuelve)
 INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
-(1, 3, 2, 1, NULL, 1, 1, '2024-03-16 09:05:00'),  -- id_inventario=1 (Manzana)
-(4, 3, 2, 1, NULL, 1, 2, '2024-03-16 09:05:00');  -- id_inventario=4 (Agua Mineral)
+-- Movimientos generales
+(1, 1, 4, NULL, 1, NULL, 200, '2024-01-10 09:30:00'),
+(6, 1, 4, NULL, 1, NULL, 150, '2024-01-10 09:35:00'),
+(2, 1, 4, NULL, 2, NULL, 300, '2024-02-05 11:00:00'),
+(7, 1, 4, NULL, 2, NULL, 100, '2024-02-05 11:10:00'),
+(5, 1, 1, NULL, 3, NULL, 200, '2024-03-12 11:30:00'),
+(8, 1, 1, NULL, 3, NULL, 100, '2024-03-12 11:35:00'),
+(1, 2, 2, 1, NULL, NULL, 2, '2024-03-15 10:15:00'),
+(3, 2, 3, 2, NULL, NULL, 1, '2024-03-16 14:30:00'),
+(9, 1, 4, NULL, 1, NULL, 250, '2024-04-01 08:30:00'),
+(10, 1, 1, NULL, 3, NULL, 120, '2024-04-01 08:45:00'),
+(11, 1, 4, NULL, 2, NULL, 200, '2024-04-01 09:00:00'),
+(9, 2, 2, 5, NULL, NULL, 3, '2024-04-02 11:20:00'),
+(2, 2, 3, 6, NULL, NULL, 4, '2024-04-05 15:00:00'),
+(4, 2, 2, 7, NULL, NULL, 3, '2024-04-08 10:10:00'),
+-- Movimientos de devoluciones
+(1, 3, 2, 1, NULL, 1, 1, '2024-03-16 09:05:00'),
+(4, 3, 2, 1, NULL, 1, 2, '2024-03-16 09:05:00'),
+(2, 3, 4, NULL, 2, 2, -1, '2024-02-10 14:35:00');
 
--- Movimiento para la devolución de compra (el stock disminuye porque se devuelve al proveedor)
-INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
-(2, 3, 4, NULL, 2, 2, -1, '2024-02-10 14:35:00');  -- cantidad negativa para reflejar salida
 
 -- ============================================================
--- RESTRICCIONES (RELACIONES ENTRE TABLAS)
+-- DECLARACIÓN FINAL DE RESTRICCIONES (CONSTRAINTS)
 -- ============================================================
 
-ALTER TABLE `empleados` ADD CONSTRAINT `empleados_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
+ALTER TABLE `empleados` 
+  ADD CONSTRAINT `empleados_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 
 ALTER TABLE `usuarios` 
   ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
@@ -530,7 +563,8 @@ ALTER TABLE `productos`
   ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`id_estado`) REFERENCES `estado_producto` (`id_estado`),
   ADD CONSTRAINT `productos_ibfk_3` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedores` (`id_proveedor`);
 
-ALTER TABLE `inventarios` ADD CONSTRAINT `inventarios_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
+ALTER TABLE `inventarios` 
+  ADD CONSTRAINT `inventarios_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
 
 ALTER TABLE `factura_compra` 
   ADD CONSTRAINT `factura_compra_ibfk_1` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedores` (`id_proveedor`),
@@ -544,15 +578,6 @@ ALTER TABLE `detalle_factura`
   ADD CONSTRAINT `detalle_factura_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
   ADD CONSTRAINT `detalle_factura_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
 
-ALTER TABLE `movimientos` 
-  ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`id_inventario`) REFERENCES `inventarios` (`id_inventario`),
-  ADD CONSTRAINT `movimientos_ibfk_2` FOREIGN KEY (`id_tipo_mov`) REFERENCES `tipo_movimiento` (`id_tipo_mov`),
-  ADD CONSTRAINT `movimientos_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
-  ADD CONSTRAINT `movimientos_ibfk_4` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
-  ADD CONSTRAINT `movimientos_ibfk_5` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`),
-  ADD CONSTRAINT `movimientos_ibfk_6` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE SET NULL;
-
--- Restricciones de las nuevas tablas
 ALTER TABLE `devoluciones` 
   ADD CONSTRAINT `devoluciones_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `devoluciones_ibfk_2` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -561,6 +586,14 @@ ALTER TABLE `devoluciones`
 ALTER TABLE `detalle_devolucion` 
   ADD CONSTRAINT `detalle_devolucion_ibfk_1` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE CASCADE,
   ADD CONSTRAINT `detalle_devolucion_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
+
+ALTER TABLE `movimientos` 
+  ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`id_inventario`) REFERENCES `inventarios` (`id_inventario`),
+  ADD CONSTRAINT `movimientos_ibfk_2` FOREIGN KEY (`id_tipo_mov`) REFERENCES `tipo_movimiento` (`id_tipo_mov`),
+  ADD CONSTRAINT `movimientos_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
+  ADD CONSTRAINT `movimientos_ibfk_4` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
+  ADD CONSTRAINT `movimientos_ibfk_5` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`),
+  ADD CONSTRAINT `movimientos_ibfk_6` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE SET NULL;
 
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
