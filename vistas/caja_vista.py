@@ -1,9 +1,11 @@
 import os
+from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QSpinBox,
     QPushButton, QLabel, QFrame, QTableWidget, QListWidget,
     QTableWidgetItem, QHeaderView, QMessageBox, QDialog,
-    QGraphicsDropShadowEffect, QStackedLayout, QStackedWidget, QCompleter
+    QGraphicsDropShadowEffect, QStackedLayout, QStackedWidget, QCompleter,
+    QFormLayout, QScrollArea
 )
 from PySide6.QtCore import Qt, QPoint, QStringListModel
 from PySide6.QtGui import QFont, QColor, QPainter, QBrush, QFontDatabase
@@ -303,6 +305,7 @@ class DialogoAgregarFactura(QDialog):
             "nombre": self.producto_actual["nombre"],
             "cantidad": cant,
             "peso": peso,
+            "precio_unitario": precio_base,
             "precio_total": int(total_linea)
         }
         self.accept()
@@ -487,13 +490,13 @@ class DialogoModificar(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        lbl_buscar = QLabel("BUSCAR ITEM EN LA FACTURA")
+        lbl_buscar = QLabel("SELECCIONA ITEM A MODIFICAR")
         lbl_buscar.setFont(_f(11, QFont.Weight.Bold))
         lbl_buscar.setStyleSheet("color: #708077; background: transparent;")
         layout_card.addWidget(lbl_buscar)
 
         self.txt_buscar = QLineEdit()
-        self.txt_buscar.setPlaceholderText("Escribe ID o nombre para filtrar la lista...")
+        self.txt_buscar.setPlaceholderText("Filtrar por ID o nombre...")
         self.txt_buscar.setFixedHeight(56)
         self.txt_buscar.setStyleSheet("QLineEdit { background-color: #F8FAF9; border: 2px solid #D1E2D9; border-radius: 14px; padding: 0 16px; color: #1F2937; }")
         self.txt_buscar.textChanged.connect(self._buscar)
@@ -507,7 +510,7 @@ class DialogoModificar(QDialog):
             "QListWidget::item:selected { background-color: #E2ECE6; color: #17813D; border-radius: 10px; font-weight: bold; }"
         )
         self.lista.setFont(_f(12, QFont.Weight.Medium))
-        self.lista.setFixedHeight(160)
+        self.lista.setFixedHeight(180)
         
         self._indices = list(range(len(productos)))
         for p in productos:
@@ -579,6 +582,7 @@ class DialogoModificar(QDialog):
             prod_sel = self._productos[idx_real]
             if "cantidad" in prod_sel:
                 self.spin_cant.setValue(int(prod_sel["cantidad"]))
+            self._indice_actual = idx_real
         else:
             self.btn_guardar.setEnabled(False)
 
@@ -602,6 +606,495 @@ class DialogoModificar(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO BUSCAR (con autocompletado)
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoBuscar(QDialog):
+    def __init__(self, conexion=None, parent=None):
+        super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
+        self.texto_busqueda = ""
+        self._conexion = conexion
+        self.productos_db = {}
+
+        layout_fondo = QVBoxLayout(self)
+        layout_fondo.setContentsMargins(0, 0, 0, 0)
+        layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.card = QFrame()
+        self.card.setObjectName("MainCard")
+        self.card.setFixedSize(500, 370)
+        self.card.setStyleSheet("""
+            QFrame#MainCard {
+                background-color: #FFFFFF;
+                border-radius: 28px;
+                border: 2px solid #D1E2D9;
+            }
+        """)
+        sombra = QGraphicsDropShadowEffect(self.card)
+        sombra.setBlurRadius(40)
+        sombra.setColor(QColor(0, 0, 0, 50))
+        sombra.setOffset(0, 10)
+        self.card.setGraphicsEffect(sombra)
+
+        layout_card = QVBoxLayout(self.card)
+        layout_card.setContentsMargins(40, 40, 40, 40)
+        layout_card.setSpacing(24)
+
+        def _f(size, weight):
+            font = QFont("Montserrat", size, weight)
+            font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+            return font
+
+        # HEADER
+        layout_header = QHBoxLayout()
+        lbl_titulo = QLabel("BUSCAR EN LA FACTURA")
+        lbl_titulo.setFont(_f(18, QFont.Weight.Black))
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent; border: none;")
+
+        btn_cerrar = QPushButton("✕")
+        btn_cerrar.setFixedSize(36, 36)
+        btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cerrar.setFont(_f(12, QFont.Weight.Bold))
+        btn_cerrar.setStyleSheet("""
+            QPushButton {
+                background-color: #F4F7F5; border: none;
+                border-radius: 18px; color: #708077;
+            }
+            QPushButton:hover { background-color: #FDF2F2; color: #DC2626; }
+        """)
+        btn_cerrar.clicked.connect(self.reject)
+
+        layout_header.addWidget(lbl_titulo)
+        layout_header.addStretch()
+        layout_header.addWidget(btn_cerrar)
+        layout_card.addLayout(layout_header)
+
+        lbl_info = QLabel("Ingresa el nombre o ID del producto a buscar:")
+        lbl_info.setFont(_f(11, QFont.Weight.Medium))
+        lbl_info.setStyleSheet("color: #708077; background: transparent;")
+        layout_card.addWidget(lbl_info)
+
+        # CAMPO DE BÚSQUEDA CON AUTOCOMPLETADO
+        self.txt_buscar = QLineEdit()
+        self.txt_buscar.setPlaceholderText("Escribe el nombre o ID...")
+        self.txt_buscar.setFont(_f(14, QFont.Weight.Medium))
+        self.txt_buscar.setFixedHeight(56)
+        self.txt_buscar.setStyleSheet("""
+            QLineEdit {
+                background-color: #F8FAF9;
+                border: 2px solid #D1E2D9;
+                border-radius: 14px;
+                padding: 0 16px;
+                color: #1F2937;
+            }
+            QLineEdit:focus {
+                border: 2px solid #17813D;
+                background-color: #FFFFFF;
+            }
+        """)
+        layout_card.addWidget(self.txt_buscar)
+
+        # BOTONES
+        layout_footer = QHBoxLayout()
+        btn_cancelar = QPushButton("CANCELAR")
+        btn_cancelar.setFont(_f(12, QFont.Weight.Bold))
+        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cancelar.setStyleSheet("QPushButton { background: transparent; color: #9CA3AF; border: none; } QPushButton:hover { color: #DC2626; }")
+        btn_cancelar.clicked.connect(self.reject)
+
+        self.btn_buscar = QPushButton("BUSCAR")
+        self.btn_buscar.setFixedHeight(56)
+        self.btn_buscar.setFixedWidth(180)
+        self.btn_buscar.setFont(_f(13, QFont.Weight.Black))
+        self.btn_buscar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_buscar.setStyleSheet("""
+            QPushButton {
+                background-color: #17813D;
+                border: none;
+                border-radius: 16px;
+                color: #FFFFFF;
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover { background-color: #228E49; }
+        """)
+        self.btn_buscar.clicked.connect(self._buscar)
+
+        layout_footer.addWidget(btn_cancelar)
+        layout_footer.addStretch()
+        layout_footer.addWidget(self.btn_buscar)
+        layout_card.addLayout(layout_footer)
+
+        layout_fondo.addWidget(self.card)
+
+        self._cargar_productos_bd()
+
+    def _cargar_productos_bd(self):
+        if not self._conexion:
+            print("Error: El diálogo recibió una conexión vacía (None).")
+            return
+
+        try:
+            cursor = self._conexion.cursor()
+            cursor.execute("SELECT id_producto, nombre_producto FROM productos")
+            filas = cursor.fetchall()
+            nombres = []
+            for fila in filas:
+                if isinstance(fila, dict):
+                    nombre = str(fila.get("nombre_producto")).upper()
+                else:
+                    nombre = str(fila[1]).upper()
+                nombres.append(nombre)
+            cursor.close()
+
+            self.modelo_completer = QStringListModel(nombres)
+            self.completer = QCompleter(self.modelo_completer, self)
+            self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.txt_buscar.setCompleter(self.completer)
+
+        except Exception as e:
+            print(f"Error al cargar productos para autocompletado: {repr(e)}")
+
+    def _buscar(self):
+        self.texto_busqueda = self.txt_buscar.text().strip()
+        self.accept()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.parent():
+            pg = self.parent().geometry()
+            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
+                             self.parent().mapToGlobal(QPoint(0,0)).y(),
+                             pg.width(), pg.height())
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO DE COBRO (con datos del cliente opcionales)
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoCobro(QDialog):
+    def __init__(self, total, efectivo, cambio, empleado_id, productos, conexion, parent=None):
+        super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
+        
+        self.total = total
+        self.efectivo = efectivo
+        self.cambio = cambio
+        self.empleado_id = empleado_id
+        self.productos = productos
+        self.conexion = conexion
+        self.exito = False
+
+        layout_fondo = QVBoxLayout(self)
+        layout_fondo.setContentsMargins(0, 0, 0, 0)
+        layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.card = QFrame()
+        self.card.setObjectName("MainCard")
+        self.card.setFixedSize(600, 720)
+        self.card.setStyleSheet("""
+            QFrame#MainCard {
+                background-color: #FFFFFF;
+                border-radius: 28px;
+                border: 2px solid #D1E2D9;
+            }
+        """)
+        sombra = QGraphicsDropShadowEffect(self.card)
+        sombra.setBlurRadius(40)
+        sombra.setColor(QColor(0, 0, 0, 50))
+        sombra.setOffset(0, 10)
+        self.card.setGraphicsEffect(sombra)
+
+        layout_card = QVBoxLayout(self.card)
+        layout_card.setContentsMargins(40, 32, 40, 32)
+        layout_card.setSpacing(16)
+
+        def _f(size, weight):
+            font = QFont("Montserrat", size, weight)
+            font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+            return font
+
+        # HEADER
+        layout_header = QHBoxLayout()
+        lbl_titulo = QLabel("CONFIRMAR COBRO")
+        lbl_titulo.setFont(_f(18, QFont.Weight.Black))
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent; border: none;")
+
+        btn_cerrar = QPushButton("✕")
+        btn_cerrar.setFixedSize(36, 36)
+        btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cerrar.setFont(_f(12, QFont.Weight.Bold))
+        btn_cerrar.setStyleSheet("""
+            QPushButton {
+                background-color: #F4F7F5; border: none;
+                border-radius: 18px; color: #708077;
+            }
+            QPushButton:hover { background-color: #FDF2F2; color: #DC2626; }
+        """)
+        btn_cerrar.clicked.connect(self.reject)
+
+        layout_header.addWidget(lbl_titulo)
+        layout_header.addStretch()
+        layout_header.addWidget(btn_cerrar)
+        layout_card.addLayout(layout_header)
+
+        # RESUMEN DEL COBRO
+        resumen_frame = QFrame()
+        resumen_frame.setStyleSheet("""
+            QFrame {
+                background: #F8FAF9;
+                border-radius: 16px;
+                border: 1px solid #D1E2D9;
+                padding: 16px;
+            }
+        """)
+        resumen_layout = QVBoxLayout(resumen_frame)
+        resumen_layout.setSpacing(6)
+
+        lbl_total = QLabel(f"<b>TOTAL A PAGAR:</b> ${self.total:,.0f}")
+        lbl_total.setFont(_f(14, QFont.Weight.Bold))
+        lbl_total.setStyleSheet("color: #17813D;")
+        resumen_layout.addWidget(lbl_total)
+
+        lbl_efectivo = QLabel(f"<b>EFECTIVO ENTREGADO:</b> ${self.efectivo:,.0f}")
+        lbl_efectivo.setFont(_f(14, QFont.Weight.Bold))
+        lbl_efectivo.setStyleSheet("color: #1F2937;")
+        resumen_layout.addWidget(lbl_efectivo)
+
+        lbl_cambio = QLabel(f"<b>CAMBIO:</b> ${self.cambio:,.0f}")
+        lbl_cambio.setFont(_f(14, QFont.Weight.Bold))
+        lbl_cambio.setStyleSheet("color: #DC6468;")
+        resumen_layout.addWidget(lbl_cambio)
+
+        layout_card.addWidget(resumen_frame)
+
+        # DATOS DEL CLIENTE (OPCIONAL)
+        lbl_cliente = QLabel("DATOS DEL CLIENTE (OPCIONAL)")
+        lbl_cliente.setFont(_f(11, QFont.Weight.Black))
+        lbl_cliente.setStyleSheet("color: #708077; letter-spacing: 0.5px;")
+        layout_card.addWidget(lbl_cliente)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll_content = QWidget()
+        scroll_layout = QFormLayout(scroll_content)
+        scroll_layout.setSpacing(10)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+
+        estilo_input = """
+            QLineEdit {
+                background-color: #F8FAF9;
+                border: 2px solid #D1E2D9;
+                border-radius: 12px;
+                padding: 0 12px;
+                color: #1F2937;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                height: 40px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #17813D;
+                background-color: #FFFFFF;
+            }
+        """
+
+        self.txt_nombre = QLineEdit()
+        self.txt_nombre.setPlaceholderText("Nombre completo (opcional)")
+        self.txt_nombre.setStyleSheet(estilo_input)
+
+        self.txt_documento = QLineEdit()
+        self.txt_documento.setPlaceholderText("Documento de identidad (opcional)")
+        self.txt_documento.setStyleSheet(estilo_input)
+
+        self.txt_telefono = QLineEdit()
+        self.txt_telefono.setPlaceholderText("Teléfono (opcional)")
+        self.txt_telefono.setStyleSheet(estilo_input)
+
+        self.txt_email = QLineEdit()
+        self.txt_email.setPlaceholderText("Email (opcional)")
+        self.txt_email.setStyleSheet(estilo_input)
+
+        self.txt_direccion = QLineEdit()
+        self.txt_direccion.setPlaceholderText("Dirección (opcional)")
+        self.txt_direccion.setStyleSheet(estilo_input)
+
+        self.txt_ciudad = QLineEdit()
+        self.txt_ciudad.setPlaceholderText("Ciudad (opcional)")
+        self.txt_ciudad.setStyleSheet(estilo_input)
+
+        self.txt_departamento = QLineEdit()
+        self.txt_departamento.setPlaceholderText("Departamento (opcional)")
+        self.txt_departamento.setStyleSheet(estilo_input)
+
+        scroll_layout.addRow("Nombre:", self.txt_nombre)
+        scroll_layout.addRow("Documento:", self.txt_documento)
+        scroll_layout.addRow("Teléfono:", self.txt_telefono)
+        scroll_layout.addRow("Email:", self.txt_email)
+        scroll_layout.addRow("Dirección:", self.txt_direccion)
+        scroll_layout.addRow("Ciudad:", self.txt_ciudad)
+        scroll_layout.addRow("Departamento:", self.txt_departamento)
+
+        scroll.setWidget(scroll_content)
+        scroll.setMaximumHeight(320)
+        layout_card.addWidget(scroll)
+
+        # BOTONES
+        layout_botones = QHBoxLayout()
+        layout_botones.setSpacing(16)
+
+        btn_cancelar = QPushButton("CANCELAR")
+        btn_cancelar.setFont(_f(12, QFont.Weight.Bold))
+        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #9CA3AF;
+                border: none;
+            }
+            QPushButton:hover { color: #DC2626; }
+        """)
+        btn_cancelar.clicked.connect(self.reject)
+
+        self.btn_cobrar = QPushButton("COBRAR")
+        self.btn_cobrar.setFixedHeight(52)
+        self.btn_cobrar.setFont(_f(13, QFont.Weight.Black))
+        self.btn_cobrar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_cobrar.setStyleSheet("""
+            QPushButton {
+                background-color: #17813D;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 16px;
+                padding: 0 30px;
+            }
+            QPushButton:hover { background-color: #228E49; }
+        """)
+        self.btn_cobrar.clicked.connect(self._confirmar_cobro)
+
+        layout_botones.addStretch()
+        layout_botones.addWidget(btn_cancelar)
+        layout_botones.addWidget(self.btn_cobrar)
+
+        layout_card.addLayout(layout_botones)
+
+        layout_fondo.addWidget(self.card)
+
+    def _confirmar_cobro(self):
+        nombre = self.txt_nombre.text().strip() or None
+        documento = self.txt_documento.text().strip() or None
+        telefono = self.txt_telefono.text().strip() or None
+        email = self.txt_email.text().strip() or None
+        direccion = self.txt_direccion.text().strip() or None
+        ciudad = self.txt_ciudad.text().strip() or "Bogotá"
+        departamento = self.txt_departamento.text().strip() or "Cundinamarca"
+
+        id_cliente = None
+        if nombre or documento:
+            try:
+                cursor = self.conexion.cursor()
+                if documento:
+                    cursor.execute("SELECT id_cliente FROM clientes WHERE documento_identidad = %s", (documento,))
+                    row = cursor.fetchone()
+                    if row:
+                        id_cliente = row[0]
+                    else:
+                        cursor.execute("""
+                            INSERT INTO clientes
+                            (nombre_cliente, documento_identidad, telefono, email, direccion, ciudad, departamento)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (nombre, documento, telefono, email, direccion, ciudad, departamento))
+                        id_cliente = cursor.lastrowid
+                        self.conexion.commit()
+                else:
+                    cursor.execute("""
+                        INSERT INTO clientes
+                        (nombre_cliente, documento_identidad, telefono, email, direccion, ciudad, departamento)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (nombre, documento, telefono, email, direccion, ciudad, departamento))
+                    id_cliente = cursor.lastrowid
+                    self.conexion.commit()
+                cursor.close()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo guardar el cliente: {e}")
+                return
+
+        # Insertar factura
+        try:
+            cursor = self.conexion.cursor()
+            fecha_actual = datetime.now()
+            cursor.execute("""
+                INSERT INTO facturas (id_empleado, id_cliente, fecha_fac, total_fac)
+                VALUES (%s, %s, %s, %s)
+            """, (self.empleado_id, id_cliente, fecha_actual, self.total))
+            id_factura = cursor.lastrowid
+            self.conexion.commit()
+            cursor.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo guardar la factura: {e}")
+            return
+
+        # Insertar detalles y actualizar inventario
+        try:
+            cursor = self.conexion.cursor()
+            for producto in self.productos:
+                cursor.execute("SELECT precio_venta_prod FROM productos WHERE id_producto = %s", (producto["id"],))
+                row = cursor.fetchone()
+                precio_unitario = row[0] if row else producto.get("precio_unitario", 0)
+                cantidad = producto["cantidad"]
+                subtotal = cantidad * precio_unitario
+                cursor.execute("""
+                    INSERT INTO detalle_factura
+                    (id_factura, id_producto, cantidad_detfac, precio_unitario_detfac, subtotal_detfac)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (id_factura, producto["id"], cantidad, precio_unitario, subtotal))
+
+                cursor.execute("""
+                    UPDATE inventarios SET stock_actual = stock_actual - %s
+                    WHERE id_producto = %s
+                """, (cantidad, producto["id"]))
+
+                cursor.execute("""
+                    INSERT INTO movimientos
+                    (id_inventario, id_tipo_mov, id_empleado, id_factura, cantidad_movimiento)
+                    SELECT id_inventario, 2, %s, %s, %s
+                    FROM inventarios WHERE id_producto = %s
+                """, (self.empleado_id, id_factura, cantidad, producto["id"]))
+            self.conexion.commit()
+            cursor.close()
+        except Exception as e:
+            self.conexion.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo guardar el detalle de la factura: {e}")
+            return
+
+        self.exito = True
+        self.accept()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.parent():
+            pg = self.parent().geometry()
+            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
+                             self.parent().mapToGlobal(QPoint(0,0)).y(),
+                             pg.width(), pg.height())
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # VISTA PRINCIPAL DE CAJA
 # ══════════════════════════════════════════════════════════════════════════════
 class CajaVista(QWidget):
@@ -610,6 +1103,7 @@ class CajaVista(QWidget):
         self.controlador = controlador_flujo
         self.productos_venta = []
         self.total_actual = 0
+        self.filtro_actual = ""
 
         ruta_vistas = os.path.dirname(os.path.abspath(__file__))
         ruta_raiz = os.path.dirname(ruta_vistas)
@@ -674,9 +1168,6 @@ class CajaVista(QWidget):
         tab_on = "QPushButton { background:transparent; color:#17813D; font-family:'Montserrat'; font-size:11px; font-weight:900; border:none; border-bottom:3px solid #17813D; padding:0 30px; height:68px; }"
         tab_off = "QPushButton { background:transparent; color:#9CA3AF; font-family:'Montserrat'; font-size:11px; font-weight:800; border:none; border-bottom:3px solid transparent; padding:0 24px; height:68px; } QPushButton:hover { color:#17813D; }"
 
-        # ============================================================
-        # CREACIÓN DE BOTONES DE NAVEGACIÓN CON SUS CONEXIONES
-        # ============================================================
         self.btn_caja = QPushButton("CAJA")
         self.btn_caja.setStyleSheet(tab_on)
         self.btn_caja.setFont(self.fuente_nav)
@@ -755,17 +1246,16 @@ class CajaVista(QWidget):
         layout_navbar.addLayout(layout_usuario)
         layout_contenedor.addWidget(navbar)
 
-        # ── STACKED WIDGET (CONTENIDO DINÁMICO) ──
+        # ── STACKED WIDGET ──
         self.stack_central = QStackedWidget()
         layout_contenedor.addWidget(self.stack_central)
 
-        # 1. Pantalla CAJA (contenido original)
+        # 1. Pantalla CAJA
         self.pantalla_caja = QFrame()
         layout_caja_contenido = QVBoxLayout(self.pantalla_caja)
         layout_caja_contenido.setContentsMargins(0, 0, 0, 0)
         layout_caja_contenido.setSpacing(0)
-        
-        # CUERPO DE CAJA (extraído del código original)
+
         cuerpo = QHBoxLayout()
         cuerpo.setContentsMargins(0, 0, 0, 0)
         cuerpo.setSpacing(0)
@@ -774,7 +1264,7 @@ class CajaVista(QWidget):
         panel_cobros.setObjectName("PanelCobros")
         panel_cobros.setFixedWidth(268)
         panel_cobros.setStyleSheet("QFrame#PanelCobros { background:#FAFCFB; border:none; border-right:1px solid #EEF0F2; }")
-        
+
         layout_panel = QVBoxLayout(panel_cobros)
         layout_panel.setContentsMargins(18, 18, 18, 18)
         layout_panel.setSpacing(14)
@@ -899,7 +1389,7 @@ class CajaVista(QWidget):
         cuerpo.addWidget(area_tabla)
         layout_caja_contenido.addLayout(cuerpo, 1)
 
-        # ── BARRA INFERIOR DE CAJA ──
+        # ── BARRA INFERIOR ──
         barra_inferior = QFrame()
         barra_inferior.setFixedHeight(92)
         barra_inferior.setStyleSheet("""
@@ -937,16 +1427,27 @@ class CajaVista(QWidget):
                 b.setStyleSheet("QPushButton { background:#FFFFFF; color:#9CA3AF; border:2px solid #EEEFF2; border-radius:16px; font-family:'Montserrat'; font-size:11px; font-weight:900; } QPushButton:hover { color:#17813D; border-color:#A9DDBC; }")
             return b
 
-        self.btn_agregar = _btn_sec("BUSCAR Y AGREGAR", 190, destacado=True)
-        self.btn_eliminar = _btn_sec("ELIMINAR", 128)
+        self.btn_agregar = _btn_sec("AGREGAR", 140, destacado=True)
+        self.btn_eliminar = _btn_sec("ELIMINAR", 140)
+        self.btn_modificar = _btn_sec("MODIFICAR", 140)
+        self.btn_buscar = _btn_sec("BUSCAR", 140)
 
         self.btn_agregar.clicked.connect(self.abrir_buscador_agregar)
         self.btn_eliminar.clicked.connect(self.abrir_eliminar)
+        self.btn_modificar.clicked.connect(self.abrir_modificar)
+        self.btn_buscar.clicked.connect(self.abrir_buscar)
+
+        self.btn_eliminar.setEnabled(False)
+        self.btn_modificar.setEnabled(False)
+
+        self.tabla_productos.itemSelectionChanged.connect(self.actualizar_estado_botones)
 
         layout_bsec = QHBoxLayout()
-        layout_bsec.setSpacing(12)
+        layout_bsec.setSpacing(10)
         layout_bsec.addWidget(self.btn_agregar)
         layout_bsec.addWidget(self.btn_eliminar)
+        layout_bsec.addWidget(self.btn_modificar)
+        layout_bsec.addWidget(self.btn_buscar)
 
         layout_inferior.addWidget(self.btn_cobrar)
         layout_inferior.addStretch()
@@ -954,7 +1455,6 @@ class CajaVista(QWidget):
 
         layout_caja_contenido.addWidget(barra_inferior)
 
-        # Agregar pantalla de caja al stack
         self.stack_central.addWidget(self.pantalla_caja)
 
         # 2. Pantalla FACTURA ELECTRÓNICA
@@ -970,50 +1470,41 @@ class CajaVista(QWidget):
         self.pantalla_recibo = ReciboProveedoresVista(conexion=conexion_db)
         self.stack_central.addWidget(self.pantalla_recibo)
 
-        # ============================================================
-        # CONEXIONES DE LOS BOTONES DE NAVEGACIÓN
-        # ============================================================
         self.btn_caja.clicked.connect(lambda: self.cambiar_pestana(0))
         self.btn_factura.clicked.connect(lambda: self.cambiar_pestana(1))
         self.btn_devoluciones.clicked.connect(lambda: self.cambiar_pestana(2))
         self.btn_recibo.clicked.connect(lambda: self.cambiar_pestana(3))
 
-        # Establecer la pantalla inicial (Caja)
         self.stack_central.setCurrentIndex(0)
 
         layout_principal.addWidget(self.contenedor_blanco)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # MÉTODO PARA CAMBIAR DE PESTAÑA Y ACTUALIZAR ESTILOS
-    # ══════════════════════════════════════════════════════════════════════════
+    # ── MÉTODOS DE NAVEGACIÓN ──
     def cambiar_pestana(self, indice):
-        """Cambia la pestaña activa y actualiza los estilos de los botones."""
         self.stack_central.setCurrentIndex(indice)
-        
-        # Estilos para cada botón
         tab_on = "QPushButton { background:transparent; color:#17813D; font-family:'Montserrat'; font-size:11px; font-weight:900; border:none; border-bottom:3px solid #17813D; padding:0 30px; height:68px; }"
         tab_off = "QPushButton { background:transparent; color:#9CA3AF; font-family:'Montserrat'; font-size:11px; font-weight:800; border:none; border-bottom:3px solid transparent; padding:0 24px; height:68px; } QPushButton:hover { color:#17813D; }"
-        
         self.btn_caja.setStyleSheet(tab_on if indice == 0 else tab_off)
         self.btn_factura.setStyleSheet(tab_on if indice == 1 else tab_off)
         self.btn_devoluciones.setStyleSheet(tab_on if indice == 2 else tab_off)
         self.btn_recibo.setStyleSheet(tab_on if indice == 3 else tab_off)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # ACCIONES
-    # ══════════════════════════════════════════════════════════════════════════
+    def actualizar_estado_botones(self):
+        fila_seleccionada = self.tabla_productos.currentRow() >= 0
+        self.btn_eliminar.setEnabled(fila_seleccionada and len(self.productos_venta) > 0)
+        self.btn_modificar.setEnabled(fila_seleccionada and len(self.productos_venta) > 0)
+
+    # ── ACCIONES ──
     def abrir_buscador_agregar(self):
         conexion_bd = getattr(self.controlador, "conexion", None)
         if conexion_bd is None:
-            QMessageBox.critical(self, "Error de Conexión", 
-                                 "No se encontró la conexión a la base de datos.")
+            QMessageBox.critical(self, "Error de Conexión", "No se encontró la conexión a la base de datos.")
             return
-        
         dlg = DialogoAgregarFactura(conexion_bd, self)
         if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
             self.productos_venta.append(dlg.resultado)
             self.renderizar_tabla()
-        
+
     def abrir_eliminar(self):
         dlg = DialogoEliminar(self.productos_venta, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -1022,6 +1513,128 @@ class CajaVista(QWidget):
                 self.productos_venta.pop(idx)
                 self.renderizar_tabla()
 
+    def abrir_modificar(self):
+        if not self.productos_venta:
+            return
+        dlg = DialogoModificar(self.productos_venta, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
+            idx = dlg.resultado["indice"]
+            nueva_cantidad = dlg.resultado["cantidad"]
+            nuevo_precio = dlg.resultado["precio"]
+            if 0 <= idx < len(self.productos_venta):
+                producto = self.productos_venta[idx]
+                producto["cantidad"] = nueva_cantidad
+                if nuevo_precio is not None:
+                    producto["precio_unitario"] = nuevo_precio
+                peso = producto.get("peso", 0)
+                precio_unit = producto["precio_unitario"]
+                total = (precio_unit * nueva_cantidad) + (precio_unit * (peso / 1000.0))
+                producto["precio_total"] = int(total)
+                self.renderizar_tabla()
+
+    def abrir_buscar(self):
+        conexion_bd = getattr(self.controlador, "conexion", None)
+        dlg = DialogoBuscar(conexion=conexion_bd, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.filtro_actual = dlg.texto_busqueda
+            self.aplicar_filtro()
+
+    def aplicar_filtro(self):
+        texto = self.filtro_actual.strip().lower()
+        for fila in range(self.tabla_productos.rowCount()):
+            mostrar = False
+            if not texto:
+                mostrar = True
+            else:
+                item_id = self.tabla_productos.item(fila, 0)
+                item_nom = self.tabla_productos.item(fila, 1)
+                if item_id and texto in item_id.text().lower():
+                    mostrar = True
+                elif item_nom and texto in item_nom.text().lower():
+                    mostrar = True
+            self.tabla_productos.setRowHidden(fila, not mostrar)
+
+    # ── EJECUTAR COBRO (CORREGIDO DEFINITIVAMENTE) ──
+    def ejecutar_cobro(self):
+        try:
+            texto = self.txt_efectivo.text().replace(".", "").replace(",", "")
+            efectivo = int(texto) if texto else 0
+        except ValueError:
+            efectivo = 0
+
+        if self.total_actual == 0:
+            QMessageBox.warning(self, "Cobro", "No hay productos en la lista.")
+            return
+        if efectivo < self.total_actual:
+            QMessageBox.warning(self, "Cobro", "El efectivo ingresado es insuficiente.")
+            return
+
+        cambio = efectivo - self.total_actual
+
+        # ── OBTENER ID_EMPLEADO ──
+        empleado_id = None
+        if hasattr(self.controlador, "usuario_actual") and self.controlador.usuario_actual:
+            usuario = self.controlador.usuario_actual
+            # Intentar con id_empleado directo
+            empleado_id = usuario.get("id_empleado")
+            if not empleado_id and self.controlador.conexion:
+                # Buscar por id_usuario (más fiable)
+                id_usuario = usuario.get("id_usuario")
+                if id_usuario:
+                    try:
+                        cursor = self.controlador.conexion.cursor()
+                        cursor.execute("SELECT id_empleado FROM usuarios WHERE id_usuario = %s", (id_usuario,))
+                        row = cursor.fetchone()
+                        if row:
+                            empleado_id = row[0]
+                        cursor.close()
+                    except Exception as e:
+                        print(f"Error al consultar id_empleado: {e}")
+                # Si aún no, buscar por username_log
+                if not empleado_id:
+                    username = usuario.get("username_log")
+                    if username:
+                        try:
+                            cursor = self.controlador.conexion.cursor()
+                            cursor.execute("""
+                                SELECT e.id_empleado FROM empleados e
+                                JOIN usuarios u ON u.id_empleado = e.id_empleado
+                                WHERE u.username_log = %s
+                            """, (username,))
+                            row = cursor.fetchone()
+                            if row:
+                                empleado_id = row[0]
+                            cursor.close()
+                        except Exception as e:
+                            print(f"Error al consultar por username: {e}")
+
+        if not empleado_id:
+            QMessageBox.critical(
+                self,
+                "Error",
+                "No se pudo identificar al empleado.\n"
+                "Asegúrate de haber iniciado sesión correctamente.\n"
+                "Contacta al administrador si el problema persiste."
+            )
+            return
+
+        # Mostrar diálogo de cobro
+        dlg = DialogoCobro(
+            self.total_actual, efectivo, cambio, empleado_id,
+            self.productos_venta, self.controlador.conexion, self
+        )
+
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.exito:
+            self.productos_venta = []
+            self.txt_efectivo.clear()
+            self.filtro_actual = ""
+            self.renderizar_tabla()
+            QMessageBox.information(
+                self, "Éxito",
+                f"Venta registrada correctamente.\nTotal: ${self.total_actual:,.0f}\nCambio: ${cambio:,.0f}"
+            )
+
+    # ── MÉTODOS DE USUARIO Y RENDERIZADO ──
     def actualizar_usuario(self, nombre, rol):
         nombre_display = str(nombre).strip().title()
         rol_display = str(rol).strip().upper()
@@ -1061,9 +1674,11 @@ class CajaVista(QWidget):
             it_nom.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
 
             txt_detalle = []
-            if p["cantidad"] > 0: txt_detalle.append(f"{p['cantidad']} und")
-            if p["peso"] > 0: txt_detalle.append(f"{p['peso']} g")
-            
+            if p["cantidad"] > 0:
+                txt_detalle.append(f"{p['cantidad']} und")
+            if p["peso"] > 0:
+                txt_detalle.append(f"{p['peso']} g")
+
             it_cant = QTableWidgetItem(" / ".join(txt_detalle))
             it_cant.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
             it_cant.setFont(_item_font())
@@ -1088,6 +1703,8 @@ class CajaVista(QWidget):
             self.table_stack.setCurrentWidget(self.lbl_estado_tabla)
             self.lbl_estado_tabla.raise_()
 
+        self.aplicar_filtro()
+        self.actualizar_estado_botones()
         self.actualizar_cambio()
 
     def actualizar_cambio(self):
@@ -1098,26 +1715,6 @@ class CajaVista(QWidget):
             efectivo = 0
         cambio = efectivo - self.total_actual
         self.lbl_display_cambio.setText("${:,}".format(cambio) if cambio > 0 else "$0")
-
-    def ejecutar_cobro(self):
-        try:
-            texto = self.txt_efectivo.text().replace(".", "").replace(",", "")
-            efectivo = int(texto) if texto else 0
-        except ValueError:
-            efectivo = 0
-        if self.total_actual == 0:
-            QMessageBox.warning(self, "Cobro", "No hay productos en la lista.")
-            return
-        if efectivo < self.total_actual:
-            QMessageBox.warning(self, "Cobro", "El efectivo ingresado es insuficiente.")
-            return
-        cambio = efectivo - self.total_actual
-        QMessageBox.information(
-            self, "Éxito", f"COBRO EXITOSO\n\nTotal: ${self.total_actual:,}\nCambio: ${cambio:,}"
-        )
-        self.productos_venta = []
-        self.txt_efectivo.clear()
-        self.renderizar_tabla()
 
     def cerrar_sesion(self):
         resp = QMessageBox.question(
