@@ -19,23 +19,26 @@ class FacturaElectronicaVista(QWidget):
         self.cargar_datos()
 
     def init_ui(self):
+        # Layout principal con márgenes internos
         layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(0, 0, 0, 0)
+        layout_principal.setContentsMargins(20, 0, 20, 0)  # <-- margen izquierdo y derecho
         layout_principal.setSpacing(20)
 
+        # ENCABEZADO SUPERIOR (con padding izquierdo)
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(0, 0, 0, 10)
+        header_layout.setContentsMargins(10, 0, 0, 10)  # <-- margen izquierdo
 
         lbl_titulo = QLabel("FACTURA ELECTRÓNICA")
         lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Weight.Black))
-        lbl_titulo.setStyleSheet("color: #1B4314;")
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")  # <-- verde corporativo
         
         lbl_subtitulo = QLabel("Gestione sus facturas electrónicas de manera rápida y segura.")
         lbl_subtitulo.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
-        lbl_subtitulo.setStyleSheet("color: #64748B;")
+        lbl_subtitulo.setStyleSheet("color: #64748B; background: transparent;")
         
         titulos_layout = QVBoxLayout()
+        titulos_layout.setSpacing(2)
         titulos_layout.addWidget(lbl_titulo)
         titulos_layout.addWidget(lbl_subtitulo)
         
@@ -43,6 +46,7 @@ class FacturaElectronicaVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
+        # CONTENEDOR PRINCIPAL BLANCO (sin cambios)
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -63,6 +67,7 @@ class FacturaElectronicaVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
+        # Filtros y búsqueda (sin cambios)
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(15)
 
@@ -134,6 +139,7 @@ class FacturaElectronicaVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
+        # Tabla de facturas (sin cambios)
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Factura", "Cliente", "Fecha", "Total", "Estado", "Acciones"
@@ -174,8 +180,6 @@ class FacturaElectronicaVista(QWidget):
 
     def cargar_datos(self):
         self.tabla.setRowCount(0)
-        
-        # Datos de prueba (mock) en caso de que la consulta falle
         datos_mock = [
             ("FAC-001", "Supermercado El Éxito", "2026-06-21", "$1,250,000", "Pagada", "Ver | PDF"),
             ("FAC-002", "Distribuidora La 14", "2026-06-20", "$850,000", "Pendiente", "Ver | PDF"),
@@ -215,7 +219,6 @@ class FacturaElectronicaVista(QWidget):
             except Exception as e:
                 print(f"Error cargando facturas: {e}")
         
-        # Si no hay conexión o falla, usar datos mock
         self.llenar_tabla(datos_mock)
 
     def llenar_tabla(self, datos):

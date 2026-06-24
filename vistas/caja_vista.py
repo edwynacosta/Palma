@@ -1119,9 +1119,10 @@ class CajaVista(QWidget):
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        self.fuente_heavy = _f(34, QFont.Weight.Bold)
+        # Fuentes más grandes para los valores
+        self.fuente_heavy = _f(44, QFont.Weight.Bold)
         self.fuente_titulos = _f(22, QFont.Weight.Black)
-        self.fuente_tags = _f(9, QFont.Weight.Bold)
+        self.fuente_tags = _f(10, QFont.Weight.Bold)
         self.fuente_nav = _f(11, QFont.Weight.Black)
         self.fuente_btns = _f(11, QFont.Weight.Black)
 
@@ -1260,17 +1261,19 @@ class CajaVista(QWidget):
         cuerpo.setContentsMargins(0, 0, 0, 0)
         cuerpo.setSpacing(0)
 
+        # ── PANEL LATERAL ──
         panel_cobros = QFrame()
         panel_cobros.setObjectName("PanelCobros")
-        panel_cobros.setFixedWidth(268)
+        panel_cobros.setFixedWidth(320)
         panel_cobros.setStyleSheet("QFrame#PanelCobros { background:#FAFCFB; border:none; border-right:1px solid #EEF0F2; }")
 
         layout_panel = QVBoxLayout(panel_cobros)
-        layout_panel.setContentsMargins(18, 18, 18, 18)
-        layout_panel.setSpacing(14)
+        layout_panel.setContentsMargins(20, 20, 20, 20)
+        layout_panel.setSpacing(18)
 
+        # TOTAL
         card_total = QFrame()
-        card_total.setFixedHeight(112)
+        card_total.setFixedHeight(150)
         card_total.setStyleSheet("QFrame { background:#17813D; border:none; border-radius:22px; }")
         st = QGraphicsDropShadowEffect(self)
         st.setBlurRadius(14)
@@ -1278,7 +1281,7 @@ class CajaVista(QWidget):
         st.setOffset(0, 6)
         card_total.setGraphicsEffect(st)
         lct = QVBoxLayout(card_total)
-        lct.setContentsMargins(20, 16, 20, 14)
+        lct.setContentsMargins(24, 18, 24, 18)
         lct.setSpacing(2)
         lbl_tt = QLabel("TOTAL A PAGAR:")
         lbl_tt.setFont(self.fuente_tags)
@@ -1289,36 +1292,53 @@ class CajaVista(QWidget):
         lct.addWidget(lbl_tt)
         lct.addWidget(self.lbl_display_total)
 
+        # ── EFECTIVO (corregido: sin placeholder, texto limpio) ──
         card_efectivo = QFrame()
-        card_efectivo.setFixedHeight(108)
+        card_efectivo.setFixedHeight(140)
         card_efectivo.setStyleSheet("QFrame { background:#FFFFFF; border:2px solid #A9DDBC; border-radius:22px; }")
         lce = QVBoxLayout(card_efectivo)
-        lce.setContentsMargins(20, 16, 20, 10)
+        lce.setContentsMargins(24, 18, 24, 12)
         lce.setSpacing(2)
         lbl_te = QLabel("EFECTIVO:")
         lbl_te.setFont(self.fuente_tags)
         lbl_te.setStyleSheet("color:#17813D; background:transparent;")
         self.txt_efectivo = QLineEdit()
-        self.txt_efectivo.setPlaceholderText("0")
+        self.txt_efectivo.setPlaceholderText("")  # ← Eliminado el placeholder para evitar superposición
         self.txt_efectivo.setFont(self.fuente_heavy)
-        self.txt_efectivo.setFixedHeight(48)
-        self.txt_efectivo.setStyleSheet("QLineEdit { color:#9CA3AF; background:transparent; border:none; padding:0; }")
+        self.txt_efectivo.setFixedHeight(54)
+        self.txt_efectivo.setStyleSheet("""
+            QLineEdit {
+                color: #1F2937;
+                background: transparent;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+        """)
         self.txt_efectivo.textChanged.connect(self.actualizar_cambio)
         lce.addWidget(lbl_te)
         lce.addWidget(self.txt_efectivo)
 
+        # ── CAMBIO (corregido: sin márgenes) ──
         card_cambio = QFrame()
-        card_cambio.setFixedHeight(108)
+        card_cambio.setFixedHeight(140)
         card_cambio.setStyleSheet("QFrame { background:#FDEEEF; border:2px solid #F8CBCD; border-radius:22px; }")
         lcc = QVBoxLayout(card_cambio)
-        lcc.setContentsMargins(20, 16, 20, 10)
+        lcc.setContentsMargins(24, 18, 24, 12)
         lcc.setSpacing(2)
         lbl_tc = QLabel("CAMBIO:")
         lbl_tc.setFont(self.fuente_tags)
         lbl_tc.setStyleSheet("color:#DC6468; background:transparent;")
         self.lbl_display_cambio = QLabel("$0")
         self.lbl_display_cambio.setFont(self.fuente_heavy)
-        self.lbl_display_cambio.setStyleSheet("color:#DC6468; background:transparent;")
+        self.lbl_display_cambio.setStyleSheet("""
+            QLabel {
+                color: #DC6468;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+        """)
         lcc.addWidget(lbl_tc)
         lcc.addWidget(self.lbl_display_cambio)
 
@@ -1327,6 +1347,7 @@ class CajaVista(QWidget):
         layout_panel.addStretch()
         layout_panel.addWidget(card_cambio)
 
+        # ── ÁREA DE TABLA ──
         area_tabla = QFrame()
         area_tabla.setStyleSheet("QFrame { border:none; background:transparent; }")
         layout_area = QVBoxLayout(area_tabla)
@@ -1391,7 +1412,7 @@ class CajaVista(QWidget):
 
         # ── BARRA INFERIOR ──
         barra_inferior = QFrame()
-        barra_inferior.setFixedHeight(92)
+        barra_inferior.setFixedHeight(100)
         barra_inferior.setStyleSheet("""
             QFrame { 
                 border: none; border-top: 1px solid #EEF0F2; background: #FFFFFF; 
@@ -1399,14 +1420,14 @@ class CajaVista(QWidget):
             }
         """)
         layout_inferior = QHBoxLayout(barra_inferior)
-        layout_inferior.setContentsMargins(24, 0, 24, 0)
+        layout_inferior.setContentsMargins(28, 0, 28, 0)
 
         self.btn_cobrar = QPushButton("COBRAR")
-        self.btn_cobrar.setFixedSize(195, 56)
-        self.btn_cobrar.setFont(_f(13, QFont.Weight.Black))
+        self.btn_cobrar.setFixedSize(240, 64)
+        self.btn_cobrar.setFont(_f(15, QFont.Weight.Black))
         self.btn_cobrar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cobrar.setStyleSheet("""
-            QPushButton { background:#17813D; color:#FFFFFF; border:none; border-radius:16px; letter-spacing:1px; }
+            QPushButton { background:#17813D; color:#FFFFFF; border:none; border-radius:18px; letter-spacing:1px; }
             QPushButton:hover { background:#228E49; }
         """)
         sc = QGraphicsDropShadowEffect(self)
@@ -1418,7 +1439,7 @@ class CajaVista(QWidget):
 
         def _btn_sec(texto, ancho, destacado=False):
             b = QPushButton(texto)
-            b.setFixedSize(ancho, 50)
+            b.setFixedSize(ancho, 52)
             b.setFont(self.fuente_btns)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             if destacado:
@@ -1427,10 +1448,10 @@ class CajaVista(QWidget):
                 b.setStyleSheet("QPushButton { background:#FFFFFF; color:#9CA3AF; border:2px solid #EEEFF2; border-radius:16px; font-family:'Montserrat'; font-size:11px; font-weight:900; } QPushButton:hover { color:#17813D; border-color:#A9DDBC; }")
             return b
 
-        self.btn_agregar = _btn_sec("AGREGAR", 140, destacado=True)
-        self.btn_eliminar = _btn_sec("ELIMINAR", 140)
-        self.btn_modificar = _btn_sec("MODIFICAR", 140)
-        self.btn_buscar = _btn_sec("BUSCAR", 140)
+        self.btn_agregar = _btn_sec("AGREGAR", 150, destacado=True)
+        self.btn_eliminar = _btn_sec("ELIMINAR", 150)
+        self.btn_modificar = _btn_sec("MODIFICAR", 150)
+        self.btn_buscar = _btn_sec("BUSCAR", 150)
 
         self.btn_agregar.clicked.connect(self.abrir_buscador_agregar)
         self.btn_eliminar.clicked.connect(self.abrir_eliminar)
@@ -1443,7 +1464,7 @@ class CajaVista(QWidget):
         self.tabla_productos.itemSelectionChanged.connect(self.actualizar_estado_botones)
 
         layout_bsec = QHBoxLayout()
-        layout_bsec.setSpacing(10)
+        layout_bsec.setSpacing(12)
         layout_bsec.addWidget(self.btn_agregar)
         layout_bsec.addWidget(self.btn_eliminar)
         layout_bsec.addWidget(self.btn_modificar)
@@ -1554,7 +1575,7 @@ class CajaVista(QWidget):
                     mostrar = True
             self.tabla_productos.setRowHidden(fila, not mostrar)
 
-    # ── EJECUTAR COBRO (CORREGIDO DEFINITIVAMENTE) ──
+    # ── EJECUTAR COBRO ──
     def ejecutar_cobro(self):
         try:
             texto = self.txt_efectivo.text().replace(".", "").replace(",", "")

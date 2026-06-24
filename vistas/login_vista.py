@@ -183,40 +183,37 @@ class LoginVista(QWidget):
         password = self.txt_password.text().strip()
         try:
             with self.controlador.conexion.cursor() as cursor:
-                # Traemos username_log (nombre real) e id_rol (1=admin, 2=cajero)
+                # Traemos id_usuario, username_log, id_rol y también id_empleado
                 sql = """
-                    SELECT id_usuario, username_log, id_rol
-                    FROM usuarios
-                    WHERE username_log = %s AND contrasena_log = %s
+                    SELECT u.id_usuario, u.username_log, u.id_rol, u.id_empleado
+                    FROM usuarios u
+                    WHERE u.username_log = %s AND u.contrasena_log = %s
                 """
                 cursor.execute(sql, (usuario, password))
                 fila = cursor.fetchone()
 
                 if fila:
-                    # Compatible con cursor dict (DictCursor) y cursor tupla
                     if isinstance(fila, dict):
                         id_usuario   = fila["id_usuario"]
                         username_log = fila["username_log"]
                         id_rol       = fila["id_rol"]
+                        id_empleado  = fila.get("id_empleado")
                     else:
-                        id_usuario, username_log, id_rol = fila
+                        id_usuario, username_log, id_rol, id_empleado = fila
 
-                    # Texto del rol según id_rol numérico
                     id_rol_int = int(id_rol)
                     rol_texto  = "administrador" if id_rol_int == 1 else "cajero"
 
-                    # Diccionario limpio que viaja por toda la app
                     datos_sesion = {
                         "id_usuario"  : id_usuario,
-                        "username_log": username_log,   # nombre real del usuario
-                        "nombre"      : username_log,   # alias para los dashboards
-                        "rol"         : rol_texto,      # "administrador" | "cajero"
-                        "id_rol"      : id_rol_int,     # 1 | 2  (entero)
+                        "username_log": username_log,
+                        "nombre"      : username_log,
+                        "rol"         : rol_texto,
+                        "id_rol"      : id_rol_int,
+                        "id_empleado" : id_empleado,   # <--- AGREGADO
                     }
 
-                    # Siempre pedimos AdminDashboard; el router redirige a cajero si id_rol==2
                     self.controlador.cambiar_pantalla("AdminDashboard", datos_usuario=datos_sesion)
-
                 else:
                     QMessageBox.warning(self, "Acceso", "Usuario o contraseña incorrectos.")
 
