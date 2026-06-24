@@ -11,7 +11,7 @@ from vistas.admin_vista import AdminDashboardQt
 from vistas.caja_vista import CajaVista
 from vistas.cajero_vista import CajeroDashboardQt
 from vistas.facturaelectronica_vista import FacturaElectronicaVista
-from vistas.ReciboProveedores_vista import ReciboProveedoresVista
+from vistas.reciboproveedores_vista import ReciboProveedoresVista
 from vistas.inventario_vista import InventarioVista
 from vistas.proveedor_vista import ProveedoresVista
 from vistas.finanzas_vista import FinanzasVista

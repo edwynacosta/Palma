@@ -18,22 +18,23 @@ class ReciboProveedoresVista(QWidget):
 
     def init_ui(self):
         layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(0, 0, 0, 0)
+        layout_principal.setContentsMargins(20, 0, 20, 0)
         layout_principal.setSpacing(20)
 
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(0, 0, 0, 10)
+        header_layout.setContentsMargins(10, 0, 0, 10)
 
         lbl_titulo = QLabel("RECEPCIÓN DE PROVEEDORES")
         lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Weight.Black))
-        lbl_titulo.setStyleSheet("color: #1B4314;")
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
         
         lbl_subtitulo = QLabel("Gestione las entradas de mercancía y el inventario.")
         lbl_subtitulo.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
-        lbl_subtitulo.setStyleSheet("color: #64748B;")
+        lbl_subtitulo.setStyleSheet("color: #64748B; background: transparent;")
         
         titulos_layout = QVBoxLayout()
+        titulos_layout.setSpacing(2)
         titulos_layout.addWidget(lbl_titulo)
         titulos_layout.addWidget(lbl_subtitulo)
         
@@ -110,42 +111,76 @@ class ReciboProveedoresVista(QWidget):
 
         self.tabla = QTableWidget(0, 5)
         self.tabla.setHorizontalHeaderLabels(["ID", "Proveedor", "Producto Suministrado", "Última Entrega", "Estado"])
-        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        
+        self.tabla.setShowGrid(False)
+        self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.tabla.setShowGrid(False)
+        self.tabla.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        
+        self.tabla.verticalHeader().setVisible(False)
+        self.tabla.verticalHeader().setDefaultSectionSize(45)
+        self.tabla.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        
         self.tabla.setStyleSheet("""
             QTableWidget {
                 background-color: transparent;
                 border: none;
+                outline: none;
                 font-family: 'Montserrat';
                 font-size: 13px;
                 color: #1B4314;
-            }
-            QHeaderView::section {
-                background-color: #E2E8F0;
-                color: #64748B;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                padding: 12px;
+                gridline-color: transparent;
             }
             QTableWidget::item {
                 border-bottom: 1px solid #E2E8F0;
-                padding: 10px;
+                padding: 8px 12px;
+                background: transparent;
             }
             QTableWidget::item:selected {
                 background-color: #ECFDF5;
                 color: #008F39;
             }
+            QTableWidget::item:hover {
+                background-color: #F8FAFC;
+            }
+            QHeaderView::section {
+                background-color: #F1F5F9;
+                color: #64748B;
+                font-weight: 800;
+                font-size: 12px;
+                border: none;
+                padding: 12px 8px;
+                font-family: 'Montserrat';
+            }
+            QTableWidget QTableCornerButton::section {
+                background: transparent;
+                border: none;
+            }
         """)
+        
+        header = self.tabla.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        self.tabla.setColumnWidth(0, 100)
+        self.tabla.setColumnWidth(1, 280)
+        self.tabla.setColumnWidth(2, 280)
+        self.tabla.setColumnWidth(3, 150)
+        self.tabla.setColumnWidth(4, 120)
+        
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         
         layout_tarjeta.addWidget(self.tabla)
         layout_principal.addWidget(tarjeta_principal)
 
     def cargar_datos(self):
         self.tabla.setRowCount(0)
-        
         datos_mock = [
             ("PRV-001", "DistriHortalizas La Granja", "Tomate, Cebolla, Papa", "2026-06-20", "Activo"),
             ("PRV-002", "Frutas del Valle SAS", "Manzana, Pera, Uva", "2026-06-18", "Activo"),
@@ -155,7 +190,6 @@ class ReciboProveedoresVista(QWidget):
         if self.conexion:
             try:
                 cursor = self.conexion.cursor()
-                # Consulta con columnas reales de la tabla proveedores
                 query = """
                     SELECT id_proveedor, nombre_empresa, ciudad, telefono_principal, nit
                     FROM proveedores
@@ -166,9 +200,8 @@ class ReciboProveedoresVista(QWidget):
                 if resultados:
                     datos = []
                     for row in resultados:
-                        # Simulamos productos y fecha
-                        productos = "Varios"  # Podrías obtener de otra tabla
-                        fecha = "2026-06-22"  # Mock
+                        productos = "Varios"
+                        fecha = "2026-06-22"
                         estado = "Activo" if row[4] else "Pendiente"
                         datos.append((
                             f"PRV-{row[0]}",
@@ -191,8 +224,11 @@ class ReciboProveedoresVista(QWidget):
         for fila_idx, row_data in enumerate(datos):
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
                 self.tabla.setItem(fila_idx, col_idx, item)
+        
+        for fila in range(self.tabla.rowCount()):
+            self.tabla.setRowHeight(fila, 45)
 
     def filtrar_tabla(self, texto):
         texto = texto.lower()

@@ -19,22 +19,23 @@ class DevolucionesVista(QWidget):
 
     def init_ui(self):
         layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(0, 0, 0, 0)
+        layout_principal.setContentsMargins(20, 0, 20, 0)
         layout_principal.setSpacing(20)
 
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(0, 0, 0, 10)
+        header_layout.setContentsMargins(10, 0, 0, 10)
 
         lbl_titulo = QLabel("DEVOLUCIONES")
         lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Weight.Black))
-        lbl_titulo.setStyleSheet("color: #1B4314;")
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
         
         lbl_subtitulo = QLabel("Gestione las devoluciones de productos y reembolsos.")
         lbl_subtitulo.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
-        lbl_subtitulo.setStyleSheet("color: #64748B;")
+        lbl_subtitulo.setStyleSheet("color: #64748B; background: transparent;")
         
         titulos_layout = QVBoxLayout()
+        titulos_layout.setSpacing(2)
         titulos_layout.addWidget(lbl_titulo)
         titulos_layout.addWidget(lbl_subtitulo)
         
@@ -133,55 +134,89 @@ class DevolucionesVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
+        # TABLA DE DEVOLUCIONES (corregida)
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Devolución", "Cliente", "Fecha", "Productos", "Estado", "Acciones"
         ])
-        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        
+        self.tabla.setShowGrid(False)
+        self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.tabla.setShowGrid(False)
+        self.tabla.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        
+        self.tabla.verticalHeader().setVisible(False)
+        self.tabla.verticalHeader().setDefaultSectionSize(45)
+        self.tabla.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        
         self.tabla.setStyleSheet("""
             QTableWidget {
                 background-color: transparent;
                 border: none;
+                outline: none;
                 font-family: 'Montserrat';
                 font-size: 13px;
                 color: #1B4314;
-            }
-            QHeaderView::section {
-                background-color: #E2E8F0;
-                color: #64748B;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                padding: 12px;
+                gridline-color: transparent;
             }
             QTableWidget::item {
                 border-bottom: 1px solid #E2E8F0;
-                padding: 10px;
+                padding: 8px 12px;
+                background: transparent;
             }
             QTableWidget::item:selected {
                 background-color: #ECFDF5;
                 color: #008F39;
             }
+            QTableWidget::item:hover {
+                background-color: #F8FAFC;
+            }
+            QHeaderView::section {
+                background-color: #F1F5F9;
+                color: #64748B;
+                font-weight: 800;
+                font-size: 12px;
+                border: none;
+                padding: 12px 8px;
+                font-family: 'Montserrat';
+            }
+            QTableWidget QTableCornerButton::section {
+                background: transparent;
+                border: none;
+            }
         """)
-        self.tabla.setColumnWidth(5, 150)
+        
+        header = self.tabla.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        self.tabla.setColumnWidth(0, 130)
+        self.tabla.setColumnWidth(1, 280)
+        self.tabla.setColumnWidth(2, 130)
+        self.tabla.setColumnWidth(3, 200)
+        self.tabla.setColumnWidth(4, 120)
+        self.tabla.setColumnWidth(5, 100)
+        
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         
         layout_tarjeta.addWidget(self.tabla)
         layout_principal.addWidget(tarjeta_principal)
 
     def cargar_datos(self):
         self.tabla.setRowCount(0)
-        
-        # Datos de prueba (mock) porque la tabla devoluciones no existe
         datos = [
             ("DEV-001", "Supermercado El Éxito", "2026-06-21", "3 unidades", "Pendiente", "Ver"),
             ("DEV-002", "Distribuidora La 14", "2026-06-20", "1 caja", "Aprobada", "Ver"),
             ("DEV-003", "Almacenes Tía", "2026-06-19", "5 unidades", "Rechazada", "Ver"),
             ("DEV-004", "D1 S.A.S.", "2026-06-18", "2 unidades", "Pendiente", "Ver"),
         ]
-
         self.llenar_tabla(datos)
 
     def llenar_tabla(self, datos):
@@ -189,8 +224,9 @@ class DevolucionesVista(QWidget):
         for fila_idx, row_data in enumerate(datos):
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
                 if col_idx == 4:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                     if valor == "Pendiente":
                         item.setForeground(QColor("#EAB308"))
                     elif valor == "Aprobada":
@@ -198,6 +234,9 @@ class DevolucionesVista(QWidget):
                     elif valor == "Rechazada":
                         item.setForeground(QColor("#DC2626"))
                 self.tabla.setItem(fila_idx, col_idx, item)
+        
+        for fila in range(self.tabla.rowCount()):
+            self.tabla.setRowHeight(fila, 45)
 
     def filtrar_tabla(self, texto=None):
         texto_busqueda = self.txt_buscador.text().lower() if texto is None else texto.lower()

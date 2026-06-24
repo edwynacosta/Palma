@@ -19,19 +19,18 @@ class FacturaElectronicaVista(QWidget):
         self.cargar_datos()
 
     def init_ui(self):
-        # Layout principal con márgenes internos
         layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(20, 0, 20, 0)  # <-- margen izquierdo y derecho
+        layout_principal.setContentsMargins(20, 0, 20, 0)
         layout_principal.setSpacing(20)
 
-        # ENCABEZADO SUPERIOR (con padding izquierdo)
+        # ENCABEZADO SUPERIOR
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(10, 0, 0, 10)  # <-- margen izquierdo
+        header_layout.setContentsMargins(10, 0, 0, 10)
 
         lbl_titulo = QLabel("FACTURA ELECTRÓNICA")
         lbl_titulo.setFont(QFont("Montserrat", 22, QFont.Weight.Black))
-        lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")  # <-- verde corporativo
+        lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
         
         lbl_subtitulo = QLabel("Gestione sus facturas electrónicas de manera rápida y segura.")
         lbl_subtitulo.setFont(QFont("Montserrat", 11, QFont.Weight.Medium))
@@ -46,7 +45,7 @@ class FacturaElectronicaVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
-        # CONTENEDOR PRINCIPAL BLANCO (sin cambios)
+        # CONTENEDOR PRINCIPAL BLANCO
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -67,7 +66,7 @@ class FacturaElectronicaVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # Filtros y búsqueda (sin cambios)
+        # Filtros y búsqueda
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(15)
 
@@ -139,41 +138,83 @@ class FacturaElectronicaVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
-        # Tabla de facturas (sin cambios)
+        # TABLA DE FACTURAS (CORREGIDA)
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Factura", "Cliente", "Fecha", "Total", "Estado", "Acciones"
         ])
-        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        
+        # Configuración de la tabla sin bordes
+        self.tabla.setShowGrid(False)
+        self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.tabla.setShowGrid(False)
+        self.tabla.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        
+        # Tamaño fijo de filas
+        self.tabla.verticalHeader().setVisible(False)
+        self.tabla.verticalHeader().setDefaultSectionSize(45)
+        self.tabla.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        
+        # Estilo de la tabla
         self.tabla.setStyleSheet("""
             QTableWidget {
                 background-color: transparent;
                 border: none;
+                outline: none;
                 font-family: 'Montserrat';
                 font-size: 13px;
                 color: #1B4314;
-            }
-            QHeaderView::section {
-                background-color: #E2E8F0;
-                color: #64748B;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                padding: 12px;
+                gridline-color: transparent;
             }
             QTableWidget::item {
                 border-bottom: 1px solid #E2E8F0;
-                padding: 10px;
+                padding: 8px 12px;
+                background: transparent;
             }
             QTableWidget::item:selected {
                 background-color: #ECFDF5;
                 color: #008F39;
             }
+            QTableWidget::item:hover {
+                background-color: #F8FAFC;
+            }
+            QHeaderView::section {
+                background-color: #F1F5F9;
+                color: #64748B;
+                font-weight: 800;
+                font-size: 12px;
+                border: none;
+                padding: 12px 8px;
+                font-family: 'Montserrat';
+            }
+            QTableWidget QTableCornerButton::section {
+                background: transparent;
+                border: none;
+            }
         """)
-        self.tabla.setColumnWidth(5, 150)
+        
+        # Configuración de columnas con tamaños fijos
+        header = self.tabla.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        # Anchos fijos para cada columna
+        self.tabla.setColumnWidth(0, 120)   # N° Factura
+        self.tabla.setColumnWidth(1, 280)   # Cliente
+        self.tabla.setColumnWidth(2, 130)   # Fecha
+        self.tabla.setColumnWidth(3, 130)   # Total
+        self.tabla.setColumnWidth(4, 120)   # Estado
+        self.tabla.setColumnWidth(5, 120)   # Acciones
+        
+        # Las columnas 1 (Cliente) y 5 (Acciones) pueden estirarse si es necesario
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         
         layout_tarjeta.addWidget(self.tabla)
         layout_principal.addWidget(tarjeta_principal)
@@ -226,8 +267,13 @@ class FacturaElectronicaVista(QWidget):
         for fila_idx, row_data in enumerate(datos):
             for col_idx, valor in enumerate(row_data):
                 item = QTableWidgetItem(str(valor))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                # Alinear el total a la derecha
+                if col_idx == 3:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                # Alinear el estado al centro
                 if col_idx == 4:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                     if valor == "Pagada":
                         item.setForeground(QColor("#008F39"))
                     elif valor == "Pendiente":
@@ -235,6 +281,10 @@ class FacturaElectronicaVista(QWidget):
                     elif valor == "Anulada":
                         item.setForeground(QColor("#DC2626"))
                 self.tabla.setItem(fila_idx, col_idx, item)
+        
+        # Ajustar altura de las filas
+        for fila in range(self.tabla.rowCount()):
+            self.tabla.setRowHeight(fila, 45)
 
     def filtrar_tabla(self, texto=None):
         texto_busqueda = self.txt_buscador.text().lower() if texto is None else texto.lower()
