@@ -174,10 +174,7 @@ class DialogoBase(QDialog):
         self._ajustar_geometria_completa()
         QTimer.singleShot(0, self._ajustar_geometria_completa)
 
-# ── Diálogos específicos (Nuevo, Cambiar Password, Eliminar, Modificar) ──
-# Mantienen su funcionalidad y estética de DialogoBase, sin cambios sustanciales.
-# Solo se ajustan a la nueva estética.
-
+# ── Diálogos específicos (funcionalidad intacta) ──
 class DialogoNuevoUsuario(DialogoBase):
     def __init__(self, conexion=None, parent=None):
         super().__init__("NUEVO USUARIO", ancho=480, parent=parent)
@@ -479,9 +476,7 @@ class DialogoModificarUsuario(DialogoBase):
         except Exception as e:
             QMessageBox.critical(self, "Error al guardar", f"No se pudo modificar el usuario:\n{e}")
 
-# ============================================================================
-# CLASE PRINCIPAL: CuentaDialog (ahora con estética de finanzas_vista.py)
-# ============================================================================
+# ── CLASE PRINCIPAL: CuentaDialog ──
 class CuentaDialog(QDialog):
     def __init__(self, conexion=None, datos_usuario=None, parent=None):
         super().__init__(parent,
@@ -534,7 +529,7 @@ class CuentaDialog(QDialog):
         layout_card.setContentsMargins(0, 0, 0, 0)
         layout_card.setSpacing(0)
 
-        # ── BARRA SUPERIOR ──
+        # ── BARRA SUPERIOR (idéntica a finanzas_vista.py) ──
         navbar = QFrame()
         navbar.setObjectName("NavbarCuenta")
         navbar.setFixedHeight(68)
@@ -548,15 +543,15 @@ class CuentaDialog(QDialog):
         layout_navbar.setContentsMargins(0, 0, 20, 0)
         layout_navbar.setSpacing(0)
 
-        # Título a la izquierda
+        # Título a la izquierda (mismo tamaño que finanzas)
         titulo_layout = QHBoxLayout()
         titulo_layout.setContentsMargins(20, 0, 0, 0)
         lbl_titulo = QLabel("CONFIGURACIÓN DE CUENTA")
-        lbl_titulo.setFont(QFont("Montserrat", 18, QFont.Weight.Black))
+        lbl_titulo.setFont(QFont("Montserrat", 20, QFont.Weight.Black))
         lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
         titulo_layout.addWidget(lbl_titulo)
 
-        # Panel de usuario (derecha)
+        # Panel de usuario (derecha) - idéntico a finanzas
         layout_meta = QVBoxLayout()
         layout_meta.setSpacing(0)
         layout_meta.setContentsMargins(0, 0, 0, 0)
@@ -628,7 +623,7 @@ class CuentaDialog(QDialog):
         ls.setContentsMargins(16, 20, 16, 20)
         ls.setSpacing(14)
 
-        # ── Card administrador ──
+        # Card administrador
         card_admin = QFrame()
         card_admin.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_admin.setFixedHeight(74)
@@ -669,7 +664,7 @@ class CuentaDialog(QDialog):
         lca.addLayout(col_admin, 1)
         ls.addWidget(card_admin)
 
-        # ── Card estado del software ──
+        # Card estado del software
         card_estado = QFrame()
         card_estado.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_estado.setFixedHeight(180)
@@ -701,7 +696,7 @@ class CuentaDialog(QDialog):
         lce.addWidget(btn_full)
         ls.addWidget(card_estado)
 
-        # ── Card asistencia ──
+        # Card asistencia
         card_soporte = QFrame()
         card_soporte.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         card_soporte.setFixedHeight(100)
@@ -744,49 +739,61 @@ class CuentaDialog(QDialog):
         # ── Fila de gestión de usuarios ──
         fila_header = QHBoxLayout()
         lbl_gestion = QLabel("GESTIÓN DE USUARIOS")
-        lbl_gestion.setFont(_mf(20, QFont.Weight.Black))
+        lbl_gestion.setFont(QFont("Montserrat", 20, QFont.Weight.Black))
         lbl_gestion.setStyleSheet("color:#17813D; background:transparent;")
         fila_header.addWidget(lbl_gestion)
         fila_header.addStretch()
         lcont.addLayout(fila_header)
 
-        # ── Barra de búsqueda y filtros ──
+        # ── Barra de búsqueda y filtros (idéntica a finanzas) ──
         filtros_layout = QHBoxLayout()
-        filtros_layout.setSpacing(8)
+        filtros_layout.setSpacing(10)
 
         self.txt_buscar = QLineEdit()
         self.txt_buscar.setPlaceholderText("Buscar por nombre o rol...")
-        self.txt_buscar.setFixedHeight(34)
+        self.txt_buscar.setFixedHeight(40)
         self.txt_buscar.setStyleSheet("""
             QLineEdit {
-                background-color: #F3F5F4;
-                border: 2px solid transparent;
-                border-radius: 9px;
-                padding: 0 14px;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
+                padding: 0 16px;
                 font-family: 'Montserrat';
-                font-size: 11px;
+                font-size: 13px;
                 color: #1F2937;
             }
-            QLineEdit:focus {
-                border: 2px solid #17813D;
-                background-color: #FFFFFF;
-            }
+            QLineEdit:focus { border: 2px solid #17813D; }
         """)
         self.txt_buscar.textChanged.connect(self._filtrar_usuarios)
         filtros_layout.addWidget(self.txt_buscar, 1)
 
+        # Botones de filtro (mismos estilos que finanzas)
         self.btn_todos = QPushButton("TODOS")
         self.btn_ultimos = QPushButton("ÚLTIMOS ACCESOS")
         self.btn_por_rol = QPushButton("POR ROL  ▾")
 
-        for btn, activo in [(self.btn_todos, True), (self.btn_ultimos, False), (self.btn_por_rol, False)]:
-            btn.setFixedHeight(34)
-            btn.setFont(_mf(9, QFont.Weight.Black))
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            if activo:
-                btn.setStyleSheet("QPushButton { background:#FFFFFF; color:#17813D; border:2px solid #17813D; border-radius:9px; padding:0 16px; }")
-            else:
-                btn.setStyleSheet("QPushButton { background:#F3F5F4; color:#9CA3AF; border:none; border-radius:9px; padding:0 16px; } QPushButton:hover { color:#17813D; }")
+        for btn in (self.btn_todos, self.btn_ultimos, self.btn_por_rol):
+            btn.setFixedHeight(40)
+            btn.setFont(QFont("Montserrat", 11, QFont.Weight.Black))
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #FFFFFF;
+                    border: 2px solid #EEEFF2;
+                    border-radius: 16px;
+                    color: #9CA3AF;
+                    padding: 0 15px;
+                    text-align: center;
+                    font-family: 'Montserrat';
+                    font-size: 11px;
+                    font-weight: 900;
+                }
+                QPushButton:hover {
+                    color: #17813D;
+                    border-color: #A9DDBC;
+                    background-color: #FFFFFF;
+                }
+            """)
             filtros_layout.addWidget(btn)
 
         self.btn_todos.clicked.connect(self._filtro_todos)
@@ -795,7 +802,7 @@ class CuentaDialog(QDialog):
 
         lcont.addLayout(filtros_layout)
 
-        # ── Encabezados de columna ──
+        # ── Encabezados de columna (igual que finanzas) ──
         fila_cols = QHBoxLayout()
         fila_cols.setContentsMargins(4, 0, 4, 0)
         lbl_c1 = QLabel("NOMBRE COMPLETO")
@@ -816,14 +823,14 @@ class CuentaDialog(QDialog):
         sep.setStyleSheet("background:#EEF0F2; border:none;")
         lcont.addWidget(sep)
 
-        # ── Tabla de usuarios ──
+        # ── Tabla de usuarios (mismos estilos que finanzas) ──
         self.tabla = QTableWidget()
         self.tabla.setColumnCount(3)
         self.tabla.setHorizontalHeaderLabels(["Nombre", "Rol", "Último acceso"])
         self.tabla.setShowGrid(False)
         self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.verticalHeader().setVisible(False)
-        self.tabla.verticalHeader().setDefaultSectionSize(50)
+        self.tabla.verticalHeader().setDefaultSectionSize(45)
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -850,13 +857,12 @@ class CuentaDialog(QDialog):
                 background-color: #F8FAFC;
             }
             QHeaderView::section {
-                background: transparent;
-                color: #86B896;
+                background: #F1F5F9;
+                color: #64748B;
                 font-weight: 800;
                 font-size: 10px;
                 border: none;
-                border-bottom: 1px solid #EEF0F2;
-                padding: 8px 12px;
+                padding: 10px 12px;
                 font-family: 'Montserrat';
             }
             QTableWidget QTableCornerButton::section {
@@ -873,7 +879,7 @@ class CuentaDialog(QDialog):
 
         lcont.addWidget(self.tabla)
 
-        # ── Botones de acción (inferior) ──
+        # ── Botones de acción (inferior) con estilos finanzas ──
         barra_inf = QFrame()
         barra_inf.setFixedHeight(70)
         barra_inf.setStyleSheet("QFrame { background:#FFFFFF; border:none; border-top:1px solid #EEF0F2; }")
@@ -889,8 +895,11 @@ class CuentaDialog(QDialog):
                 background-color: #17813D;
                 color: #FFFFFF;
                 border: none;
-                border-radius: 12px;
+                border-radius: 16px;
                 letter-spacing: 0.5px;
+                font-family: 'Montserrat';
+                font-size: 11px;
+                font-weight: 900;
             }
             QPushButton:hover { background-color: #228E49; }
         """)
@@ -906,7 +915,10 @@ class CuentaDialog(QDialog):
                     background: #FFFFFF;
                     color: #9CA3AF;
                     border: 2px solid #EEEFF2;
-                    border-radius: 10px;
+                    border-radius: 16px;
+                    font-family: 'Montserrat';
+                    font-size: 10px;
+                    font-weight: 900;
                 }
                 QPushButton:hover {
                     color: #17813D;
@@ -1007,14 +1019,12 @@ class CuentaDialog(QDialog):
             lista = self._usuarios_cache
         self.tabla.setRowCount(len(lista))
         for fila, u in enumerate(lista):
-            # Nombre con avatar
             inicial = "".join([n[0] for n in u["nombre"].split()[:2]]).upper()
             item_nombre = QTableWidgetItem(f"   {u['nombre']}")
             item_nombre.setIcon(self._crear_avatar_icon(inicial))
             item_nombre.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.tabla.setItem(fila, 0, item_nombre)
 
-            # Rol con badge
             item_rol = QTableWidgetItem(u["rol"])
             item_rol.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
             if u["rol"] == "ADMINISTRADOR":
@@ -1023,17 +1033,15 @@ class CuentaDialog(QDialog):
                 item_rol.setForeground(QColor("#9CA3AF"))
             self.tabla.setItem(fila, 1, item_rol)
 
-            # Último acceso
             item_acceso = QTableWidgetItem(u["acceso"])
             item_acceso.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             item_acceso.setForeground(QColor("#9CA3AF"))
             self.tabla.setItem(fila, 2, item_acceso)
 
         for fila in range(self.tabla.rowCount()):
-            self.tabla.setRowHeight(fila, 50)
+            self.tabla.setRowHeight(fila, 45)
 
     def _crear_avatar_icon(self, letras):
-        # Crear un QPixmap con el avatar y convertirlo a QIcon
         from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
         pixmap = QPixmap(32, 32)
         pixmap.fill(Qt.GlobalColor.transparent)
