@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from PySide6.QtCore import Qt, QDate, QStringListModel, QPoint
+from PySide6.QtCore import Qt, QDate, QStringListModel
 from PySide6.QtGui import QFont, QFontDatabase, QColor, QPainter, QBrush, QAction
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,6 +16,7 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+
 
 class FinanzasVista(QWidget):
     def __init__(self, controlador, conexion):
@@ -63,14 +64,14 @@ class FinanzasVista(QWidget):
         layout_contenedor.setContentsMargins(0, 0, 0, 0)
         layout_contenedor.setSpacing(0)
 
-        # ── NAVBAR ──
+        # ── BARRA SUPERIOR (con título a la izquierda y panel de usuario a la derecha) ──
         navbar = QFrame()
         navbar.setObjectName("NavbarFinanzas")
         navbar.setFixedHeight(68)
         navbar.setStyleSheet("""
-            QFrame#NavbarFinanzas { 
-                background: #FFFFFF; border: none; border-bottom: 1px solid #EEF0F2; 
-                border-top-left-radius: 18px; border-top-right-radius: 18px; 
+            QFrame#NavbarFinanzas {
+                background: #FFFFFF; border: none; border-bottom: 1px solid #EEF0F2;
+                border-top-left-radius: 18px; border-top-right-radius: 18px;
             }
         """)
         layout_navbar = QHBoxLayout(navbar)
@@ -85,7 +86,7 @@ class FinanzasVista(QWidget):
         lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
         titulo_layout.addWidget(lbl_titulo)
 
-        # Panel de usuario (derecha)
+        # ── Panel de usuario (derecha) ──
         layout_meta = QVBoxLayout()
         layout_meta.setSpacing(0)
         layout_meta.setContentsMargins(0, 0, 0, 0)
@@ -170,7 +171,10 @@ class FinanzasVista(QWidget):
         self.pagina_indices = self.crear_pagina_indices()
         self.tabs.addTab(self.pagina_indices, "ÍNDICES")
 
-        layout_contenedor.addWidget(self.tabs, 1)
+        layout_contenedor.addWidget(self.tabs, 0)  # Sin stretch, justo debajo de la barra
+
+        layout_contenedor.addStretch()  # Para que el contenido se alinee arriba
+
         layout_principal.addWidget(contenedor_blanco)
 
     def paintEvent(self, event):
@@ -206,18 +210,18 @@ class FinanzasVista(QWidget):
             self.actualizar_usuario(datos.get("nombre", "Usuario"), datos.get("rol", "cajero"))
         super().showEvent(event)
 
-    # ========== PÁGINA FACTURAS (con botones con flecha) ==========
+    # ========== PÁGINA FACTURAS ==========
     def crear_pagina_facturas(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(12)
 
-        # ── FILA DE FILTROS (botones con menú) ──
+        # Filtros
         filtros = QHBoxLayout()
         filtros.setSpacing(10)
 
-        # Botón de tipo (VENTAS/COMPRAS) - ahora con flecha visible
+        # Botón de tipo (VENTAS/COMPRAS) - estilo caja
         self.btn_tipo = QPushButton("VENTAS")
         self.btn_tipo.setFixedHeight(40)
         self.btn_tipo.setFixedWidth(120)
@@ -225,19 +229,44 @@ class FinanzasVista(QWidget):
         self.btn_tipo.setCursor(Qt.PointingHandCursor)
         self.btn_tipo.setStyleSheet("""
             QPushButton {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 12px;
-                color: #1F2937;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
+                color: #9CA3AF;
                 padding: 0 15px;
-                text-align: left;
+                text-align: center;
+                font-family: 'Montserrat';
+                font-size: 11px;
+                font-weight: 900;
             }
             QPushButton:hover {
+                color: #17813D;
+                border-color: #A9DDBC;
                 background-color: #FFFFFF;
-                border: 2px solid #17813D;
+            }
+            QPushButton::menu-indicator {
+                image: none;
             }
         """)
         menu_tipo = QMenu(self.btn_tipo)
+        menu_tipo.setStyleSheet("""
+            QMenu {
+                background-color: #FFFFFF;
+                border: 1px solid #D1E2D9;
+                border-radius: 12px;
+                padding: 6px;
+                font-family: 'Montserrat';
+                font-size: 12px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 8px;
+            }
+            QMenu::item:selected {
+                background-color: #E8F5EE;
+                color: #17813D;
+            }
+        """)
         act_ventas = QAction("VENTAS", self.btn_tipo)
         act_ventas.triggered.connect(lambda: self.cambiar_tipo("VENTAS"))
         act_compras = QAction("COMPRAS", self.btn_tipo)
@@ -246,15 +275,15 @@ class FinanzasVista(QWidget):
         menu_tipo.addAction(act_compras)
         self.btn_tipo.setMenu(menu_tipo)
 
-        # Buscador con autocompletado
+        # Buscador
         self.txt_buscar = QLineEdit()
         self.txt_buscar.setPlaceholderText("Buscar por número, cliente...")
         self.txt_buscar.setFixedHeight(40)
         self.txt_buscar.setStyleSheet("""
             QLineEdit {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 12px;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
                 padding: 0 16px;
                 font-family: 'Montserrat';
                 font-size: 13px;
@@ -270,7 +299,7 @@ class FinanzasVista(QWidget):
         self.txt_buscar.setCompleter(self.completer)
         self.cargar_sugerencias_busqueda()
 
-        # Botón de fecha (TODOS) - con flecha visible
+        # Botón de fecha (TODOS) - estilo caja
         self.btn_fecha = QPushButton("TODOS")
         self.btn_fecha.setFixedHeight(40)
         self.btn_fecha.setFixedWidth(150)
@@ -278,19 +307,44 @@ class FinanzasVista(QWidget):
         self.btn_fecha.setCursor(Qt.PointingHandCursor)
         self.btn_fecha.setStyleSheet("""
             QPushButton {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 12px;
-                color: #1F2937;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
+                color: #9CA3AF;
                 padding: 0 15px;
-                text-align: left;
+                text-align: center;
+                font-family: 'Montserrat';
+                font-size: 11px;
+                font-weight: 900;
             }
             QPushButton:hover {
+                color: #17813D;
+                border-color: #A9DDBC;
                 background-color: #FFFFFF;
-                border: 2px solid #17813D;
+            }
+            QPushButton::menu-indicator {
+                image: none;
             }
         """)
         menu_fecha = QMenu(self.btn_fecha)
+        menu_fecha.setStyleSheet("""
+            QMenu {
+                background-color: #FFFFFF;
+                border: 1px solid #D1E2D9;
+                border-radius: 12px;
+                padding: 6px;
+                font-family: 'Montserrat';
+                font-size: 12px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 8px;
+            }
+            QMenu::item:selected {
+                background-color: #E8F5EE;
+                color: #17813D;
+            }
+        """)
         opciones_fecha = ["TODOS", "HOY", "ESTA SEMANA", "ESTE MES", "ESTE AÑO", "PERSONALIZADO"]
         for opcion in opciones_fecha:
             act = QAction(opcion, self.btn_fecha)
@@ -306,9 +360,9 @@ class FinanzasVista(QWidget):
         self.date_inicio.setFixedWidth(120)
         self.date_inicio.setStyleSheet("""
             QDateEdit {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 12px;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
                 padding: 0 10px;
                 font-family: 'Montserrat';
                 font-size: 12px;
@@ -325,9 +379,9 @@ class FinanzasVista(QWidget):
         self.date_fin.setFixedWidth(120)
         self.date_fin.setStyleSheet("""
             QDateEdit {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 12px;
+                background-color: #FFFFFF;
+                border: 2px solid #EEEFF2;
+                border-radius: 16px;
                 padding: 0 10px;
                 font-family: 'Montserrat';
                 font-size: 12px;
@@ -347,7 +401,10 @@ class FinanzasVista(QWidget):
                 background-color: #17813D;
                 color: #FFFFFF;
                 border: none;
-                border-radius: 12px;
+                border-radius: 16px;
+                font-family: 'Montserrat';
+                font-size: 11px;
+                font-weight: 900;
             }
             QPushButton:hover { background-color: #228E49; }
         """)
@@ -362,7 +419,7 @@ class FinanzasVista(QWidget):
         filtros.addWidget(self.btn_aplicar_fechas)
         layout.addLayout(filtros)
 
-        # ── TABLA DE FACTURAS ──
+        # Tabla
         self.tabla_facturas = QTableWidget()
         self.tabla_facturas.setColumnCount(7)
         self.tabla_facturas.setHorizontalHeaderLabels([
@@ -414,6 +471,7 @@ class FinanzasVista(QWidget):
         header = self.tabla_facturas.horizontalHeader()
         header.setStretchLastSection(False)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
         self.tabla_facturas.setColumnWidth(0, 80)
         self.tabla_facturas.setColumnWidth(1, 130)
         self.tabla_facturas.setColumnWidth(2, 280)
@@ -421,6 +479,7 @@ class FinanzasVista(QWidget):
         self.tabla_facturas.setColumnWidth(4, 100)
         self.tabla_facturas.setColumnWidth(5, 80)
         self.tabla_facturas.setColumnWidth(6, 80)
+
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -434,7 +493,6 @@ class FinanzasVista(QWidget):
         self.cargar_facturas()
         return widget
 
-    # ── Funciones de los botones de menú ──
     def cambiar_tipo(self, tipo):
         self.btn_tipo.setText(tipo)
         self.tipo_actual = tipo
@@ -443,7 +501,6 @@ class FinanzasVista(QWidget):
     def cambiar_fecha(self, opcion):
         self.btn_fecha.setText(opcion)
         self.filtro_fecha = opcion
-        # Mostrar u ocultar selectores de fecha personalizada
         es_personalizado = (opcion == "PERSONALIZADO")
         self.date_inicio.setVisible(es_personalizado)
         self.date_fin.setVisible(es_personalizado)
@@ -478,14 +535,13 @@ class FinanzasVista(QWidget):
             return None, None
         return inicio, fin
 
-    # ── Carga y filtrado de facturas ──
     def cargar_sugerencias_busqueda(self):
         if not self.conexion:
             return
         try:
             cursor = self.conexion.cursor()
             query = """
-                SELECT DISTINCT 
+                SELECT DISTINCT
                     CAST(f.id_factura AS CHAR) AS valor
                 FROM facturas f
                 UNION
@@ -618,6 +674,9 @@ class FinanzasVista(QWidget):
                     color: #FFFFFF;
                     border: none;
                     border-radius: 8px;
+                    font-family: 'Montserrat';
+                    font-size: 10px;
+                    font-weight: 900;
                 }
                 QPushButton:hover {
                     background-color: #228E49;
@@ -662,7 +721,7 @@ class FinanzasVista(QWidget):
                         pass
             self.tabla_facturas.setRowHidden(fila, not mostrar)
 
-    # ========== DIÁLOGO DE DETALLE (más grande) ==========
+    # ========== DETALLE DE FACTURA ==========
     def mostrar_detalle_por_id(self, id_factura, tipo):
         if tipo == "VENTA":
             self.mostrar_detalle_venta(id_factura)
@@ -738,7 +797,7 @@ class FinanzasVista(QWidget):
         dlg = QDialog(self, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         dlg.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         dlg.setModal(True)
-        dlg.setMinimumSize(800, 650)  # Más grande
+        dlg.setMinimumSize(800, 650)
 
         layout_fondo = QVBoxLayout(dlg)
         layout_fondo.setContentsMargins(0, 0, 0, 0)
@@ -746,7 +805,7 @@ class FinanzasVista(QWidget):
 
         card = QFrame()
         card.setObjectName("MainCard")
-        card.setFixedSize(820, 680)  # Más grande
+        card.setFixedSize(820, 680)
         card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
@@ -769,7 +828,6 @@ class FinanzasVista(QWidget):
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        # HEADER
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("DETALLE DE FACTURA")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -793,7 +851,7 @@ class FinanzasVista(QWidget):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # INFO
+        # Info
         info_frame = QFrame()
         info_frame.setStyleSheet("""
             QFrame {
@@ -827,7 +885,7 @@ class FinanzasVista(QWidget):
         info_layout.addWidget(lbl_cliente)
         layout_card.addWidget(info_frame)
 
-        # TABLA PRODUCTOS
+        # Tabla productos
         lbl_productos = QLabel("PRODUCTOS DE LA FACTURA")
         lbl_productos.setFont(_f(11, QFont.Weight.Black))
         lbl_productos.setStyleSheet("color: #17813D; background: transparent;")
@@ -901,7 +959,7 @@ class FinanzasVista(QWidget):
         tabla_det.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout_card.addWidget(tabla_det, 1)
 
-        # TOTAL
+        # Total
         total_frame = QFrame()
         total_frame.setStyleSheet("""
             QFrame {
@@ -925,7 +983,7 @@ class FinanzasVista(QWidget):
         total_layout.addStretch()
         layout_card.addWidget(total_frame)
 
-        # BOTÓN CERRAR
+        # Botón cerrar
         btn_cerrar_dialog = QPushButton("CERRAR")
         btn_cerrar_dialog.setFixedHeight(50)
         btn_cerrar_dialog.setFont(_f(13, QFont.Weight.Black))
@@ -937,6 +995,9 @@ class FinanzasVista(QWidget):
                 border: none;
                 border-radius: 16px;
                 letter-spacing: 0.5px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                font-weight: 900;
             }
             QPushButton:hover { background-color: #228E49; }
         """)
@@ -946,7 +1007,7 @@ class FinanzasVista(QWidget):
         layout_fondo.addWidget(card)
         dlg.exec()
 
-    # ========== PÁGINA ÍNDICES (con gráficas) ==========
+    # ========== PÁGINA ÍNDICES ==========
     def crear_pagina_indices(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -956,23 +1017,18 @@ class FinanzasVista(QWidget):
         grid = QGridLayout()
         grid.setSpacing(20)
 
-        # TOP 5 (tabla)
         top5 = self.crear_tarjeta_top5()
         grid.addWidget(top5, 0, 0)
 
-        # BOTTOM 5 (tabla)
         bottom5 = self.crear_tarjeta_bottom5()
         grid.addWidget(bottom5, 0, 1)
 
-        # Ventas por período (texto)
         ventas = self.crear_tarjeta_ventas_periodos()
         grid.addWidget(ventas, 1, 0, 1, 2)
 
-        # Histórico mensual (gráfica de líneas)
         historico = self.crear_tarjeta_historico_mensual()
         grid.addWidget(historico, 2, 0, 1, 2)
 
-        # Días de la semana (gráfica de barras)
         dias = self.crear_tarjeta_dias_semana()
         grid.addWidget(dias, 3, 0, 1, 2)
 
@@ -1031,7 +1087,10 @@ class FinanzasVista(QWidget):
                 background: #17813D;
                 color: #FFFFFF;
                 border: none;
-                border-radius: 10px;
+                border-radius: 16px;
+                font-family: 'Montserrat';
+                font-size: 11px;
+                font-weight: 900;
                 padding: 10px;
             }
             QPushButton:hover { background: #228E49; }
@@ -1044,7 +1103,6 @@ class FinanzasVista(QWidget):
         group = QGroupBox("VENTAS HISTÓRICAS POR MES")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        # Crear figura y canvas
         self.fig_historico = Figure(figsize=(5, 3), dpi=100, facecolor='white')
         self.canvas_historico = FigureCanvas(self.fig_historico)
         self.canvas_historico.setMinimumHeight(250)
@@ -1221,7 +1279,6 @@ class FinanzasVista(QWidget):
             meses = [row[0] for row in datos]
             totales = [float(row[1]) for row in datos]
             ax.plot(meses, totales, marker='o', linestyle='-', color='#17813D', linewidth=2, markersize=5)
-            # Decoración
             ax.set_facecolor('white')
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
