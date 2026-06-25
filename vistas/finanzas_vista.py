@@ -1,14 +1,21 @@
 import os
 from datetime import datetime, timedelta
-from PySide6.QtCore import Qt, QDate, QStringListModel
-from PySide6.QtGui import QFont, QFontDatabase, QColor
+from PySide6.QtCore import Qt, QDate, QStringListModel, QPoint
+from PySide6.QtGui import QFont, QFontDatabase, QColor, QPainter, QBrush, QAction
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QDialog, QLineEdit, QComboBox, QTabWidget,
     QGraphicsDropShadowEffect, QGridLayout, QGroupBox,
-    QDateEdit, QCompleter, QSizePolicy
+    QDateEdit, QCompleter, QMenu, QSizePolicy
 )
+
+# Importar matplotlib para gráficas
+import matplotlib
+matplotlib.use('Qt5Agg')
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 class FinanzasVista(QWidget):
     def __init__(self, controlador, conexion):
@@ -18,7 +25,7 @@ class FinanzasVista(QWidget):
         self.datos_facturas = []
         self.tipo_actual = "VENTAS"
         self.filtro_fecha = "TODOS"
-        self.COLOR_FONDO = "#F0F4F2"  # Mismo color que caja_vista.py
+        self.COLOR_FONDO = "#F0F4F2"
         self.cargar_fuentes()
         self.construir_interfaz()
 
@@ -70,17 +77,15 @@ class FinanzasVista(QWidget):
         layout_navbar.setContentsMargins(0, 0, 20, 0)
         layout_navbar.setSpacing(0)
 
-        # ── Título a la izquierda ──
+        # Título a la izquierda
         titulo_layout = QHBoxLayout()
         titulo_layout.setContentsMargins(20, 0, 0, 0)
-        
         lbl_titulo = QLabel("FINANZAS")
         lbl_titulo.setFont(QFont("Montserrat", 20, QFont.Weight.Black))
         lbl_titulo.setStyleSheet("color: #17813D; background: transparent;")
-        
         titulo_layout.addWidget(lbl_titulo)
 
-        # ── Panel de usuario ──
+        # Panel de usuario (derecha)
         layout_meta = QVBoxLayout()
         layout_meta.setSpacing(0)
         layout_meta.setContentsMargins(0, 0, 0, 0)
@@ -201,36 +206,47 @@ class FinanzasVista(QWidget):
             self.actualizar_usuario(datos.get("nombre", "Usuario"), datos.get("rol", "cajero"))
         super().showEvent(event)
 
-    # ========== PÁGINA FACTURAS ==========
+    # ========== PÁGINA FACTURAS (con botones con flecha) ==========
     def crear_pagina_facturas(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(12)
 
-        # ── FILA DE FILTROS ──
+        # ── FILA DE FILTROS (botones con menú) ──
         filtros = QHBoxLayout()
         filtros.setSpacing(10)
 
-        self.cmb_tipo = QComboBox()
-        self.cmb_tipo.addItems(["VENTAS", "COMPRAS"])
-        self.cmb_tipo.setFixedHeight(40)
-        self.cmb_tipo.setFixedWidth(120)
-        self.cmb_tipo.setStyleSheet("""
-            QComboBox {
+        # Botón de tipo (VENTAS/COMPRAS) - ahora con flecha visible
+        self.btn_tipo = QPushButton("VENTAS")
+        self.btn_tipo.setFixedHeight(40)
+        self.btn_tipo.setFixedWidth(120)
+        self.btn_tipo.setFont(QFont("Montserrat", 11, QFont.Weight.Black))
+        self.btn_tipo.setCursor(Qt.PointingHandCursor)
+        self.btn_tipo.setStyleSheet("""
+            QPushButton {
                 background-color: #F8FAF9;
                 border: 2px solid #D1E2D9;
                 border-radius: 12px;
-                padding: 0 15px;
-                font-family: 'Montserrat';
-                font-size: 13px;
-                font-weight: bold;
                 color: #1F2937;
+                padding: 0 15px;
+                text-align: left;
             }
-            QComboBox:focus { border: 2px solid #17813D; }
+            QPushButton:hover {
+                background-color: #FFFFFF;
+                border: 2px solid #17813D;
+            }
         """)
-        self.cmb_tipo.currentIndexChanged.connect(self.cargar_facturas)
+        menu_tipo = QMenu(self.btn_tipo)
+        act_ventas = QAction("VENTAS", self.btn_tipo)
+        act_ventas.triggered.connect(lambda: self.cambiar_tipo("VENTAS"))
+        act_compras = QAction("COMPRAS", self.btn_tipo)
+        act_compras.triggered.connect(lambda: self.cambiar_tipo("COMPRAS"))
+        menu_tipo.addAction(act_ventas)
+        menu_tipo.addAction(act_compras)
+        self.btn_tipo.setMenu(menu_tipo)
 
+        # Buscador con autocompletado
         self.txt_buscar = QLineEdit()
         self.txt_buscar.setPlaceholderText("Buscar por número, cliente...")
         self.txt_buscar.setFixedHeight(40)
@@ -247,7 +263,6 @@ class FinanzasVista(QWidget):
             QLineEdit:focus { border: 2px solid #17813D; }
         """)
         self.txt_buscar.textChanged.connect(self.filtrar_facturas)
-        
         self.completer_model = QStringListModel()
         self.completer = QCompleter(self.completer_model, self)
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
@@ -255,25 +270,35 @@ class FinanzasVista(QWidget):
         self.txt_buscar.setCompleter(self.completer)
         self.cargar_sugerencias_busqueda()
 
-        self.cmb_fecha = QComboBox()
-        self.cmb_fecha.addItems(["TODOS", "HOY", "ESTA SEMANA", "ESTE MES", "ESTE AÑO", "PERSONALIZADO"])
-        self.cmb_fecha.setFixedHeight(40)
-        self.cmb_fecha.setFixedWidth(160)
-        self.cmb_fecha.setStyleSheet("""
-            QComboBox {
+        # Botón de fecha (TODOS) - con flecha visible
+        self.btn_fecha = QPushButton("TODOS")
+        self.btn_fecha.setFixedHeight(40)
+        self.btn_fecha.setFixedWidth(150)
+        self.btn_fecha.setFont(QFont("Montserrat", 11, QFont.Weight.Black))
+        self.btn_fecha.setCursor(Qt.PointingHandCursor)
+        self.btn_fecha.setStyleSheet("""
+            QPushButton {
                 background-color: #F8FAF9;
                 border: 2px solid #D1E2D9;
                 border-radius: 12px;
-                padding: 0 15px;
-                font-family: 'Montserrat';
-                font-size: 13px;
-                font-weight: bold;
                 color: #1F2937;
+                padding: 0 15px;
+                text-align: left;
             }
-            QComboBox:focus { border: 2px solid #17813D; }
+            QPushButton:hover {
+                background-color: #FFFFFF;
+                border: 2px solid #17813D;
+            }
         """)
-        self.cmb_fecha.currentIndexChanged.connect(self.aplicar_filtro_fecha)
+        menu_fecha = QMenu(self.btn_fecha)
+        opciones_fecha = ["TODOS", "HOY", "ESTA SEMANA", "ESTE MES", "ESTE AÑO", "PERSONALIZADO"]
+        for opcion in opciones_fecha:
+            act = QAction(opcion, self.btn_fecha)
+            act.triggered.connect(lambda checked, opt=opcion: self.cambiar_fecha(opt))
+            menu_fecha.addAction(act)
+        self.btn_fecha.setMenu(menu_fecha)
 
+        # Selectores de fecha personalizada (ocultos inicialmente)
         self.date_inicio = QDateEdit()
         self.date_inicio.setCalendarPopup(True)
         self.date_inicio.setDate(QDate.currentDate())
@@ -329,11 +354,9 @@ class FinanzasVista(QWidget):
         self.btn_aplicar_fechas.hide()
         self.btn_aplicar_fechas.clicked.connect(self.aplicar_filtro_fecha_personalizada)
 
-        self.cmb_fecha.currentIndexChanged.connect(self.mostrar_fechas_personalizadas)
-
-        filtros.addWidget(self.cmb_tipo)
+        filtros.addWidget(self.btn_tipo)
         filtros.addWidget(self.txt_buscar, 1)
-        filtros.addWidget(self.cmb_fecha)
+        filtros.addWidget(self.btn_fecha)
         filtros.addWidget(self.date_inicio)
         filtros.addWidget(self.date_fin)
         filtros.addWidget(self.btn_aplicar_fechas)
@@ -345,7 +368,6 @@ class FinanzasVista(QWidget):
         self.tabla_facturas.setHorizontalHeaderLabels([
             "N°", "Fecha", "Cliente/Proveedor", "Total", "Estado", "Tipo", ""
         ])
-        
         self.tabla_facturas.setShowGrid(False)
         self.tabla_facturas.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla_facturas.verticalHeader().setVisible(False)
@@ -353,7 +375,6 @@ class FinanzasVista(QWidget):
         self.tabla_facturas.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tabla_facturas.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_facturas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        
         self.tabla_facturas.setStyleSheet("""
             QTableWidget {
                 border: none;
@@ -390,11 +411,9 @@ class FinanzasVista(QWidget):
                 border: none;
             }
         """)
-        
         header = self.tabla_facturas.horizontalHeader()
         header.setStretchLastSection(False)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        
         self.tabla_facturas.setColumnWidth(0, 80)
         self.tabla_facturas.setColumnWidth(1, 130)
         self.tabla_facturas.setColumnWidth(2, 280)
@@ -402,7 +421,6 @@ class FinanzasVista(QWidget):
         self.tabla_facturas.setColumnWidth(4, 100)
         self.tabla_facturas.setColumnWidth(5, 80)
         self.tabla_facturas.setColumnWidth(6, 80)
-        
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -416,7 +434,51 @@ class FinanzasVista(QWidget):
         self.cargar_facturas()
         return widget
 
-    # ========== MÉTODOS DE FILTRADO Y CARGA ==========
+    # ── Funciones de los botones de menú ──
+    def cambiar_tipo(self, tipo):
+        self.btn_tipo.setText(tipo)
+        self.tipo_actual = tipo
+        self.cargar_facturas()
+
+    def cambiar_fecha(self, opcion):
+        self.btn_fecha.setText(opcion)
+        self.filtro_fecha = opcion
+        # Mostrar u ocultar selectores de fecha personalizada
+        es_personalizado = (opcion == "PERSONALIZADO")
+        self.date_inicio.setVisible(es_personalizado)
+        self.date_fin.setVisible(es_personalizado)
+        self.btn_aplicar_fechas.setVisible(es_personalizado)
+        if not es_personalizado:
+            self.filtrar_facturas()
+
+    def aplicar_filtro_fecha_personalizada(self):
+        self.filtro_fecha = "PERSONALIZADO"
+        self.filtrar_facturas()
+
+    def obtener_fechas_filtro(self):
+        hoy = QDate.currentDate()
+        filtro = self.btn_fecha.text()
+        if filtro == "HOY":
+            inicio = hoy
+            fin = hoy
+        elif filtro == "ESTA SEMANA":
+            dia_semana = hoy.dayOfWeek()
+            inicio = hoy.addDays(-(dia_semana - 1))
+            fin = hoy.addDays(7 - dia_semana)
+        elif filtro == "ESTE MES":
+            inicio = QDate(hoy.year(), hoy.month(), 1)
+            fin = QDate(hoy.year(), hoy.month(), hoy.daysInMonth())
+        elif filtro == "ESTE AÑO":
+            inicio = QDate(hoy.year(), 1, 1)
+            fin = QDate(hoy.year(), 12, 31)
+        elif filtro == "PERSONALIZADO":
+            inicio = self.date_inicio.date()
+            fin = self.date_fin.date()
+        else:
+            return None, None
+        return inicio, fin
+
+    # ── Carga y filtrado de facturas ──
     def cargar_sugerencias_busqueda(self):
         if not self.conexion:
             return
@@ -442,49 +504,8 @@ class FinanzasVista(QWidget):
         except Exception as e:
             print(f"Error cargando sugerencias: {e}")
 
-    def mostrar_fechas_personalizadas(self, index):
-        es_personalizado = self.cmb_fecha.currentText() == "PERSONALIZADO"
-        self.date_inicio.setVisible(es_personalizado)
-        self.date_fin.setVisible(es_personalizado)
-        self.btn_aplicar_fechas.setVisible(es_personalizado)
-        if not es_personalizado:
-            self.aplicar_filtro_fecha()
-
-    def aplicar_filtro_fecha(self):
-        self.filtro_fecha = self.cmb_fecha.currentText()
-        self.filtrar_facturas()
-
-    def aplicar_filtro_fecha_personalizada(self):
-        self.filtro_fecha = "PERSONALIZADO"
-        self.filtrar_facturas()
-
-    def obtener_fechas_filtro(self):
-        hoy = QDate.currentDate()
-        filtro = self.cmb_fecha.currentText()
-        
-        if filtro == "HOY":
-            inicio = hoy
-            fin = hoy
-        elif filtro == "ESTA SEMANA":
-            dia_semana = hoy.dayOfWeek()
-            inicio = hoy.addDays(-(dia_semana - 1))
-            fin = hoy.addDays(7 - dia_semana)
-        elif filtro == "ESTE MES":
-            inicio = QDate(hoy.year(), hoy.month(), 1)
-            fin = QDate(hoy.year(), hoy.month(), hoy.daysInMonth())
-        elif filtro == "ESTE AÑO":
-            inicio = QDate(hoy.year(), 1, 1)
-            fin = QDate(hoy.year(), 12, 31)
-        elif filtro == "PERSONALIZADO":
-            inicio = self.date_inicio.date()
-            fin = self.date_fin.date()
-        else:
-            return None, None
-        
-        return inicio, fin
-
     def cargar_facturas(self):
-        tipo = self.cmb_tipo.currentText()
+        tipo = self.btn_tipo.text()
         if tipo == "VENTAS":
             self.cargar_facturas_ventas()
         else:
@@ -504,8 +525,17 @@ class FinanzasVista(QWidget):
             self.llenar_tabla_facturas(datos, "VENTA")
         else:
             mock = [
+                (11, datetime(2026, 6, 24), "N/A", 2000, "Pagada"),
                 (10, datetime(2026, 6, 24), "N/A", 2000, "Pagada"),
                 (9, datetime(2026, 6, 23, 23, 23), "edwin acosta", 4500, "Pagada"),
+                (8, datetime(2026, 6, 23, 23, 23), "N/A", 4500, "Pagada"),
+                (7, datetime(2024, 4, 8, 10, 10), "Ricardo Esteban Pinto", 19800, "Pagada"),
+                (6, datetime(2024, 4, 5), "Camila Andrea Ospina", 27400, "Pagada"),
+                (5, datetime(2024, 4, 2, 11, 20), "Pedro Antonio Vargas", 34500, "Pagada"),
+                (4, datetime(2024, 3, 20), "Luisa Valentina Torres", 22700, "Pagada"),
+                (3, datetime(2024, 3, 18), "Juan Pablo Martínez", 41700, "Pagada"),
+                (2, datetime(2024, 3, 16, 14, 30), "María Fernanda López", 18500, "Pagada"),
+                (1, datetime(2024, 3, 15, 10, 15), "Carlos Andrés Gómez", 26200, "Pagada"),
             ]
             self.llenar_tabla_facturas(mock, "VENTA")
 
@@ -524,6 +554,7 @@ class FinanzasVista(QWidget):
         else:
             mock = [
                 (1, datetime.now(), "DistriHortalizas La Granja", 850000, "Pagada"),
+                (2, datetime.now() - timedelta(days=3), "Lácteos del Valle Ltda", 640000, "Pendiente"),
             ]
             self.llenar_tabla_facturas(mock, "COMPRA")
 
@@ -561,16 +592,12 @@ class FinanzasVista(QWidget):
 
             item_id = QTableWidgetItem(str(id_fact))
             item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-            
             item_fecha = QTableWidgetItem(fecha_str)
             item_fecha.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            
             item_cliente = QTableWidgetItem(cliente)
             item_cliente.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            
             item_total = QTableWidgetItem(total_str)
             item_total.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            
             item_estado = QTableWidgetItem(estado)
             item_estado.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
             if estado == "Pagada":
@@ -579,10 +606,9 @@ class FinanzasVista(QWidget):
                 item_estado.setForeground(QColor("#EAB308"))
             else:
                 item_estado.setForeground(QColor("#DC2626"))
-            
             item_tipo = QTableWidgetItem(tipo)
             item_tipo.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-            
+
             btn_ver = QPushButton("VER")
             btn_ver.setFixedSize(60, 30)
             btn_ver.setFont(QFont("Montserrat", 9, QFont.Weight.Bold))
@@ -606,24 +632,15 @@ class FinanzasVista(QWidget):
             self.tabla_facturas.setItem(fila, 3, item_total)
             self.tabla_facturas.setItem(fila, 4, item_estado)
             self.tabla_facturas.setItem(fila, 5, item_tipo)
-            
             self.tabla_facturas.setRowHeight(fila, 45)
 
         self.filtrar_facturas()
 
-    def mostrar_detalle_por_id(self, id_factura, tipo):
-        if tipo == "VENTA":
-            self.mostrar_detalle_venta(id_factura)
-        else:
-            self.mostrar_detalle_compra(id_factura)
-
     def filtrar_facturas(self):
         texto = self.txt_buscar.text().strip().lower()
         inicio, fin = self.obtener_fechas_filtro()
-        
         for fila in range(self.tabla_facturas.rowCount()):
             mostrar = True
-            
             if texto:
                 coincide = False
                 for col in range(5):
@@ -632,7 +649,6 @@ class FinanzasVista(QWidget):
                         coincide = True
                         break
                 mostrar = mostrar and coincide
-            
             if mostrar and inicio and fin:
                 item_fecha = self.tabla_facturas.item(fila, 1)
                 if item_fecha:
@@ -644,10 +660,15 @@ class FinanzasVista(QWidget):
                             mostrar = False
                     except:
                         pass
-            
             self.tabla_facturas.setRowHidden(fila, not mostrar)
 
-    # ========== DIÁLOGO DE DETALLE (CON ESTÉTICA MEJORADA) ==========
+    # ========== DIÁLOGO DE DETALLE (más grande) ==========
+    def mostrar_detalle_por_id(self, id_factura, tipo):
+        if tipo == "VENTA":
+            self.mostrar_detalle_venta(id_factura)
+        else:
+            self.mostrar_detalle_compra(id_factura)
+
     def mostrar_detalle_venta(self, id_factura):
         query_enc = """
             SELECT f.id_factura, f.fecha_fac, c.nombre_cliente, c.documento_identidad,
@@ -714,20 +735,18 @@ class FinanzasVista(QWidget):
         }, detalles, "COMPRA")
 
     def mostrar_dialogo_detalle(self, encabezado, detalles, tipo):
-        # Diálogo con estética similar a DialogoAgregarFactura
         dlg = QDialog(self, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         dlg.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         dlg.setModal(True)
-        dlg.setMinimumSize(650, 550)
+        dlg.setMinimumSize(800, 650)  # Más grande
 
         layout_fondo = QVBoxLayout(dlg)
         layout_fondo.setContentsMargins(0, 0, 0, 0)
         layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Tarjeta principal
         card = QFrame()
         card.setObjectName("MainCard")
-        card.setFixedSize(680, 580)
+        card.setFixedSize(820, 680)  # Más grande
         card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
@@ -774,19 +793,18 @@ class FinanzasVista(QWidget):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # ── INFORMACIÓN DE LA FACTURA ──
+        # INFO
         info_frame = QFrame()
         info_frame.setStyleSheet("""
             QFrame {
                 background: #F8FAF9;
                 border-radius: 14px;
                 border: 1px solid #D1E2D9;
-                padding: 5px;
+                padding: 10px;
             }
         """)
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(4)
-
         info_text = f"""
             <b>Factura N°:</b> {encabezado['id']} &nbsp;&nbsp;|&nbsp;&nbsp;
             <b>Fecha:</b> {encabezado['fecha'].strftime('%d/%m/%Y %H:%M') if hasattr(encabezado['fecha'], 'strftime') else encabezado['fecha']} &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -807,10 +825,9 @@ class FinanzasVista(QWidget):
         lbl_cliente.setFont(_f(10, QFont.Weight.Medium))
         lbl_cliente.setStyleSheet("color: #6B7280; background: transparent;")
         info_layout.addWidget(lbl_cliente)
-
         layout_card.addWidget(info_frame)
 
-        # ── TABLA DE PRODUCTOS ──
+        # TABLA PRODUCTOS
         lbl_productos = QLabel("PRODUCTOS DE LA FACTURA")
         lbl_productos.setFont(_f(11, QFont.Weight.Black))
         lbl_productos.setStyleSheet("color: #17813D; background: transparent;")
@@ -829,7 +846,6 @@ class FinanzasVista(QWidget):
                     tabla_det.setItem(fila, 2, QTableWidgetItem(f"${float(precio):,.0f}"))
                     tabla_det.setItem(fila, 3, QTableWidgetItem(f"${float(subtotal):,.0f}"))
             else:
-                # Si no hay productos, mostrar mensaje
                 tabla_det.insertRow(0)
                 item = QTableWidgetItem("No hay productos registrados en esta factura")
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -865,7 +881,7 @@ class FinanzasVista(QWidget):
             }
             QTableWidget::item {
                 border-bottom: 1px solid #F0F2F0;
-                padding: 6px 10px;
+                padding: 8px 12px;
                 color: #1F2937;
             }
             QHeaderView::section {
@@ -874,7 +890,7 @@ class FinanzasVista(QWidget):
                 font-weight: 800;
                 font-size: 10px;
                 border: none;
-                padding: 8px 10px;
+                padding: 10px 12px;
                 font-family: 'Montserrat';
             }
             QTableWidget QTableCornerButton::section {
@@ -885,36 +901,33 @@ class FinanzasVista(QWidget):
         tabla_det.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout_card.addWidget(tabla_det, 1)
 
-        # ── TOTAL ──
+        # TOTAL
         total_frame = QFrame()
         total_frame.setStyleSheet("""
             QFrame {
                 background: #EDF7F1;
                 border-radius: 12px;
                 border: 2px dashed #A9DDBC;
-                padding: 5px;
+                padding: 8px;
             }
         """)
         total_layout = QHBoxLayout(total_frame)
-        total_layout.setContentsMargins(16, 8, 16, 8)
-        
+        total_layout.setContentsMargins(20, 12, 20, 12)
         lbl_total_text = QLabel("TOTAL DE LA FACTURA:")
-        lbl_total_text.setFont(_f(13, QFont.Weight.Black))
+        lbl_total_text.setFont(_f(14, QFont.Weight.Black))
         lbl_total_text.setStyleSheet("color: #17813D; background: transparent;")
-        
         lbl_total_valor = QLabel(f"${float(encabezado['total']):,.0f}")
-        lbl_total_valor.setFont(_f(20, QFont.Weight.Black))
+        lbl_total_valor.setFont(_f(22, QFont.Weight.Black))
         lbl_total_valor.setStyleSheet("color: #17813D; background: transparent;")
-        
         total_layout.addStretch()
         total_layout.addWidget(lbl_total_text)
         total_layout.addWidget(lbl_total_valor)
         total_layout.addStretch()
         layout_card.addWidget(total_frame)
 
-        # ── BOTÓN CERRAR ──
+        # BOTÓN CERRAR
         btn_cerrar_dialog = QPushButton("CERRAR")
-        btn_cerrar_dialog.setFixedHeight(48)
+        btn_cerrar_dialog.setFixedHeight(50)
         btn_cerrar_dialog.setFont(_f(13, QFont.Weight.Black))
         btn_cerrar_dialog.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_cerrar_dialog.setStyleSheet("""
@@ -928,13 +941,12 @@ class FinanzasVista(QWidget):
             QPushButton:hover { background-color: #228E49; }
         """)
         btn_cerrar_dialog.clicked.connect(dlg.accept)
-
         layout_card.addWidget(btn_cerrar_dialog)
 
         layout_fondo.addWidget(card)
         dlg.exec()
 
-    # ========== PÁGINA ÍNDICES ==========
+    # ========== PÁGINA ÍNDICES (con gráficas) ==========
     def crear_pagina_indices(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -944,18 +956,23 @@ class FinanzasVista(QWidget):
         grid = QGridLayout()
         grid.setSpacing(20)
 
+        # TOP 5 (tabla)
         top5 = self.crear_tarjeta_top5()
         grid.addWidget(top5, 0, 0)
 
+        # BOTTOM 5 (tabla)
         bottom5 = self.crear_tarjeta_bottom5()
         grid.addWidget(bottom5, 0, 1)
 
+        # Ventas por período (texto)
         ventas = self.crear_tarjeta_ventas_periodos()
         grid.addWidget(ventas, 1, 0, 1, 2)
 
+        # Histórico mensual (gráfica de líneas)
         historico = self.crear_tarjeta_historico_mensual()
         grid.addWidget(historico, 2, 0, 1, 2)
 
+        # Días de la semana (gráfica de barras)
         dias = self.crear_tarjeta_dias_semana()
         grid.addWidget(dias, 3, 0, 1, 2)
 
@@ -969,7 +986,6 @@ class FinanzasVista(QWidget):
         group = QGroupBox("TOP 5 PRODUCTOS MÁS VENDIDOS")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        
         self.tabla_top5 = QTableWidget()
         self.tabla_top5.setColumnCount(2)
         self.tabla_top5.setHorizontalHeaderLabels(["Producto", "Cantidad"])
@@ -986,7 +1002,6 @@ class FinanzasVista(QWidget):
         group = QGroupBox("5 PRODUCTOS MENOS VENDIDOS")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        
         self.tabla_bottom5 = QTableWidget()
         self.tabla_bottom5.setColumnCount(2)
         self.tabla_bottom5.setHorizontalHeaderLabels(["Producto", "Cantidad"])
@@ -1003,7 +1018,6 @@ class FinanzasVista(QWidget):
         group = QGroupBox("VENTAS POR PERÍODO")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        
         self.lbl_ventas_periodos = QLabel()
         self.lbl_ventas_periodos.setFont(QFont("Montserrat", 12))
         self.lbl_ventas_periodos.setStyleSheet("padding: 15px; background: #F8FAF9; border-radius: 12px; color: #1F2937;")
@@ -1030,34 +1044,23 @@ class FinanzasVista(QWidget):
         group = QGroupBox("VENTAS HISTÓRICAS POR MES")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        
-        self.tabla_historico = QTableWidget()
-        self.tabla_historico.setColumnCount(2)
-        self.tabla_historico.setHorizontalHeaderLabels(["Mes", "Total Vendido"])
-        self.tabla_historico.setShowGrid(False)
-        self.tabla_historico.setFrameShape(QFrame.Shape.NoFrame)
-        self.tabla_historico.verticalHeader().setVisible(False)
-        self.tabla_historico.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tabla_historico.setStyleSheet(self.estilo_tabla_indice())
-        self.tabla_historico.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.tabla_historico)
+        # Crear figura y canvas
+        self.fig_historico = Figure(figsize=(5, 3), dpi=100, facecolor='white')
+        self.canvas_historico = FigureCanvas(self.fig_historico)
+        self.canvas_historico.setMinimumHeight(250)
+        self.canvas_historico.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(self.canvas_historico)
         return group
 
     def crear_tarjeta_dias_semana(self):
         group = QGroupBox("VENTAS POR DÍA DE LA SEMANA")
         group.setStyleSheet(self.estilo_grupo())
         layout = QVBoxLayout(group)
-        
-        self.tabla_dias = QTableWidget()
-        self.tabla_dias.setColumnCount(3)
-        self.tabla_dias.setHorizontalHeaderLabels(["Día", "Total Vendido", "Promedio"])
-        self.tabla_dias.setShowGrid(False)
-        self.tabla_dias.setFrameShape(QFrame.Shape.NoFrame)
-        self.tabla_dias.verticalHeader().setVisible(False)
-        self.tabla_dias.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tabla_dias.setStyleSheet(self.estilo_tabla_indice())
-        self.tabla_dias.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.tabla_dias)
+        self.fig_dias = Figure(figsize=(5, 3), dpi=100, facecolor='white')
+        self.canvas_dias = FigureCanvas(self.fig_dias)
+        self.canvas_dias.setMinimumHeight(250)
+        self.canvas_dias.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(self.canvas_dias)
         return group
 
     def estilo_grupo(self):
@@ -1212,20 +1215,27 @@ class FinanzasVista(QWidget):
             ORDER BY mes ASC
         """
         datos = self.ejecutar_consulta(query)
-        self.tabla_historico.setRowCount(0)
+        self.fig_historico.clear()
+        ax = self.fig_historico.add_subplot(111)
         if datos:
-            for fila, (mes, total) in enumerate(datos):
-                self.tabla_historico.insertRow(fila)
-                self.tabla_historico.setItem(fila, 0, QTableWidgetItem(mes))
-                self.tabla_historico.setItem(fila, 1, QTableWidgetItem(f"${total:,.0f}"))
-                self.tabla_historico.setRowHeight(fila, 40)
+            meses = [row[0] for row in datos]
+            totales = [float(row[1]) for row in datos]
+            ax.plot(meses, totales, marker='o', linestyle='-', color='#17813D', linewidth=2, markersize=5)
+            # Decoración
+            ax.set_facecolor('white')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_color('#E2E8F0')
+            ax.spines['bottom'].set_color('#E2E8F0')
+            ax.tick_params(colors='#64748B', labelsize=9)
+            ax.set_xlabel('Mes', color='#64748B', fontsize=9)
+            ax.set_ylabel('Total Vendido', color='#64748B', fontsize=9)
+            if len(meses) > 6:
+                plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+            self.fig_historico.tight_layout()
         else:
-            mock = [("2026-01", 1500000), ("2026-02", 2000000), ("2026-03", 1800000)]
-            for fila, (mes, total) in enumerate(mock):
-                self.tabla_historico.insertRow(fila)
-                self.tabla_historico.setItem(fila, 0, QTableWidgetItem(mes))
-                self.tabla_historico.setItem(fila, 1, QTableWidgetItem(f"${total:,.0f}"))
-                self.tabla_historico.setRowHeight(fila, 40)
+            ax.text(0.5, 0.5, 'Sin datos', ha='center', va='center', color='#9CA3AF', fontsize=12)
+        self.canvas_historico.draw()
 
     def cargar_dias_semana(self):
         query = """
@@ -1236,24 +1246,23 @@ class FinanzasVista(QWidget):
             ORDER BY dia
         """
         datos = self.ejecutar_consulta(query)
-        dias_nombres = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
-        self.tabla_dias.setRowCount(0)
+        self.fig_dias.clear()
+        ax = self.fig_dias.add_subplot(111)
+        dias_nombres = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
         if datos:
-            for fila, (dia_num, total, num) in enumerate(datos):
-                nombre = dias_nombres[dia_num-1] if 1 <= dia_num <= 7 else "Desconocido"
-                self.tabla_dias.insertRow(fila)
-                self.tabla_dias.setItem(fila, 0, QTableWidgetItem(nombre))
-                self.tabla_dias.setItem(fila, 1, QTableWidgetItem(f"${total:,.0f}"))
-                promedio = total / num if num > 0 else 0
-                self.tabla_dias.setItem(fila, 2, QTableWidgetItem(f"${promedio:,.0f}"))
-                self.tabla_dias.setRowHeight(fila, 40)
+            totales_por_dia = {i: 0 for i in range(1, 8)}
+            for dia_num, total, num in datos:
+                totales_por_dia[dia_num] = float(total)
+            valores = [totales_por_dia[i] for i in range(1, 8)]
+            ax.bar(dias_nombres, valores, color='#17813D', edgecolor='#A9DDBC', linewidth=1.5)
+            ax.set_facecolor('white')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_color('#E2E8F0')
+            ax.spines['bottom'].set_color('#E2E8F0')
+            ax.tick_params(colors='#64748B', labelsize=9)
+            ax.set_ylabel('Total Vendido', color='#64748B', fontsize=9)
+            self.fig_dias.tight_layout()
         else:
-            mock = [(2, 1500000, 5), (3, 1200000, 4), (4, 800000, 3)]
-            for fila, (dia_num, total, num) in enumerate(mock):
-                nombre = dias_nombres[dia_num-1] if 1 <= dia_num <= 7 else "Desconocido"
-                self.tabla_dias.insertRow(fila)
-                self.tabla_dias.setItem(fila, 0, QTableWidgetItem(nombre))
-                self.tabla_dias.setItem(fila, 1, QTableWidgetItem(f"${total:,.0f}"))
-                promedio = total / num if num > 0 else 0
-                self.tabla_dias.setItem(fila, 2, QTableWidgetItem(f"${promedio:,.0f}"))
-                self.tabla_dias.setRowHeight(fila, 40)
+            ax.text(0.5, 0.5, 'Sin datos', ha='center', va='center', color='#9CA3AF', fontsize=12)
+        self.canvas_dias.draw()
