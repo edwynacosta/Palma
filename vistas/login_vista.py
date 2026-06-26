@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
                                QPushButton, QLabel, QFrame, QGraphicsDropShadowEffect,
-                               QMessageBox)
+                               QMessageBox, QApplication)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPixmap, QColor, QPainter, QBrush, QFontDatabase
 
@@ -118,7 +118,7 @@ class LoginVista(QWidget):
         self.txt_password.returnPressed.connect(self.verificar_login)
         layout_card.addSpacing(28)
 
-        # Fila inferior
+        # Fila inferior (botón ENTRAR + enlaces)
         fila_inferior = QHBoxLayout()
         fila_inferior.setSpacing(0)
         fila_inferior.setContentsMargins(0, 0, 0, 0)
@@ -160,7 +160,55 @@ class LoginVista(QWidget):
         fila_inferior.addLayout(links_layout)
 
         layout_card.addLayout(fila_inferior)
+
+        # Nuevos elementos inferiores (logo pequeño, texto, botón SALIR)
+        layout_card.addSpacing(30)
+
+        layout_inferior = QHBoxLayout()
+        layout_inferior.setSpacing(12)
+        layout_inferior.setContentsMargins(0, 0, 0, 0)
+
+        # Logo pequeño
+        self.lbl_logo_small = QLabel()
+        if not pixmap.isNull():
+            self.lbl_logo_small.setPixmap(
+                pixmap.scaled(32, 32,
+                              Qt.AspectRatioMode.KeepAspectRatio,
+                              Qt.TransformationMode.SmoothTransformation)
+            )
+        layout_inferior.addWidget(self.lbl_logo_small)
+
+        # Texto "Palma Software 2026"
+        self.lbl_software = QLabel("Palma Software 2026")
+        self.lbl_software.setFont(QFont("Montserrat", 10, QFont.Weight.Medium))
+        self.lbl_software.setStyleSheet("color: #9CA3AF; background: transparent;")
+        layout_inferior.addWidget(self.lbl_software)
+
+        layout_inferior.addStretch()
+
+        # Botón SALIR
+        self.btn_salir = QPushButton("SALIR")
+        self.btn_salir.setFixedSize(80, 34)
+        self.btn_salir.setFont(QFont("Montserrat", 10, QFont.Weight.Bold))
+        self.btn_salir.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_salir.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #DC2626;
+                border: 1px solid #DC2626;
+                border-radius: 9px;
+            }
+            QPushButton:hover {
+                background-color: #DC2626;
+                color: white;
+            }
+        """)
+        self.btn_salir.clicked.connect(self.salir_sistema)
+        layout_inferior.addWidget(self.btn_salir)
+
+        layout_card.addLayout(layout_inferior)
         layout_card.addStretch(2)
+
         layout_principal.addWidget(self.card)
 
     def paintEvent(self, event):
@@ -179,11 +227,10 @@ class LoginVista(QWidget):
         super().showEvent(event)
 
     def verificar_login(self):
-        usuario  = self.txt_usuario.text().strip()
+        usuario = self.txt_usuario.text().strip()
         password = self.txt_password.text().strip()
         try:
             with self.controlador.conexion.cursor() as cursor:
-                # Traemos id_usuario, username_log, id_rol y también id_empleado
                 sql = """
                     SELECT u.id_usuario, u.username_log, u.id_rol, u.id_empleado
                     FROM usuarios u
@@ -194,23 +241,23 @@ class LoginVista(QWidget):
 
                 if fila:
                     if isinstance(fila, dict):
-                        id_usuario   = fila["id_usuario"]
+                        id_usuario = fila["id_usuario"]
                         username_log = fila["username_log"]
-                        id_rol       = fila["id_rol"]
-                        id_empleado  = fila.get("id_empleado")
+                        id_rol = fila["id_rol"]
+                        id_empleado = fila.get("id_empleado")
                     else:
                         id_usuario, username_log, id_rol, id_empleado = fila
 
                     id_rol_int = int(id_rol)
-                    rol_texto  = "administrador" if id_rol_int == 1 else "cajero"
+                    rol_texto = "administrador" if id_rol_int == 1 else "cajero"
 
                     datos_sesion = {
-                        "id_usuario"  : id_usuario,
+                        "id_usuario": id_usuario,
                         "username_log": username_log,
-                        "nombre"      : username_log,
-                        "rol"         : rol_texto,
-                        "id_rol"      : id_rol_int,
-                        "id_empleado" : id_empleado,   # <--- AGREGADO
+                        "nombre": username_log,
+                        "rol": rol_texto,
+                        "id_rol": id_rol_int,
+                        "id_empleado": id_empleado,
                     }
 
                     self.controlador.cambiar_pantalla("AdminDashboard", datos_usuario=datos_sesion)
@@ -221,3 +268,12 @@ class LoginVista(QWidget):
             error_msg = str(e)
             error_msg = error_msg.encode('ascii', 'ignore').decode('ascii')
             QMessageBox.critical(self, "Error BD", f"Error de conexión: {error_msg}")
+
+    def salir_sistema(self):
+        resp = QMessageBox.question(
+            self, "Salir del sistema",
+            "¿Estás seguro de que deseas salir completamente del programa?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if resp == QMessageBox.StandardButton.Yes:
+            QApplication.quit()

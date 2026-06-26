@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QPoint
 
-# ── Funciones auxiliares de estilo y geometría (ya existentes) ──
+# ── Funciones auxiliares de estilo y geometría ──
 def _mf(size, weight):
     f = QFont("Montserrat", size, weight)
     f.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
@@ -33,7 +33,7 @@ def _geometria_ventana_real(widget):
         return geo.x(), geo.y(), geo.width(), geo.height()
     return 0, 0, 1280, 800
 
-# ── Diálogos auxiliares (con estética unificada) ──
+# ── Estilos de inputs ──
 SS_INPUT = (
     "QLineEdit { background:#EDF7F1; color:#1F2937; border:2px solid transparent;"
     " border-radius:14px; padding:0 16px; }"
@@ -55,6 +55,7 @@ SS_DSPIN = (
     " QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width:22px; }"
 )
 
+# ── Diálogo base ──
 class DialogoBase(QDialog):
     def __init__(self, titulo, ancho=480, parent=None):
         super().__init__(parent,
@@ -476,7 +477,7 @@ class DialogoModificarUsuario(DialogoBase):
         except Exception as e:
             QMessageBox.critical(self, "Error al guardar", f"No se pudo modificar el usuario:\n{e}")
 
-# ── CLASE PRINCIPAL: CuentaDialog ──
+# ── CLASE PRINCIPAL: CuentaDialog (con estética IDÉNTICA a finanzas_vista.py) ──
 class CuentaDialog(QDialog):
     def __init__(self, conexion=None, datos_usuario=None, parent=None):
         super().__init__(parent,
@@ -529,7 +530,7 @@ class CuentaDialog(QDialog):
         layout_card.setContentsMargins(0, 0, 0, 0)
         layout_card.setSpacing(0)
 
-        # ── BARRA SUPERIOR (idéntica a finanzas_vista.py) ──
+        # ── BARRA SUPERIOR (IDÉNTICA A FINANZAS) ──
         navbar = QFrame()
         navbar.setObjectName("NavbarCuenta")
         navbar.setFixedHeight(68)
@@ -745,18 +746,18 @@ class CuentaDialog(QDialog):
         fila_header.addStretch()
         lcont.addLayout(fila_header)
 
-        # ── Barra de búsqueda y filtros (idéntica a finanzas) ──
+        # ── Barra de búsqueda y filtros (IDÉNTICA A FINANZAS) ──
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(10)
 
         self.txt_buscar = QLineEdit()
         self.txt_buscar.setPlaceholderText("Buscar por nombre o rol...")
-        self.txt_buscar.setFixedHeight(40)
+        self.txt_buscar.setFixedHeight(40)  # <-- mismo que finanzas
         self.txt_buscar.setStyleSheet("""
             QLineEdit {
                 background-color: #FFFFFF;
                 border: 2px solid #EEEFF2;
-                border-radius: 16px;
+                border-radius: 16px;   /* <-- mismo que finanzas */
                 padding: 0 16px;
                 font-family: 'Montserrat';
                 font-size: 13px;
@@ -773,14 +774,14 @@ class CuentaDialog(QDialog):
         self.btn_por_rol = QPushButton("POR ROL  ▾")
 
         for btn in (self.btn_todos, self.btn_ultimos, self.btn_por_rol):
-            btn.setFixedHeight(40)
+            btn.setFixedHeight(40)  # <-- mismo que finanzas
             btn.setFont(QFont("Montserrat", 11, QFont.Weight.Black))
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #FFFFFF;
                     border: 2px solid #EEEFF2;
-                    border-radius: 16px;
+                    border-radius: 16px;   /* <-- mismo que finanzas */
                     color: #9CA3AF;
                     padding: 0 15px;
                     text-align: center;
@@ -830,7 +831,7 @@ class CuentaDialog(QDialog):
         self.tabla.setShowGrid(False)
         self.tabla.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla.verticalHeader().setVisible(False)
-        self.tabla.verticalHeader().setDefaultSectionSize(45)
+        self.tabla.verticalHeader().setDefaultSectionSize(45)  # <-- mismo que finanzas
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -857,8 +858,8 @@ class CuentaDialog(QDialog):
                 background-color: #F8FAFC;
             }
             QHeaderView::section {
-                background: #F1F5F9;
-                color: #64748B;
+                background: #F1F5F9;   /* <-- mismo que finanzas */
+                color: #64748B;        /* <-- mismo que finanzas */
                 font-weight: 800;
                 font-size: 10px;
                 border: none;
@@ -895,7 +896,7 @@ class CuentaDialog(QDialog):
                 background-color: #17813D;
                 color: #FFFFFF;
                 border: none;
-                border-radius: 16px;
+                border-radius: 16px;   /* <-- mismo que finanzas */
                 letter-spacing: 0.5px;
                 font-family: 'Montserrat';
                 font-size: 11px;
@@ -915,7 +916,7 @@ class CuentaDialog(QDialog):
                     background: #FFFFFF;
                     color: #9CA3AF;
                     border: 2px solid #EEEFF2;
-                    border-radius: 16px;
+                    border-radius: 16px;   /* <-- mismo que finanzas */
                     font-family: 'Montserrat';
                     font-size: 10px;
                     font-weight: 900;
