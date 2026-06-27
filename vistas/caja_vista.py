@@ -702,7 +702,6 @@ class DialogoBuscar(QDialog):
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        # HEADER con botón "✕"
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("BUSCAR PRODUCTOS")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -726,7 +725,6 @@ class DialogoBuscar(QDialog):
         layout_header.addWidget(btn_cerrar_header)
         layout_card.addLayout(layout_header)
 
-        # Campo de búsqueda
         self.txt_buscar = QLineEdit()
         self.txt_buscar.setPlaceholderText("Escribe el nombre del producto...")
         self.txt_buscar.setFont(_f(14, QFont.Weight.Medium))
@@ -746,7 +744,6 @@ class DialogoBuscar(QDialog):
         """)
         layout_card.addWidget(self.txt_buscar)
 
-        # Tabla de resultados
         self.tabla_resultados = QTableWidget()
         self.tabla_resultados.setColumnCount(4)
         self.tabla_resultados.setHorizontalHeaderLabels(["NOMBRE", "MARCA", "CATEGORÍA", "PRECIO UNIT."])
@@ -793,7 +790,6 @@ class DialogoBuscar(QDialog):
 
         layout_card.addWidget(self.tabla_resultados)
 
-        # Botones inferiores (LIMPIAR y BUSCAR, SIN CERRAR)
         layout_botones = QHBoxLayout()
         layout_botones.setSpacing(12)
 
@@ -834,26 +830,23 @@ class DialogoBuscar(QDialog):
         layout_botones.addWidget(self.btn_buscar)
 
         layout_card.addLayout(layout_botones)
-
         layout_fondo.addWidget(self.card)
 
         self._cargar_nombres_autocompletado()
 
     def _cargar_nombres_autocompletado(self):
-        if not self._conexion:
-            return
+        if not self._conexion: return
         try:
             cursor = self._conexion.cursor()
             cursor.execute("SELECT nombre_producto FROM productos")
-            nombres = [row[0] for row in cursor.fetchall()]
+            nombres = [row[0] for row in cursor.fetchall() if row[0]]
             cursor.close()
             modelo = QStringListModel(nombres)
             completer = QCompleter(modelo, self)
             completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
             self.txt_buscar.setCompleter(completer)
-        except Exception as e:
-            print(f"Error al cargar nombres para autocompletado: {e}")
+        except Exception as e: print(f"Error autocompletado: {e}")
 
     def _buscar(self):
         termino = self.txt_buscar.text().strip()
@@ -865,55 +858,24 @@ class DialogoBuscar(QDialog):
             QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
             return
 
-        # Normalizar término (minúsculas y sin tildes)
-        termino_normalizado = termino.lower()
-        termino_sin_tildes = ''.join(
-            c for c in unicodedata.normalize('NFD', termino_normalizado)
-            if unicodedata.category(c) != 'Mn'
-        )
-        like = f"%{termino_sin_tildes}%"
+        like = f"%{termino}%"
 
         try:
             cursor = self._conexion.cursor()
-            filas = []
-            error = None
-
-            # Intentar con tabla 'categoria' (singular) – es la correcta
-            try:
-                query = """
-                    SELECT 
-                        p.nombre_producto,
-                        p.marca_producto,
-                        c.nombre_categoria,
-                        p.precio_venta_prod
-                    FROM productos p
-                    LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
-                    WHERE LOWER(p.nombre_producto) LIKE %s
-                       OR LOWER(p.marca_producto) LIKE %s
-                       OR LOWER(c.nombre_categoria) LIKE %s
-                """
-                cursor.execute(query, (like, like, like))
-                filas = cursor.fetchall()
-            except Exception as e:
-                error = e
-                # Fallback: sin JOIN, mostrar ID de categoría
-                try:
-                    query = """
-                        SELECT 
-                            p.nombre_producto,
-                            p.marca_producto,
-                            CONCAT('ID: ', p.id_categoria) as categoria,
-                            p.precio_venta_prod
-                        FROM productos p
-                        WHERE LOWER(p.nombre_producto) LIKE %s
-                           OR LOWER(p.marca_producto) LIKE %s
-                    """
-                    cursor.execute(query, (like, like))
-                    filas = cursor.fetchall()
-                except Exception as e2:
-                    error = e2
-                    filas = []
-
+            query = """
+                SELECT 
+                    p.nombre_producto,
+                    p.marca_producto,
+                    COALESCE(c.nombre_categoria, 'Sin categoría'),
+                    p.precio_venta_prod
+                FROM productos p
+                LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
+                WHERE p.nombre_producto LIKE %s
+                   OR p.marca_producto LIKE %s
+                   OR c.nombre_categoria LIKE %s
+            """
+            cursor.execute(query, (like, like, like))
+            filas = cursor.fetchall()
             cursor.close()
 
             self.tabla_resultados.setRowCount(len(filas))
@@ -922,22 +884,16 @@ class DialogoBuscar(QDialog):
                 marca = fila[1] or ""
                 categoria = fila[2] or "Sin categoría"
                 precio = fila[3] if fila[3] is not None else 0
+                
                 self.tabla_resultados.setItem(i, 0, QTableWidgetItem(str(nombre)))
                 self.tabla_resultados.setItem(i, 1, QTableWidgetItem(str(marca)))
                 self.tabla_resultados.setItem(i, 2, QTableWidgetItem(str(categoria)))
                 self.tabla_resultados.setItem(i, 3, QTableWidgetItem(f"${int(precio):,}"))
 
             if len(filas) == 0:
-                QMessageBox.information(self, "Buscar", "No se encontraron productos con ese término.")
-            if error and len(filas) > 0:
-                QMessageBox.information(
-                    self, 
-                    "Aviso", 
-                    "No se pudo obtener la categoría desde la base de datos.\nSe muestra el ID de categoría en su lugar."
-                )
-
+                QMessageBox.information(self, "Buscar", "No se encontraron productos.")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al buscar productos: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al buscar: {str(e)}")
 
     def _limpiar(self):
         self.txt_buscar.clear()
