@@ -662,10 +662,8 @@ class DialogoModificar(QDialog):
         }
         self.accept()
 
+# DIÁLOGO BUSCAR – CORREGIDO (normalización, categoría, botón ✕, fuente grande)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO BUSCAR – CORREGIDO (normalización, categoría, botón ✕)
-# ══════════════════════════════════════════════════════════════════════════════
 class DialogoBuscar(QDialog):
     def __init__(self, conexion=None, parent=None):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -744,6 +742,7 @@ class DialogoBuscar(QDialog):
         """)
         layout_card.addWidget(self.txt_buscar)
 
+        # ── TABLA DE RESULTADOS (con fuente más grande) ──
         self.tabla_resultados = QTableWidget()
         self.tabla_resultados.setColumnCount(4)
         self.tabla_resultados.setHorizontalHeaderLabels(["NOMBRE", "MARCA", "CATEGORÍA", "PRECIO UNIT."])
@@ -758,11 +757,11 @@ class DialogoBuscar(QDialog):
                 outline: none;
             }
             QTableWidget::item {
-                padding: 8px 12px;
+                padding: 10px 14px;
                 border-bottom: 1px solid #EAEFEA;
                 color: #1F2937;
                 font-family: 'Montserrat';
-                font-size: 13px;
+                font-size: 15px;
             }
             QTableWidget::item:selected {
                 background-color: #E8F5EE;
@@ -775,7 +774,7 @@ class DialogoBuscar(QDialog):
                 background-color: #F8FAF9;
                 color: #86B896;
                 font-family: 'Montserrat';
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 800;
                 border: none;
                 border-bottom: 2px solid #EEF0F2;
@@ -783,6 +782,7 @@ class DialogoBuscar(QDialog):
             }
         """)
         self.tabla_resultados.verticalHeader().setVisible(False)
+        self.tabla_resultados.verticalHeader().setDefaultSectionSize(50)  # Fila más alta
         self.tabla_resultados.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla_resultados.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         header = self.tabla_resultados.horizontalHeader()
@@ -835,18 +835,28 @@ class DialogoBuscar(QDialog):
         self._cargar_nombres_autocompletado()
 
     def _cargar_nombres_autocompletado(self):
-        if not self._conexion: return
+        if not self._conexion:
+            return
         try:
             cursor = self._conexion.cursor()
             cursor.execute("SELECT nombre_producto FROM productos")
-            nombres = [row[0] for row in cursor.fetchall() if row[0]]
+            resultados = cursor.fetchall()
             cursor.close()
+            # Normalizar a lista de strings
+            nombres = []
+            for row in resultados:
+                if isinstance(row, dict):
+                    nombres.append(row.get("nombre_producto", ""))
+                else:
+                    nombres.append(row[0])
+            nombres = [n for n in nombres if n]
             modelo = QStringListModel(nombres)
             completer = QCompleter(modelo, self)
             completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
             self.txt_buscar.setCompleter(completer)
-        except Exception as e: print(f"Error autocompletado: {e}")
+        except Exception as e:
+            print(f"Error autocompletado: {e}")
 
     def _buscar(self):
         termino = self.txt_buscar.text().strip()
@@ -875,8 +885,122 @@ class DialogoBuscar(QDialog):
                    OR c.nombre_categoria LIKE %s
             """
             cursor.execute(query, (like, like, like))
-            filas = cursor.fetchall()
+            resultados = cursor.fetchall()
             cursor.close()
+
+            # Normalizar a tuplas
+            if resultados and isinstance(resultados[0], dict):
+                # Obtener nombres de columnas en orden
+                columnas = ["nombre_producto", "marca_producto", "nombre_categoria", "precio_venta_prod"]
+                # Convertir cada diccionario a tupla en el orden de columnas
+                filas = []
+                for row in resultados:
+                    filas.append(tuple(row.get(col) for col in columnas))
+            else:
+                filas = resultados
+
+            self.tabla_resultados.setRowCount(len(filas))
+            for i, fila in enumerate(filas):
+                nombre = fila[0] or ""
+                marca = fila[1] or ""
+                categoria = fila[2] or "Sin categoría"
+                precio = fila[3] if fila[3] is not None else 0
+                
+                self.tabla_resultados.setItem(i, 0, QTableWidgetItem(str(nombre)))
+                self.tabla_resultados.setItem(i, 1, QTableWidgetItem(str(marca)))
+                self.tabla_resultados.setItem(i, 2, QTableWidgetItem(str(categoria)))
+                self.tabla_resultados.setItem(i, 3, QTableWidgetItem(f"${int(precio):,}"))
+
+            if len(filas) == 0:
+                QMessageBox.information(self, "Buscar", "No se encontraron productos.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al buscar: {str(e)}")
+
+    def _limpiar(self):
+        self.txt_buscar.clear()
+        self.tabla_resultados.setRowCount(0)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.parent():
+            pg = self.parent().geometry()
+            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
+                             self.parent().mapToGlobal(QPoint(0,0)).y(),
+                             pg.width(), pg.height())
+
+    # ══════ FUNCIÓN MODIFICADA ══════
+    def _cargar_nombres_autocompletado(self):
+        if not self._conexion:
+            return
+        try:
+            cursor = self._conexion.cursor()
+            cursor.execute("SELECT nombre_producto FROM productos")
+            resultados = cursor.fetchall()
+            cursor.close()
+            # Normalizar a lista de strings
+            nombres = []
+            for row in resultados:
+                if isinstance(row, dict):
+                    nombres.append(row.get("nombre_producto", ""))
+                else:
+                    nombres.append(row[0])
+            nombres = [n for n in nombres if n]  # filtrar vacíos
+            modelo = QStringListModel(nombres)
+            completer = QCompleter(modelo, self)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.txt_buscar.setCompleter(completer)
+        except Exception as e:
+            print(f"Error autocompletado: {e}")
+
+    # ══════ FUNCIÓN MODIFICADA ══════
+    def _buscar(self):
+        termino = self.txt_buscar.text().strip()
+        if not termino:
+            QMessageBox.information(self, "Buscar", "Ingresa un término de búsqueda.")
+            return
+
+        if not self._conexion:
+            QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
+            return
+
+        like = f"%{termino}%"
+
+        try:
+            cursor = self._conexion.cursor()
+            query = """
+                SELECT 
+                    p.nombre_producto,
+                    p.marca_producto,
+                    COALESCE(c.nombre_categoria, 'Sin categoría'),
+                    p.precio_venta_prod
+                FROM productos p
+                LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
+                WHERE p.nombre_producto LIKE %s
+                   OR p.marca_producto LIKE %s
+                   OR c.nombre_categoria LIKE %s
+            """
+            cursor.execute(query, (like, like, like))
+            resultados = cursor.fetchall()
+            cursor.close()
+
+            # Normalizar a tuplas
+            if resultados and isinstance(resultados[0], dict):
+                # Obtener nombres de columnas en orden
+                columnas = ["nombre_producto", "marca_producto", "nombre_categoria", "precio_venta_prod"]
+                # Convertir cada diccionario a tupla en el orden de columnas
+                filas = []
+                for row in resultados:
+                    filas.append(tuple(row.get(col) for col in columnas))
+            else:
+                filas = resultados
 
             self.tabla_resultados.setRowCount(len(filas))
             for i, fila in enumerate(filas):
@@ -1390,7 +1514,6 @@ class CajaVista(QWidget):
         cuerpo.setContentsMargins(0, 0, 0, 0)
         cuerpo.setSpacing(0)
 
-        # PANEL LATERAL (480px)
         panel_cobros = QFrame()
         panel_cobros.setObjectName("PanelCobros")
         panel_cobros.setFixedWidth(480)
@@ -1474,7 +1597,6 @@ class CajaVista(QWidget):
         layout_panel.addStretch()
         layout_panel.addWidget(card_cambio)
 
-        # ÁREA DE TABLA
         area_tabla = QFrame()
         area_tabla.setStyleSheet("QFrame { border:none; background:transparent; }")
         layout_area = QVBoxLayout(area_tabla)
@@ -1559,7 +1681,6 @@ class CajaVista(QWidget):
         cuerpo.addWidget(area_tabla)
         layout_caja_contenido.addLayout(cuerpo, 1)
 
-        # BARRA INFERIOR
         barra_inferior = QFrame()
         barra_inferior.setFixedHeight(100)
         barra_inferior.setStyleSheet("""
@@ -1604,7 +1725,6 @@ class CajaVista(QWidget):
         layout_bsec.addWidget(self.btn_modificar)
         layout_bsec.addWidget(self.btn_buscar)
 
-        # BOTÓN COBRAR – 220px
         self.btn_cobrar = QPushButton("COBRAR")
         self.btn_cobrar.setFixedSize(220, 52)
         self.btn_cobrar.setFont(self.fuente_btns)

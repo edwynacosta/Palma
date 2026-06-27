@@ -161,7 +161,7 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 (4, 2, 4, 'marianazarate', '446688');
 
 -- ------------------------------------------------------------
--- 9. TABLA: productos
+-- 9. TABLA: productos (CON CATEGORÍAS ASIGNADAS)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `productos`;
 CREATE TABLE `productos` (
