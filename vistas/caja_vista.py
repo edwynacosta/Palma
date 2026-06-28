@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint, QStringListModel
 from PySide6.QtGui import QFont, QColor, QPainter, QBrush, QFontDatabase
 import unicodedata
+import traceback
 
 from vistas.facturaelectronica_vista import FacturaElectronicaVista
 from vistas.reciboproveedores_vista import ReciboProveedoresVista
@@ -17,7 +18,7 @@ from vistas.devoluciones_vista import DevolucionesVista
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO AGREGAR FACTURA
+# DIÁLOGO AGREGAR FACTURA – CORREGIDO (cantidad/peso)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoAgregarFactura(QDialog):
     def __init__(self, conexion=None, parent=None):
@@ -137,6 +138,7 @@ class DialogoAgregarFactura(QDialog):
         self.spin_peso.setFixedHeight(56)
         self.spin_peso.setSuffix(" g")
         self.spin_peso.setStyleSheet(estilo_input)
+        self.spin_peso.valueChanged.connect(self._on_peso_changed)  # <--- Conexión extra
         self.spin_peso.valueChanged.connect(self._calcular_total)
         col_peso.addWidget(lbl_peso)
         col_peso.addWidget(self.spin_peso)
@@ -252,7 +254,8 @@ class DialogoAgregarFactura(QDialog):
             self.txt_precio.setText(f"${int(precio):,}")
             
             self.btn_anadir.setEnabled(True)
-            if self.spin_cant.value() == 0 and self.spin_peso.value() == 0:
+            # Si la cantidad es 0, poner 1 (independientemente del peso)
+            if self.spin_cant.value() == 0:
                 self.spin_cant.setValue(1)
             
             self.txt_nombre.setStyleSheet("""
@@ -270,6 +273,12 @@ class DialogoAgregarFactura(QDialog):
             """)
 
         self._calcular_total()
+
+    def _on_peso_changed(self):
+        """Cuando el peso cambia y es > 0, poner cantidad a 0"""
+        if self.spin_peso.value() > 0:
+            self.spin_cant.setValue(0)
+        # Si el peso vuelve a 0, no hacemos nada (el usuario puede poner cantidad manualmente)
 
     def _calcular_total(self):
         if not self.producto_actual: 
@@ -321,7 +330,7 @@ class DialogoAgregarFactura(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO ELIMINAR – sin bordes internos
+# DIÁLOGO ELIMINAR (sin bordes internos)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoEliminar(QDialog):
     def __init__(self, productos, parent=None):
@@ -467,7 +476,7 @@ class DialogoEliminar(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO MODIFICAR – más grande, sin ID, cantidad grande
+# DIÁLOGO MODIFICAR (más grande, sin ID)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoModificar(QDialog):
     def __init__(self, productos, parent=None):
@@ -662,8 +671,10 @@ class DialogoModificar(QDialog):
         }
         self.accept()
 
-# DIÁLOGO BUSCAR – CORREGIDO (normalización, categoría, botón ✕, fuente grande)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO BUSCAR – CON TEXTO DE RESULTADOS EN 17px
+# ══════════════════════════════════════════════════════════════════════════════
 class DialogoBuscar(QDialog):
     def __init__(self, conexion=None, parent=None):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -742,7 +753,6 @@ class DialogoBuscar(QDialog):
         """)
         layout_card.addWidget(self.txt_buscar)
 
-        # ── TABLA DE RESULTADOS (con fuente más grande) ──
         self.tabla_resultados = QTableWidget()
         self.tabla_resultados.setColumnCount(4)
         self.tabla_resultados.setHorizontalHeaderLabels(["NOMBRE", "MARCA", "CATEGORÍA", "PRECIO UNIT."])
@@ -757,11 +767,11 @@ class DialogoBuscar(QDialog):
                 outline: none;
             }
             QTableWidget::item {
-                padding: 10px 14px;
+                padding: 12px 16px;
                 border-bottom: 1px solid #EAEFEA;
                 color: #1F2937;
                 font-family: 'Montserrat';
-                font-size: 15px;
+                font-size: 17px;
             }
             QTableWidget::item:selected {
                 background-color: #E8F5EE;
@@ -774,7 +784,7 @@ class DialogoBuscar(QDialog):
                 background-color: #F8FAF9;
                 color: #86B896;
                 font-family: 'Montserrat';
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 800;
                 border: none;
                 border-bottom: 2px solid #EEF0F2;
@@ -782,7 +792,6 @@ class DialogoBuscar(QDialog):
             }
         """)
         self.tabla_resultados.verticalHeader().setVisible(False)
-        self.tabla_resultados.verticalHeader().setDefaultSectionSize(50)  # Fila más alta
         self.tabla_resultados.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla_resultados.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         header = self.tabla_resultados.horizontalHeader()
@@ -830,6 +839,7 @@ class DialogoBuscar(QDialog):
         layout_botones.addWidget(self.btn_buscar)
 
         layout_card.addLayout(layout_botones)
+
         layout_fondo.addWidget(self.card)
 
         self._cargar_nombres_autocompletado()
@@ -840,23 +850,15 @@ class DialogoBuscar(QDialog):
         try:
             cursor = self._conexion.cursor()
             cursor.execute("SELECT nombre_producto FROM productos")
-            resultados = cursor.fetchall()
+            nombres = [row[0] for row in cursor.fetchall()]
             cursor.close()
-            # Normalizar a lista de strings
-            nombres = []
-            for row in resultados:
-                if isinstance(row, dict):
-                    nombres.append(row.get("nombre_producto", ""))
-                else:
-                    nombres.append(row[0])
-            nombres = [n for n in nombres if n]
             modelo = QStringListModel(nombres)
             completer = QCompleter(modelo, self)
             completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
             self.txt_buscar.setCompleter(completer)
         except Exception as e:
-            print(f"Error autocompletado: {e}")
+            print(f"Error al cargar nombres para autocompletado: {e}")
 
     def _buscar(self):
         termino = self.txt_buscar.text().strip()
@@ -868,36 +870,56 @@ class DialogoBuscar(QDialog):
             QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
             return
 
-        like = f"%{termino}%"
+        # Normalizar término
+        termino_normalizado = termino.lower()
+        termino_sin_tildes = ''.join(
+            c for c in unicodedata.normalize('NFD', termino_normalizado)
+            if unicodedata.category(c) != 'Mn'
+        )
+        like = f"%{termino_sin_tildes}%"
 
         try:
             cursor = self._conexion.cursor()
-            query = """
-                SELECT 
-                    p.nombre_producto,
-                    p.marca_producto,
-                    COALESCE(c.nombre_categoria, 'Sin categoría'),
-                    p.precio_venta_prod
-                FROM productos p
-                LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
-                WHERE p.nombre_producto LIKE %s
-                   OR p.marca_producto LIKE %s
-                   OR c.nombre_categoria LIKE %s
-            """
-            cursor.execute(query, (like, like, like))
-            resultados = cursor.fetchall()
-            cursor.close()
+            filas = []
+            error = None
 
-            # Normalizar a tuplas
-            if resultados and isinstance(resultados[0], dict):
-                # Obtener nombres de columnas en orden
-                columnas = ["nombre_producto", "marca_producto", "nombre_categoria", "precio_venta_prod"]
-                # Convertir cada diccionario a tupla en el orden de columnas
-                filas = []
-                for row in resultados:
-                    filas.append(tuple(row.get(col) for col in columnas))
-            else:
-                filas = resultados
+            # Intentar con tabla 'categoria'
+            try:
+                query = """
+                    SELECT 
+                        p.nombre_producto,
+                        p.marca_producto,
+                        c.nombre_categoria,
+                        p.precio_venta_prod
+                    FROM productos p
+                    LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
+                    WHERE LOWER(p.nombre_producto) LIKE %s
+                       OR LOWER(p.marca_producto) LIKE %s
+                       OR LOWER(c.nombre_categoria) LIKE %s
+                """
+                cursor.execute(query, (like, like, like))
+                filas = cursor.fetchall()
+            except Exception as e:
+                error = e
+                # Fallback: sin JOIN
+                try:
+                    query = """
+                        SELECT 
+                            p.nombre_producto,
+                            p.marca_producto,
+                            CONCAT('ID: ', p.id_categoria) as categoria,
+                            p.precio_venta_prod
+                        FROM productos p
+                        WHERE LOWER(p.nombre_producto) LIKE %s
+                           OR LOWER(p.marca_producto) LIKE %s
+                    """
+                    cursor.execute(query, (like, like))
+                    filas = cursor.fetchall()
+                except Exception as e2:
+                    error = e2
+                    filas = []
+
+            cursor.close()
 
             self.tabla_resultados.setRowCount(len(filas))
             for i, fila in enumerate(filas):
@@ -905,119 +927,22 @@ class DialogoBuscar(QDialog):
                 marca = fila[1] or ""
                 categoria = fila[2] or "Sin categoría"
                 precio = fila[3] if fila[3] is not None else 0
-                
                 self.tabla_resultados.setItem(i, 0, QTableWidgetItem(str(nombre)))
                 self.tabla_resultados.setItem(i, 1, QTableWidgetItem(str(marca)))
                 self.tabla_resultados.setItem(i, 2, QTableWidgetItem(str(categoria)))
                 self.tabla_resultados.setItem(i, 3, QTableWidgetItem(f"${int(precio):,}"))
 
             if len(filas) == 0:
-                QMessageBox.information(self, "Buscar", "No se encontraron productos.")
+                QMessageBox.information(self, "Buscar", "No se encontraron productos con ese término.")
+            if error and len(filas) > 0:
+                QMessageBox.information(
+                    self, 
+                    "Aviso", 
+                    "No se pudo obtener la categoría desde la base de datos.\nSe muestra el ID de categoría en su lugar."
+                )
+
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al buscar: {str(e)}")
-
-    def _limpiar(self):
-        self.txt_buscar.clear()
-        self.tabla_resultados.setRowCount(0)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(self.rect())
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        if self.parent():
-            pg = self.parent().geometry()
-            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
-                             self.parent().mapToGlobal(QPoint(0,0)).y(),
-                             pg.width(), pg.height())
-
-    # ══════ FUNCIÓN MODIFICADA ══════
-    def _cargar_nombres_autocompletado(self):
-        if not self._conexion:
-            return
-        try:
-            cursor = self._conexion.cursor()
-            cursor.execute("SELECT nombre_producto FROM productos")
-            resultados = cursor.fetchall()
-            cursor.close()
-            # Normalizar a lista de strings
-            nombres = []
-            for row in resultados:
-                if isinstance(row, dict):
-                    nombres.append(row.get("nombre_producto", ""))
-                else:
-                    nombres.append(row[0])
-            nombres = [n for n in nombres if n]  # filtrar vacíos
-            modelo = QStringListModel(nombres)
-            completer = QCompleter(modelo, self)
-            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-            completer.setFilterMode(Qt.MatchFlag.MatchContains)
-            self.txt_buscar.setCompleter(completer)
-        except Exception as e:
-            print(f"Error autocompletado: {e}")
-
-    # ══════ FUNCIÓN MODIFICADA ══════
-    def _buscar(self):
-        termino = self.txt_buscar.text().strip()
-        if not termino:
-            QMessageBox.information(self, "Buscar", "Ingresa un término de búsqueda.")
-            return
-
-        if not self._conexion:
-            QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
-            return
-
-        like = f"%{termino}%"
-
-        try:
-            cursor = self._conexion.cursor()
-            query = """
-                SELECT 
-                    p.nombre_producto,
-                    p.marca_producto,
-                    COALESCE(c.nombre_categoria, 'Sin categoría'),
-                    p.precio_venta_prod
-                FROM productos p
-                LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
-                WHERE p.nombre_producto LIKE %s
-                   OR p.marca_producto LIKE %s
-                   OR c.nombre_categoria LIKE %s
-            """
-            cursor.execute(query, (like, like, like))
-            resultados = cursor.fetchall()
-            cursor.close()
-
-            # Normalizar a tuplas
-            if resultados and isinstance(resultados[0], dict):
-                # Obtener nombres de columnas en orden
-                columnas = ["nombre_producto", "marca_producto", "nombre_categoria", "precio_venta_prod"]
-                # Convertir cada diccionario a tupla en el orden de columnas
-                filas = []
-                for row in resultados:
-                    filas.append(tuple(row.get(col) for col in columnas))
-            else:
-                filas = resultados
-
-            self.tabla_resultados.setRowCount(len(filas))
-            for i, fila in enumerate(filas):
-                nombre = fila[0] or ""
-                marca = fila[1] or ""
-                categoria = fila[2] or "Sin categoría"
-                precio = fila[3] if fila[3] is not None else 0
-                
-                self.tabla_resultados.setItem(i, 0, QTableWidgetItem(str(nombre)))
-                self.tabla_resultados.setItem(i, 1, QTableWidgetItem(str(marca)))
-                self.tabla_resultados.setItem(i, 2, QTableWidgetItem(str(categoria)))
-                self.tabla_resultados.setItem(i, 3, QTableWidgetItem(f"${int(precio):,}"))
-
-            if len(filas) == 0:
-                QMessageBox.information(self, "Buscar", "No se encontraron productos.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al buscar: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al buscar productos: {str(e)}")
 
     def _limpiar(self):
         self.txt_buscar.clear()
@@ -1040,7 +965,7 @@ class DialogoBuscar(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO DE COBRO – más grande
+# DIÁLOGO COBRO – CORREGIDO (con manejo de diccionarios y tuplas)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoCobro(QDialog):
     def __init__(self, total, efectivo, cambio, empleado_id, productos, conexion, parent=None):
@@ -1248,6 +1173,13 @@ class DialogoCobro(QDialog):
         layout_fondo.addWidget(self.card)
 
     def _confirmar_cobro(self):
+        import traceback
+        print("=== INICIANDO COBRO ===")
+        print(f"Empleado ID: {self.empleado_id}")
+        print(f"Total: {self.total}")
+        print(f"Productos: {self.productos}")
+
+        # 1. Recoger datos del cliente
         nombre = self.txt_nombre.text().strip() or None
         documento = self.txt_documento.text().strip() or None
         telefono = self.txt_telefono.text().strip() or None
@@ -1261,75 +1193,139 @@ class DialogoCobro(QDialog):
             try:
                 cursor = self.conexion.cursor()
                 if documento:
-                    cursor.execute("SELECT id_cliente FROM clientes WHERE documento_identidad = %s", (documento,))
+                    sql = "SELECT id_cliente FROM clientes WHERE documento_identidad = %s"
+                    params = (documento,)
+                    print(f"SQL: {sql} | Params: {params}")
+                    cursor.execute(sql, params)
                     row = cursor.fetchone()
                     if row:
-                        id_cliente = row[0]
+                        if isinstance(row, dict):
+                            id_cliente = row['id_cliente']
+                        else:
+                            id_cliente = row[0]
                     else:
-                        cursor.execute("""
+                        sql = """
                             INSERT INTO clientes
                             (nombre_cliente, documento_identidad, telefono, email, direccion, ciudad, departamento)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """, (nombre, documento, telefono, email, direccion, ciudad, departamento))
+                        """
+                        params = (nombre, documento, telefono, email, direccion, ciudad, departamento)
+                        print(f"SQL: {sql} | Params: {params}")
+                        cursor.execute(sql, params)
                         id_cliente = cursor.lastrowid
                         self.conexion.commit()
                 else:
-                    cursor.execute("""
+                    sql = """
                         INSERT INTO clientes
                         (nombre_cliente, documento_identidad, telefono, email, direccion, ciudad, departamento)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (nombre, documento, telefono, email, direccion, ciudad, departamento))
+                    """
+                    params = (nombre, documento, telefono, email, direccion, ciudad, departamento)
+                    print(f"SQL: {sql} | Params: {params}")
+                    cursor.execute(sql, params)
                     id_cliente = cursor.lastrowid
                     self.conexion.commit()
                 cursor.close()
+                print(f"Cliente guardado/recuperado con ID: {id_cliente}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"No se pudo guardar el cliente: {e}")
+                print(f"Error al guardar cliente: {repr(e)}")
+                QMessageBox.critical(self, "Error", f"No se pudo guardar el cliente: {str(e)}")
                 return
 
+        # 2. Insertar factura
         try:
             cursor = self.conexion.cursor()
             fecha_actual = datetime.now()
-            cursor.execute("""
+            sql = """
                 INSERT INTO facturas (id_empleado, id_cliente, fecha_fac, total_fac)
                 VALUES (%s, %s, %s, %s)
-            """, (self.empleado_id, id_cliente, fecha_actual, self.total))
+            """
+            params = (self.empleado_id, id_cliente, fecha_actual, self.total)
+            print(f"SQL: {sql} | Params: {params}")
+            cursor.execute(sql, params)
             id_factura = cursor.lastrowid
             self.conexion.commit()
             cursor.close()
+            print(f"Factura insertada con ID: {id_factura}")
+            if not id_factura:
+                raise Exception("No se obtuvo ID de factura")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo guardar la factura: {e}")
+            print(f"Error al guardar factura: {repr(e)}")
+            QMessageBox.critical(self, "Error", f"No se pudo guardar la factura: {str(e)}")
             return
 
+        # 3. Insertar detalles, actualizar inventario y movimientos
         try:
             cursor = self.conexion.cursor()
-            for producto in self.productos:
-                cursor.execute("SELECT precio_venta_prod FROM productos WHERE id_producto = %s", (producto["id"],))
+            for idx, producto in enumerate(self.productos):
+                print(f"Procesando producto {idx+1}: {producto}")
+                if not producto.get("id"):
+                    raise Exception(f"Producto {idx+1} sin ID")
+                if not producto.get("cantidad") and not producto.get("peso"):
+                    raise Exception(f"Producto {producto.get('nombre', idx+1)} sin cantidad ni peso")
+
+                # Obtener precio unitario desde la base de datos
+                sql = "SELECT precio_venta_prod FROM productos WHERE id_producto = %s"
+                params = (producto["id"],)
+                print(f"SQL: {sql} | Params: {params}")
+                cursor.execute(sql, params)
                 row = cursor.fetchone()
-                precio_unitario = row[0] if row else producto.get("precio_unitario", 0)
-                cantidad = producto["cantidad"]
-                subtotal = cantidad * precio_unitario
-                cursor.execute("""
+                if not row:
+                    raise Exception(f"Producto con ID {producto['id']} no encontrado en BD")
+                if isinstance(row, dict):
+                    precio_unitario = float(row['precio_venta_prod'])
+                else:
+                    precio_unitario = float(row[0])
+                print(f"  Precio unitario: {precio_unitario}")
+
+                cantidad = int(producto.get("cantidad", 0) or 0)
+                peso_gramos = int(producto.get("peso", 0) or 0)
+                subtotal = (precio_unitario * cantidad) + (precio_unitario * (peso_gramos / 1000.0))
+                print(f"  Cantidad: {cantidad}, Peso: {peso_gramos}g, Subtotal: {subtotal}")
+
+                # Insertar detalle de factura
+                sql = """
                     INSERT INTO detalle_factura
                     (id_factura, id_producto, cantidad_detfac, precio_unitario_detfac, subtotal_detfac)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (id_factura, producto["id"], cantidad, precio_unitario, subtotal))
+                """
+                params = (id_factura, producto["id"], cantidad, precio_unitario, subtotal)
+                print(f"SQL: {sql} | Params: {params}")
+                cursor.execute(sql, params)
+                print(f"  Detalle insertado para producto {producto['id']}")
 
-                cursor.execute("""
-                    UPDATE inventarios SET stock_actual = stock_actual - %s
-                    WHERE id_producto = %s
-                """, (cantidad, producto["id"]))
+                # Actualizar inventario (restar stock)
+                stock_a_restar = cantidad if cantidad > 0 else 1
+                sql = "UPDATE inventarios SET stock_actual = stock_actual - %s WHERE id_producto = %s"
+                params = (stock_a_restar, producto["id"])
+                print(f"SQL: {sql} | Params: {params}")
+                cursor.execute(sql, params)
+                if cursor.rowcount == 0:
+                    raise Exception(f"No se encontró inventario para producto ID {producto['id']}")
+                print(f"  Inventario actualizado, stock restado: {stock_a_restar}")
 
-                cursor.execute("""
+                # Insertar movimiento de salida (tipo_mov = 2)
+                sql = """
                     INSERT INTO movimientos
                     (id_inventario, id_tipo_mov, id_empleado, id_factura, cantidad_movimiento)
                     SELECT id_inventario, 2, %s, %s, %s
                     FROM inventarios WHERE id_producto = %s
-                """, (self.empleado_id, id_factura, cantidad, producto["id"]))
+                """
+                params = (self.empleado_id, id_factura, stock_a_restar, producto["id"])
+                print(f"SQL: {sql} | Params: {params}")
+                cursor.execute(sql, params)
+                if cursor.rowcount == 0:
+                    raise Exception(f"No se pudo insertar movimiento para producto ID {producto['id']} (inventario no encontrado)")
+                print(f"  Movimiento insertado para producto {producto['id']}")
+
             self.conexion.commit()
             cursor.close()
+            print("=== COBRO EXITOSO ===")
         except Exception as e:
             self.conexion.rollback()
-            QMessageBox.critical(self, "Error", f"No se pudo guardar el detalle de la factura: {e}")
+            print(f"=== ERROR EN COBRO: {repr(e)} ===")
+            traceback.print_exc()
+            QMessageBox.critical(self, "Error", f"No se pudo guardar el detalle de la factura:\n{str(e)}")
             return
 
         self.exito = True
@@ -1352,7 +1348,7 @@ class DialogoCobro(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# VISTA PRINCIPAL DE CAJA – panel 480px, números 48px, COBRAR 220px
+# VISTA PRINCIPAL DE CAJA
 # ══════════════════════════════════════════════════════════════════════════════
 class CajaVista(QWidget):
     def __init__(self, controlador_flujo):
