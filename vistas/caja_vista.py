@@ -138,7 +138,7 @@ class DialogoAgregarFactura(QDialog):
         self.spin_peso.setFixedHeight(56)
         self.spin_peso.setSuffix(" g")
         self.spin_peso.setStyleSheet(estilo_input)
-        self.spin_peso.valueChanged.connect(self._on_peso_changed)  # <--- Conexión extra
+        self.spin_peso.valueChanged.connect(self._on_peso_changed)
         self.spin_peso.valueChanged.connect(self._calcular_total)
         col_peso.addWidget(lbl_peso)
         col_peso.addWidget(self.spin_peso)
@@ -254,7 +254,6 @@ class DialogoAgregarFactura(QDialog):
             self.txt_precio.setText(f"${int(precio):,}")
             
             self.btn_anadir.setEnabled(True)
-            # Si la cantidad es 0, poner 1 (independientemente del peso)
             if self.spin_cant.value() == 0:
                 self.spin_cant.setValue(1)
             
@@ -275,10 +274,8 @@ class DialogoAgregarFactura(QDialog):
         self._calcular_total()
 
     def _on_peso_changed(self):
-        """Cuando el peso cambia y es > 0, poner cantidad a 0"""
         if self.spin_peso.value() > 0:
             self.spin_cant.setValue(0)
-        # Si el peso vuelve a 0, no hacemos nada (el usuario puede poner cantidad manualmente)
 
     def _calcular_total(self):
         if not self.producto_actual: 
@@ -476,7 +473,7 @@ class DialogoEliminar(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO MODIFICAR (más grande, sin ID)
+# DIÁLOGO MODIFICAR (CANTIDAD Y PESO)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoModificar(QDialog):
     def __init__(self, productos, parent=None):
@@ -485,6 +482,7 @@ class DialogoModificar(QDialog):
         self.setModal(True)
         self._productos = productos
         self.resultado = None
+        self._indice_actual = None
 
         layout_fondo = QVBoxLayout(self)
         layout_fondo.setContentsMargins(24, 24, 24, 24)
@@ -492,7 +490,7 @@ class DialogoModificar(QDialog):
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(750, 650)
+        self.card.setFixedSize(750, 750)
         self.card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.card.setStyleSheet("""
             QFrame#MainCard {
@@ -501,7 +499,6 @@ class DialogoModificar(QDialog):
                 border: 2px solid #D1E2D9;
             }
         """)
-        
         sombra = QGraphicsDropShadowEffect(self.card)
         sombra.setBlurRadius(40)
         sombra.setColor(QColor(0, 0, 0, 45))
@@ -517,7 +514,7 @@ class DialogoModificar(QDialog):
             return font
 
         layout_header = QHBoxLayout()
-        lbl_titulo = QLabel("EDITAR CANTIDAD DEL PRODUCTO")
+        lbl_titulo = QLabel("EDITAR PRODUCTO")
         lbl_titulo.setFont(_f(20, QFont.Weight.Black))
         lbl_titulo.setStyleSheet("color: #17813D; background: transparent; border: none;")
         
@@ -594,19 +591,22 @@ class DialogoModificar(QDialog):
         self.lista.setFixedHeight(180)
         
         self._indices = list(range(len(productos)))
-        for p in productos:
-            self.lista.addItem(f"{p['nombre'].upper()}   ·   Cant: {p['cantidad']}")
-            
+        self._actualizar_lista()
+        
         self.lista.currentRowChanged.connect(self._cargar_valores_item)
         layout_card.addWidget(self.lista)
 
-        fila_cant = QVBoxLayout()
-        fila_cant.setSpacing(8)
-        lbl_cant = QLabel("NUEVA CANTIDAD")
+        # Contenedor para cantidad y peso
+        fila_cant_peso = QHBoxLayout()
+        fila_cant_peso.setSpacing(20)
+
+        col_cant = QVBoxLayout()
+        col_cant.setSpacing(8)
+        lbl_cant = QLabel("CANTIDAD (Und)")
         lbl_cant.setFont(_f(14, QFont.Weight.Bold))
         lbl_cant.setStyleSheet("color: #708077; background: transparent;")
         self.spin_cant = QSpinBox()
-        self.spin_cant.setRange(1, 9999)
+        self.spin_cant.setRange(0, 9999)
         self.spin_cant.setFixedHeight(70)
         self.spin_cant.setStyleSheet("""
             QSpinBox {
@@ -622,9 +622,40 @@ class DialogoModificar(QDialog):
                 border: 2px solid #17813D;
             }
         """)
-        fila_cant.addWidget(lbl_cant)
-        fila_cant.addWidget(self.spin_cant)
-        layout_card.addLayout(fila_cant)
+        self.spin_cant.valueChanged.connect(self._on_cant_changed)
+        col_cant.addWidget(lbl_cant)
+        col_cant.addWidget(self.spin_cant)
+
+        col_peso = QVBoxLayout()
+        col_peso.setSpacing(8)
+        lbl_peso = QLabel("PESO (Gramos)")
+        lbl_peso.setFont(_f(14, QFont.Weight.Bold))
+        lbl_peso.setStyleSheet("color: #708077; background: transparent;")
+        self.spin_peso = QSpinBox()
+        self.spin_peso.setRange(0, 99999)
+        self.spin_peso.setSuffix(" g")
+        self.spin_peso.setFixedHeight(70)
+        self.spin_peso.setStyleSheet("""
+            QSpinBox {
+                background-color: #F8FAF9;
+                border: 2px solid #D1E2D9;
+                border-radius: 14px;
+                padding: 0 20px;
+                color: #1F2937;
+                font-size: 24px;
+                font-weight: bold;
+            }
+            QSpinBox:focus {
+                border: 2px solid #17813D;
+            }
+        """)
+        self.spin_peso.valueChanged.connect(self._on_peso_changed)
+        col_peso.addWidget(lbl_peso)
+        col_peso.addWidget(self.spin_peso)
+
+        fila_cant_peso.addLayout(col_cant)
+        fila_cant_peso.addLayout(col_peso)
+        layout_card.addLayout(fila_cant_peso)
 
         self.btn_guardar = QPushButton("GUARDAR CAMBIOS")
         self.btn_guardar.setFixedHeight(64)
@@ -640,13 +671,26 @@ class DialogoModificar(QDialog):
 
         layout_fondo.addWidget(self.card)
 
+    def _actualizar_lista(self):
+        self.lista.clear()
+        self._indices = []
+        for i, p in enumerate(self._productos):
+            texto = f"{p['nombre'].upper()}   ·   Cant: {p['cantidad']}"
+            if p.get('peso', 0) > 0:
+                texto += f"   ·   Peso: {p['peso']}g"
+            self.lista.addItem(texto)
+            self._indices.append(i)
+
     def _buscar(self, texto):
         texto = texto.strip().lower()
         self.lista.clear()
         self._indices = []
         for i, p in enumerate(self._productos):
             if texto in p["nombre"].lower():
-                self.lista.addItem(f"{p['nombre'].upper()}   ·   Cant: {p['cantidad']}")
+                texto_item = f"{p['nombre'].upper()}   ·   Cant: {p['cantidad']}"
+                if p.get('peso', 0) > 0:
+                    texto_item += f"   ·   Peso: {p['peso']}g"
+                self.lista.addItem(texto_item)
                 self._indices.append(i)
 
     def _cargar_valores_item(self, row):
@@ -654,26 +698,42 @@ class DialogoModificar(QDialog):
             self.btn_guardar.setEnabled(True)
             idx_real = self._indices[row]
             prod_sel = self._productos[idx_real]
-            if "cantidad" in prod_sel:
-                self.spin_cant.setValue(int(prod_sel["cantidad"]))
+            self.spin_cant.setValue(int(prod_sel.get("cantidad", 0)))
+            self.spin_peso.setValue(int(prod_sel.get("peso", 0)))
             self._indice_actual = idx_real
         else:
             self.btn_guardar.setEnabled(False)
+
+    def _on_cant_changed(self, value):
+        if value > 0:
+            self.spin_peso.setValue(0)
+
+    def _on_peso_changed(self, value):
+        if value > 0:
+            self.spin_cant.setValue(0)
 
     def _confirmar(self):
         row = self.lista.currentRow()
         if row < 0 or row >= len(self._indices):
             return
-            
+        if self.spin_cant.value() == 0 and self.spin_peso.value() == 0:
+            QMessageBox.warning(self, "Atención", "Debes ingresar una cantidad o un peso.")
+            return
         self.resultado = {
             "indice"  : self._indices[row],
             "cantidad": self.spin_cant.value(),
+            "peso": self.spin_peso.value(),
         }
         self.accept()
 
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor(40, 55, 45, 95))
+
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO BUSCAR – CON TEXTO DE RESULTADOS EN 17px
+# DIÁLOGO BUSCAR – CON JOIN A CATEGORIA (CORREGIDO CON MANEJO DE FILAS)
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoBuscar(QDialog):
     def __init__(self, conexion=None, parent=None):
@@ -844,13 +904,43 @@ class DialogoBuscar(QDialog):
 
         self._cargar_nombres_autocompletado()
 
+    # ----- Métodos auxiliares para manejar filas (tupla o dict) -----
+    def _obtener_valor_fila(self, fila, indice):
+        """Devuelve el valor en la posición 'indice' de una fila (tupla o dict)"""
+        if isinstance(fila, (tuple, list)):
+            return fila[indice] if indice < len(fila) else None
+        elif isinstance(fila, dict):
+            # Mapeo de índices a nombres de columna según la consulta
+            columnas = ['nombre_producto', 'marca_producto', 'nombre_categoria', 'precio_venta_prod']
+            if indice < len(columnas):
+                return fila.get(columnas[indice])
+        return None
+
+    def _normalizar_fila(self, fila):
+        """Convierte una fila (tupla o dict) en una lista de valores en el orden esperado"""
+        if isinstance(fila, (tuple, list)):
+            return list(fila)
+        elif isinstance(fila, dict):
+            # Orden: nombre_producto, marca_producto, nombre_categoria, precio_venta_prod
+            columnas = ['nombre_producto', 'marca_producto', 'nombre_categoria', 'precio_venta_prod']
+            return [fila.get(col) for col in columnas]
+        return []
+
+    # ----------------------------------------------
+
     def _cargar_nombres_autocompletado(self):
         if not self._conexion:
             return
         try:
             cursor = self._conexion.cursor()
             cursor.execute("SELECT nombre_producto FROM productos")
-            nombres = [row[0] for row in cursor.fetchall()]
+            filas = cursor.fetchall()
+            nombres = []
+            for fila in filas:
+                if isinstance(fila, dict):
+                    nombres.append(fila.get('nombre_producto', ''))
+                else:
+                    nombres.append(fila[0])
             cursor.close()
             modelo = QStringListModel(nombres)
             completer = QCompleter(modelo, self)
@@ -870,7 +960,6 @@ class DialogoBuscar(QDialog):
             QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
             return
 
-        # Normalizar término
         termino_normalizado = termino.lower()
         termino_sin_tildes = ''.join(
             c for c in unicodedata.normalize('NFD', termino_normalizado)
@@ -880,66 +969,39 @@ class DialogoBuscar(QDialog):
 
         try:
             cursor = self._conexion.cursor()
-            filas = []
-            error = None
-
-            # Intentar con tabla 'categoria'
-            try:
-                query = """
-                    SELECT 
-                        p.nombre_producto,
-                        p.marca_producto,
-                        c.nombre_categoria,
-                        p.precio_venta_prod
-                    FROM productos p
-                    LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
-                    WHERE LOWER(p.nombre_producto) LIKE %s
-                       OR LOWER(p.marca_producto) LIKE %s
-                       OR LOWER(c.nombre_categoria) LIKE %s
-                """
-                cursor.execute(query, (like, like, like))
-                filas = cursor.fetchall()
-            except Exception as e:
-                error = e
-                # Fallback: sin JOIN
-                try:
-                    query = """
-                        SELECT 
-                            p.nombre_producto,
-                            p.marca_producto,
-                            CONCAT('ID: ', p.id_categoria) as categoria,
-                            p.precio_venta_prod
-                        FROM productos p
-                        WHERE LOWER(p.nombre_producto) LIKE %s
-                           OR LOWER(p.marca_producto) LIKE %s
-                    """
-                    cursor.execute(query, (like, like))
-                    filas = cursor.fetchall()
-                except Exception as e2:
-                    error = e2
-                    filas = []
-
+            # Usamos la tabla 'categoria' (singular) que existe en el esquema
+            query = """
+                SELECT 
+                    p.nombre_producto,
+                    p.marca_producto,
+                    c.nombre_categoria,
+                    p.precio_venta_prod
+                FROM productos p
+                LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
+                WHERE LOWER(p.nombre_producto) LIKE %s
+                   OR LOWER(p.marca_producto) LIKE %s
+                   OR LOWER(c.nombre_categoria) LIKE %s
+            """
+            cursor.execute(query, (like, like, like))
+            filas = cursor.fetchall()
             cursor.close()
 
-            self.tabla_resultados.setRowCount(len(filas))
-            for i, fila in enumerate(filas):
-                nombre = fila[0] or ""
-                marca = fila[1] or ""
-                categoria = fila[2] or "Sin categoría"
-                precio = fila[3] if fila[3] is not None else 0
+            # Convertir cada fila a una lista normalizada
+            filas_normalizadas = [self._normalizar_fila(f) for f in filas]
+
+            self.tabla_resultados.setRowCount(len(filas_normalizadas))
+            for i, vals in enumerate(filas_normalizadas):
+                nombre = vals[0] or ""
+                marca = vals[1] or ""
+                categoria = vals[2] or "Sin categoría"
+                precio = vals[3] if vals[3] is not None else 0
                 self.tabla_resultados.setItem(i, 0, QTableWidgetItem(str(nombre)))
                 self.tabla_resultados.setItem(i, 1, QTableWidgetItem(str(marca)))
                 self.tabla_resultados.setItem(i, 2, QTableWidgetItem(str(categoria)))
                 self.tabla_resultados.setItem(i, 3, QTableWidgetItem(f"${int(precio):,}"))
 
-            if len(filas) == 0:
+            if len(filas_normalizadas) == 0:
                 QMessageBox.information(self, "Buscar", "No se encontraron productos con ese término.")
-            if error and len(filas) > 0:
-                QMessageBox.information(
-                    self, 
-                    "Aviso", 
-                    "No se pudo obtener la categoría desde la base de datos.\nSe muestra el ID de categoría en su lugar."
-                )
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al buscar productos: {str(e)}")
@@ -965,7 +1027,7 @@ class DialogoBuscar(QDialog):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIÁLOGO COBRO – CORREGIDO (con manejo de diccionarios y tuplas)
+# DIÁLOGO COBRO
 # ══════════════════════════════════════════════════════════════════════════════
 class DialogoCobro(QDialog):
     def __init__(self, total, efectivo, cambio, empleado_id, productos, conexion, parent=None):
@@ -1179,7 +1241,6 @@ class DialogoCobro(QDialog):
         print(f"Total: {self.total}")
         print(f"Productos: {self.productos}")
 
-        # 1. Recoger datos del cliente
         nombre = self.txt_nombre.text().strip() or None
         documento = self.txt_documento.text().strip() or None
         telefono = self.txt_telefono.text().strip() or None
@@ -1232,7 +1293,6 @@ class DialogoCobro(QDialog):
                 QMessageBox.critical(self, "Error", f"No se pudo guardar el cliente: {str(e)}")
                 return
 
-        # 2. Insertar factura
         try:
             cursor = self.conexion.cursor()
             fecha_actual = datetime.now()
@@ -1254,7 +1314,6 @@ class DialogoCobro(QDialog):
             QMessageBox.critical(self, "Error", f"No se pudo guardar la factura: {str(e)}")
             return
 
-        # 3. Insertar detalles, actualizar inventario y movimientos
         try:
             cursor = self.conexion.cursor()
             for idx, producto in enumerate(self.productos):
@@ -1264,7 +1323,6 @@ class DialogoCobro(QDialog):
                 if not producto.get("cantidad") and not producto.get("peso"):
                     raise Exception(f"Producto {producto.get('nombre', idx+1)} sin cantidad ni peso")
 
-                # Obtener precio unitario desde la base de datos
                 sql = "SELECT precio_venta_prod FROM productos WHERE id_producto = %s"
                 params = (producto["id"],)
                 print(f"SQL: {sql} | Params: {params}")
@@ -1283,7 +1341,6 @@ class DialogoCobro(QDialog):
                 subtotal = (precio_unitario * cantidad) + (precio_unitario * (peso_gramos / 1000.0))
                 print(f"  Cantidad: {cantidad}, Peso: {peso_gramos}g, Subtotal: {subtotal}")
 
-                # Insertar detalle de factura
                 sql = """
                     INSERT INTO detalle_factura
                     (id_factura, id_producto, cantidad_detfac, precio_unitario_detfac, subtotal_detfac)
@@ -1294,7 +1351,6 @@ class DialogoCobro(QDialog):
                 cursor.execute(sql, params)
                 print(f"  Detalle insertado para producto {producto['id']}")
 
-                # Actualizar inventario (restar stock)
                 stock_a_restar = cantidad if cantidad > 0 else 1
                 sql = "UPDATE inventarios SET stock_actual = stock_actual - %s WHERE id_producto = %s"
                 params = (stock_a_restar, producto["id"])
@@ -1304,7 +1360,6 @@ class DialogoCobro(QDialog):
                     raise Exception(f"No se encontró inventario para producto ID {producto['id']}")
                 print(f"  Inventario actualizado, stock restado: {stock_a_restar}")
 
-                # Insertar movimiento de salida (tipo_mov = 2)
                 sql = """
                     INSERT INTO movimientos
                     (id_inventario, id_tipo_mov, id_empleado, id_factura, cantidad_movimiento)
@@ -1330,6 +1385,103 @@ class DialogoCobro(QDialog):
 
         self.exito = True
         self.accept()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(40, 55, 45, 95)))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(self.rect())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.parent():
+            pg = self.parent().geometry()
+            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
+                             self.parent().mapToGlobal(QPoint(0,0)).y(),
+                             pg.width(), pg.height())
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIÁLOGO ÉXITO COBRO (CORREGIDO: texto completo y total mostrado)
+# ══════════════════════════════════════════════════════════════════════════════
+class DialogoExitoCobro(QDialog):
+    def __init__(self, total, cambio, parent=None):
+        super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
+
+        layout_fondo = QVBoxLayout(self)
+        layout_fondo.setContentsMargins(0, 0, 0, 0)
+        layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.card = QFrame()
+        self.card.setObjectName("MainCard")
+        self.card.setFixedSize(600, 420)  # Más ancho para evitar corte
+        self.card.setStyleSheet("""
+            QFrame#MainCard {
+                background-color: #FFFFFF;
+                border-radius: 28px;
+                border: 2px solid #D1E2D9;
+            }
+        """)
+        sombra = QGraphicsDropShadowEffect(self.card)
+        sombra.setBlurRadius(40)
+        sombra.setColor(QColor(0, 0, 0, 50))
+        sombra.setOffset(0, 10)
+        self.card.setGraphicsEffect(sombra)
+
+        layout_card = QVBoxLayout(self.card)
+        layout_card.setContentsMargins(40, 40, 40, 40)
+        layout_card.setSpacing(16)
+
+        def _f(size, weight):
+            font = QFont("Montserrat", size, weight)
+            font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+            return font
+
+        lbl_icono = QLabel("✓")
+        lbl_icono.setFont(_f(48, QFont.Weight.Black))
+        lbl_icono.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_icono.setStyleSheet("color: #17813D; background: transparent;")
+        layout_card.addWidget(lbl_icono)
+
+        lbl_titulo = QLabel("¡VENTA REGISTRADA EXITOSAMENTE!")
+        lbl_titulo.setFont(_f(18, QFont.Weight.Black))
+        lbl_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_titulo.setStyleSheet("color: #17813D;")
+        lbl_titulo.setWordWrap(True)
+        layout_card.addWidget(lbl_titulo)
+
+        lbl_total = QLabel(f"Total pagado: ${total:,.0f}")
+        lbl_total.setFont(_f(16, QFont.Weight.Bold))
+        lbl_total.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_total.setStyleSheet("color: #1F2937;")
+        layout_card.addWidget(lbl_total)
+
+        lbl_cambio = QLabel(f"Cambio: ${cambio:,.0f}")
+        lbl_cambio.setFont(_f(16, QFont.Weight.Bold))
+        lbl_cambio.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_cambio.setStyleSheet("color: #DC6468;")
+        layout_card.addWidget(lbl_cambio)
+
+        btn_aceptar = QPushButton("ACEPTAR")
+        btn_aceptar.setFixedHeight(50)
+        btn_aceptar.setFont(_f(14, QFont.Weight.Black))
+        btn_aceptar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_aceptar.setStyleSheet("""
+            QPushButton {
+                background-color: #17813D;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 16px;
+            }
+            QPushButton:hover { background-color: #228E49; }
+        """)
+        btn_aceptar.clicked.connect(self.accept)
+        layout_card.addWidget(btn_aceptar)
+
+        layout_fondo.addWidget(self.card)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -1803,12 +1955,13 @@ class CajaVista(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted and dlg.resultado:
             idx = dlg.resultado["indice"]
             nueva_cantidad = dlg.resultado["cantidad"]
+            nuevo_peso = dlg.resultado["peso"]
             if 0 <= idx < len(self.productos_venta):
                 producto = self.productos_venta[idx]
                 producto["cantidad"] = nueva_cantidad
-                peso = producto.get("peso", 0)
+                producto["peso"] = nuevo_peso
                 precio_unit = producto["precio_unitario"]
-                total = (precio_unit * nueva_cantidad) + (precio_unit * (peso / 1000.0))
+                total = (precio_unit * nueva_cantidad) + (precio_unit * (nuevo_peso / 1000.0))
                 producto["precio_total"] = int(total)
                 self.renderizar_tabla()
 
@@ -1882,14 +2035,16 @@ class CajaVista(QWidget):
         )
 
         if dlg.exec() == QDialog.DialogCode.Accepted and dlg.exito:
+            # Guardar total antes de limpiar
+            total_pagado = self.total_actual
+            cambio_final = cambio
             self.productos_venta = []
             self.txt_efectivo.clear()
             self.filtro_actual = ""
             self.renderizar_tabla()
-            QMessageBox.information(
-                self, "Éxito",
-                f"Venta registrada correctamente.\nTotal: ${self.total_actual:,.0f}\nCambio: ${cambio:,.0f}"
-            )
+            # Mostrar diálogo de éxito personalizado
+            dlg_exito = DialogoExitoCobro(total_pagado, cambio_final, self)
+            dlg_exito.exec()
 
     def actualizar_usuario(self, nombre, rol):
         nombre_display = str(nombre).strip().title()

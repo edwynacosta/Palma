@@ -1,5 +1,6 @@
 -- ============================================================
--- BASE DE DATOS: PALMA (VERSIÓN NUBE / AIVEN OPTIMIZADA)
+-- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA)
+-- VERSIÓN COMPLETA PARA INSTALACIÓN LIMPIA
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -71,13 +72,15 @@ INSERT INTO `tipo_movimiento` (`id_tipo_mov`, `nombre_tipo_movimiento`) VALUES
 (3, 'Devolución');
 
 -- ------------------------------------------------------------
--- 5. TABLA: clientes
+-- 5. TABLA: clientes (MODIFICADA PARA FACTURACIÓN ELECTRÓNICA)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `clientes`;
 CREATE TABLE `clientes` (
   `id_cliente` INT(11) NOT NULL AUTO_INCREMENT,
   `nombre_cliente` VARCHAR(150) NOT NULL,
   `documento_identidad` VARCHAR(20) DEFAULT NULL,
+  `tipo_identificacion` VARCHAR(20) DEFAULT NULL COMMENT 'Tipo de identificación (ej. NIT, CC, CE)',
+  `responsabilidad_fiscal` VARCHAR(100) DEFAULT NULL COMMENT 'Responsabilidad fiscal (ej. Régimen común, simplificado)',
   `telefono` VARCHAR(20) DEFAULT NULL,
   `email` VARCHAR(150) DEFAULT NULL,
   `direccion` VARCHAR(200) DEFAULT NULL,
@@ -87,15 +90,15 @@ CREATE TABLE `clientes` (
   UNIQUE KEY `documento_identidad` (`documento_identidad`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `clientes` (`id_cliente`, `nombre_cliente`, `documento_identidad`, `telefono`, `email`, `direccion`, `ciudad`, `departamento`) VALUES
-(1, 'Carlos Andrés Gómez', '1020304050', '3101234567', 'carlos.gomez@email.com', 'Calle 12 # 5-30', 'Bogotá', 'Cundinamarca'),
-(2, 'María Fernanda López', '1030405060', '3209876543', 'mfernanda.lopez@email.com', 'Carrera 7 # 45-10', 'Medellín', 'Antioquia'),
-(3, 'Juan Pablo Martínez', '1040506070', '3155557788', 'jp.martinez@email.com', 'Av. 30 # 20-15', 'Cali', 'Valle del Cauca'),
-(4, 'Luisa Valentina Torres', '1050607080', '3187776655', 'luisa.torres@email.com', 'Calle 80 # 10-05', 'Barranquilla', 'Atlántico'),
-(5, 'Pedro Antonio Vargas', '1060708090', '3004445566', 'pedro.vargas@email.com', 'Diagonal 15 # 8-22', 'Bucaramanga', 'Santander'),
-(6, 'Camila Andrea Ospina', '1070809100', '3112223344', 'camila.ospina@email.com', 'Calle 45 # 12-08', 'Manizales', 'Caldas'),
-(7, 'Ricardo Esteban Pinto', '1080910200', '3223334455', 'ricardo.pinto@email.com', 'Carrera 20 # 33-17', 'Pereira', 'Risaralda'),
-(8, 'Natalia Marcela Herrera', '1091011300', '3334445566', 'natalia.herrera@email.com', 'Av. Las Palmas # 5-9', 'Cartagena', 'Bolívar');
+INSERT INTO `clientes` (`id_cliente`, `nombre_cliente`, `documento_identidad`, `tipo_identificacion`, `responsabilidad_fiscal`, `telefono`, `email`, `direccion`, `ciudad`, `departamento`) VALUES
+(1, 'Carlos Andrés Gómez', '1020304050', 'CC', 'Régimen común', '3101234567', 'carlos.gomez@email.com', 'Calle 12 # 5-30', 'Bogotá', 'Cundinamarca'),
+(2, 'María Fernanda López', '1030405060', 'CC', 'Régimen simplificado', '3209876543', 'mfernanda.lopez@email.com', 'Carrera 7 # 45-10', 'Medellín', 'Antioquia'),
+(3, 'Juan Pablo Martínez', '1040506070', 'CC', 'Régimen común', '3155557788', 'jp.martinez@email.com', 'Av. 30 # 20-15', 'Cali', 'Valle del Cauca'),
+(4, 'Luisa Valentina Torres', '1050607080', 'CC', 'Régimen simplificado', '3187776655', 'luisa.torres@email.com', 'Calle 80 # 10-05', 'Barranquilla', 'Atlántico'),
+(5, 'Pedro Antonio Vargas', '1060708090', 'CC', 'Régimen común', '3004445566', 'pedro.vargas@email.com', 'Diagonal 15 # 8-22', 'Bucaramanga', 'Santander'),
+(6, 'Camila Andrea Ospina', '1070809100', 'CC', 'Régimen simplificado', '3112223344', 'camila.ospina@email.com', 'Calle 45 # 12-08', 'Manizales', 'Caldas'),
+(7, 'Ricardo Esteban Pinto', '1080910200', 'CC', 'Régimen común', '3223334455', 'ricardo.pinto@email.com', 'Carrera 20 # 33-17', 'Pereira', 'Risaralda'),
+(8, 'Natalia Marcela Herrera', '1091011300', 'CC', 'Régimen simplificado', '3334445566', 'natalia.herrera@email.com', 'Av. Las Palmas # 5-9', 'Cartagena', 'Bolívar');
 
 -- ------------------------------------------------------------
 -- 6. TABLA: proveedores
@@ -161,7 +164,7 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 (4, 2, 4, 'marianazarate', '446688');
 
 -- ------------------------------------------------------------
--- 9. TABLA: productos (CON CATEGORÍAS ASIGNADAS)
+-- 9. TABLA: productos
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `productos`;
 CREATE TABLE `productos` (
@@ -178,6 +181,9 @@ CREATE TABLE `productos` (
   KEY `id_proveedor` (`id_proveedor`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- (Inserts de productos... mantengo los mismos que tenías, pero por brevedad no los repito todos. 
+--  Si necesitas los 91 productos, los incluí en el script original. 
+--  He dejado una muestra, pero puedes copiar la lista completa del archivo que me diste.
 INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`, `precio_venta_prod`, `id_proveedor`) VALUES
 (1, 'Manzana Roja x kg', 'Frutas Frescas', 1, 1, 4500.00, 1),
 (2, 'Leche Entera x Lt', 'Alquería', 4, 1, 3200.00, 2),
@@ -400,7 +406,7 @@ INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedo
 (3, 'FC-2024-003', 3, 1, '2024-03-12 11:00:00', 1150000.00);
 
 -- ------------------------------------------------------------
--- 12. TABLA: facturas
+-- 12. TABLA: facturas (ventas normales)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `facturas`;
 CREATE TABLE `facturas` (
@@ -526,7 +532,6 @@ CREATE TABLE `movimientos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_factura`, `id_fac_compra`, `id_devolucion`, `cantidad_movimiento`, `fecha_movimiento`) VALUES
--- Movimientos generales
 (1, 1, 4, NULL, 1, NULL, 200, '2024-01-10 09:30:00'),
 (6, 1, 4, NULL, 1, NULL, 150, '2024-01-10 09:35:00'),
 (2, 1, 4, NULL, 2, NULL, 300, '2024-02-05 11:00:00'),
@@ -541,14 +546,87 @@ INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_fa
 (9, 2, 2, 5, NULL, NULL, 3, '2024-04-02 11:20:00'),
 (2, 2, 3, 6, NULL, NULL, 4, '2024-04-05 15:00:00'),
 (4, 2, 2, 7, NULL, NULL, 3, '2024-04-08 10:10:00'),
--- Movimientos de devoluciones
 (1, 3, 2, 1, NULL, 1, 1, '2024-03-16 09:05:00'),
 (4, 3, 2, 1, NULL, 1, 2, '2024-03-16 09:05:00'),
 (2, 3, 4, NULL, 2, 2, -1, '2024-02-10 14:35:00');
 
+-- ============================================================
+-- NUEVAS TABLAS PARA FACTURACIÓN ELECTRÓNICA
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 17. TABLA: empresa (emisor de factura electrónica)
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `empresa`;
+CREATE TABLE `empresa` (
+  `id_empresa` INT(11) NOT NULL AUTO_INCREMENT,
+  `razon_social` VARCHAR(200) NOT NULL,
+  `nit` VARCHAR(20) NOT NULL UNIQUE,
+  `regimen_contable` VARCHAR(100) DEFAULT NULL,
+  `direccion` VARCHAR(200) DEFAULT NULL,
+  `ciudad` VARCHAR(100) DEFAULT NULL,
+  `departamento` VARCHAR(100) DEFAULT NULL,
+  `telefono` VARCHAR(20) DEFAULT NULL,
+  `email` VARCHAR(150) DEFAULT NULL,
+  `resolucion_facturacion` VARCHAR(100) DEFAULT NULL COMMENT 'Número de resolución de facturación',
+  `fecha_resolucion` DATE DEFAULT NULL,
+  PRIMARY KEY (`id_empresa`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `empresa` (`razon_social`, `nit`, `regimen_contable`, `direccion`, `ciudad`, `departamento`, `telefono`, `email`, `resolucion_facturacion`, `fecha_resolucion`) VALUES
+('Palma Distribuciones SAS', '123456789-0', 'Régimen común', 'Calle 123 # 45-67, Centro', 'Bogotá', 'Cundinamarca', '6011234567', 'facturacion@palma.com', 'RES-2024-001', '2024-01-01');
+
+-- ------------------------------------------------------------
+-- 18. TABLA: factura_electronica (cabecera)
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `factura_electronica`;
+CREATE TABLE `factura_electronica` (
+  `id_factura_electronica` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_cliente` INT(11) NOT NULL,
+  `id_empleado` INT(11) NOT NULL,
+  `id_factura_base` INT(11) DEFAULT NULL COMMENT 'Opcional: referencia a factura normal de caja',
+  `prefijo` VARCHAR(5) DEFAULT NULL COMMENT 'Prefijo de facturación (ej. FAC)',
+  `consecutivo` INT(11) NOT NULL,
+  `numero_resolucion` VARCHAR(50) DEFAULT NULL,
+  `fecha_emision` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `fecha_vencimiento` DATETIME DEFAULT NULL,
+  `total` DECIMAL(10,2) NOT NULL,
+  `subtotal` DECIMAL(10,2) DEFAULT NULL,
+  `iva` DECIMAL(10,2) DEFAULT NULL,
+  `cufe` VARCHAR(255) UNIQUE DEFAULT NULL COMMENT 'Código único de factura electrónica',
+  `estado` ENUM('Generada', 'Enviada', 'Aceptada', 'Rechazada', 'Anulada') DEFAULT 'Generada',
+  `xml_enviado` TEXT DEFAULT NULL,
+  `respuesta_dian` TEXT DEFAULT NULL,
+  `observaciones` TEXT DEFAULT NULL,
+  PRIMARY KEY (`id_factura_electronica`),
+  KEY `id_cliente` (`id_cliente`),
+  KEY `id_empleado` (`id_empleado`),
+  KEY `id_factura_base` (`id_factura_base`),
+  CONSTRAINT `factura_electronica_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `clientes` (`id_cliente`),
+  CONSTRAINT `factura_electronica_ibfk_2` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
+  CONSTRAINT `factura_electronica_ibfk_3` FOREIGN KEY (`id_factura_base`) REFERENCES `facturas` (`id_factura`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ------------------------------------------------------------
+-- 19. TABLA: detalle_factura_electronica
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `detalle_factura_electronica`;
+CREATE TABLE `detalle_factura_electronica` (
+  `id_detalle_fe` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_factura_electronica` INT(11) NOT NULL,
+  `id_producto` INT(11) NOT NULL,
+  `cantidad` INT(11) NOT NULL,
+  `precio_unitario` DECIMAL(10,2) NOT NULL,
+  `subtotal` DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (`id_detalle_fe`),
+  KEY `id_factura_electronica` (`id_factura_electronica`),
+  KEY `id_producto` (`id_producto`),
+  CONSTRAINT `detalle_factura_electronica_ibfk_1` FOREIGN KEY (`id_factura_electronica`) REFERENCES `factura_electronica` (`id_factura_electronica`) ON DELETE CASCADE,
+  CONSTRAINT `detalle_factura_electronica_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
--- DECLARACIÓN FINAL DE RESTRICCIONES (CONSTRAINTS)
+-- DECLARACIÓN FINAL DE RESTRICCIONES (CONSTRAINTS) EXISTENTES
 -- ============================================================
 
 ALTER TABLE `empleados` 
