@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 
 # ================================================================
-# DIÁLOGO PARA DETALLE DE RECIBO (FACTURA DE COMPRA)
+# DIÁLOGO PARA DETALLE DE RECIBO (EDITABLE)
 # ================================================================
 class DialogoDetalleRecibo(QDialog):
     def __init__(self, id_fac_compra, conexion, parent=None):
@@ -23,6 +23,8 @@ class DialogoDetalleRecibo(QDialog):
         self.setModal(True)
         self.id_fac_compra = id_fac_compra
         self.conexion = conexion
+        self.estado_actual = None  # se llena al cargar
+        self.productos_detalle = []  # lista de dicts con los datos del detalle
 
         self._crear_interfaz()
         self._cargar_datos()
@@ -34,18 +36,18 @@ class DialogoDetalleRecibo(QDialog):
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(820, 650)
+        self.card.setFixedSize(950, 700)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
                 border-radius: 28px;
-                border: 2px solid #D1E2D9;
+                border: 1px solid #D1E2D9;
             }
         """)
         sombra = QGraphicsDropShadowEffect(self.card)
-        sombra.setBlurRadius(40)
-        sombra.setColor(QColor(0, 0, 0, 50))
-        sombra.setOffset(0, 10)
+        sombra.setBlurRadius(20)
+        sombra.setColor(QColor(0, 0, 0, 20))
+        sombra.setOffset(0, 5)
         self.card.setGraphicsEffect(sombra)
 
         layout_card = QVBoxLayout(self.card)
@@ -107,20 +109,20 @@ class DialogoDetalleRecibo(QDialog):
 
         layout_card.addWidget(info_frame)
 
-        # Tabla de productos
+        # Tabla de productos (editable)
         lbl_productos = QLabel("PRODUCTOS RECIBIDOS")
         lbl_productos.setFont(_f(11, QFont.Weight.Black))
         lbl_productos.setStyleSheet("color: #17813D; background: transparent;")
         layout_card.addWidget(lbl_productos)
 
         self.tabla_productos = QTableWidget()
-        self.tabla_productos.setColumnCount(4)
-        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Precio Unit.", "Subtotal"])
+        self.tabla_productos.setColumnCount(6)
+        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Peso (g)", "Precio Unit.", "Subtotal", "Acción"])
         self.tabla_productos.setShowGrid(False)
         self.tabla_productos.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla_productos.verticalHeader().setVisible(False)
-        self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.EditKeyPressed)
+        self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.tabla_productos.setStyleSheet("""
             QTableWidget {
                 border: 1px solid #D1E2D9;
@@ -138,6 +140,9 @@ class DialogoDetalleRecibo(QDialog):
                 background: #E8F5EE;
                 color: #17813D;
             }
+            QTableWidget::item:editable {
+                background-color: #FDFDFD;
+            }
             QHeaderView::section {
                 background: #F1F5F9;
                 color: #64748B;
@@ -153,12 +158,24 @@ class DialogoDetalleRecibo(QDialog):
             }
         """)
         header = self.tabla_productos.horizontalHeader()
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.tabla_productos.setColumnWidth(0, 280)
-        self.tabla_productos.setColumnWidth(1, 100)
-        self.tabla_productos.setColumnWidth(2, 120)
+        self.tabla_productos.setColumnWidth(0, 200)
+        self.tabla_productos.setColumnWidth(1, 80)
+        self.tabla_productos.setColumnWidth(2, 100)
         self.tabla_productos.setColumnWidth(3, 120)
+        self.tabla_productos.setColumnWidth(4, 130)
+        self.tabla_productos.setColumnWidth(5, 80)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+
+        # Conectar señal para recalcular al editar
+        self.tabla_productos.cellChanged.connect(self._on_cell_changed)
+
         layout_card.addWidget(self.tabla_productos)
 
         # Total
@@ -180,12 +197,36 @@ class DialogoDetalleRecibo(QDialog):
 
         layout_card.addWidget(total_frame)
 
-        # Botón cerrar
-        btn_cerrar_dialog = QPushButton("CERRAR")
-        btn_cerrar_dialog.setFixedHeight(50)
-        btn_cerrar_dialog.setFont(_f(13, QFont.Weight.Black))
-        btn_cerrar_dialog.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cerrar_dialog.setStyleSheet("""
+        # Botones: RECIBIR y ACEPTAR
+        layout_botones = QHBoxLayout()
+        layout_botones.setSpacing(16)
+
+        self.btn_recibir = QPushButton("RECIBIR")
+        self.btn_recibir.setFixedHeight(50)
+        self.btn_recibir.setFont(_f(13, QFont.Weight.Black))
+        self.btn_recibir.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_recibir.setStyleSheet("""
+            QPushButton {
+                background-color: #F59E0B;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 16px;
+                letter-spacing: 0.5px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                font-weight: 900;
+                padding: 0 30px;
+            }
+            QPushButton:hover { background-color: #D97706; }
+            QPushButton:disabled { background-color: #D1D5DB; color: #9CA3AF; }
+        """)
+        self.btn_recibir.clicked.connect(self._marcar_recibido)
+
+        btn_aceptar = QPushButton("ACEPTAR")
+        btn_aceptar.setFixedHeight(50)
+        btn_aceptar.setFont(_f(13, QFont.Weight.Black))
+        btn_aceptar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_aceptar.setStyleSheet("""
             QPushButton {
                 background-color: #17813D;
                 color: #FFFFFF;
@@ -195,11 +236,16 @@ class DialogoDetalleRecibo(QDialog):
                 font-family: 'Montserrat';
                 font-size: 13px;
                 font-weight: 900;
+                padding: 0 30px;
             }
             QPushButton:hover { background-color: #228E49; }
         """)
-        btn_cerrar_dialog.clicked.connect(self.accept)
-        layout_card.addWidget(btn_cerrar_dialog)
+        btn_aceptar.clicked.connect(self.accept)
+
+        layout_botones.addStretch()
+        layout_botones.addWidget(self.btn_recibir)
+        layout_botones.addWidget(btn_aceptar)
+        layout_card.addLayout(layout_botones)
 
         layout_fondo.addWidget(self.card)
 
@@ -208,6 +254,7 @@ class DialogoDetalleRecibo(QDialog):
             return
         try:
             cursor = self.conexion.cursor()
+            # Cabecera
             query = """
                 SELECT fc.id_fac_compra, fc.numero_fac_compra, fc.fecha_fac_compra,
                        p.nombre_empresa, p.nit, p.telefono_principal, p.email,
@@ -242,6 +289,7 @@ class DialogoDetalleRecibo(QDialog):
                 total = row[7] or 0
                 estado = row[8] if len(row) > 8 else 'pendiente'
 
+            self.estado_actual = estado
             fecha_str = fecha.strftime("%d/%m/%Y %H:%M") if fecha else 'N/D'
 
             self.lbl_info.setText(
@@ -257,34 +305,43 @@ class DialogoDetalleRecibo(QDialog):
                 f"<b>Email:</b> {email}"
             )
 
-            self.lbl_total.setText(f"TOTAL DE LA COMPRA: ${int(total):,}")
+            # Si ya está recibido, deshabilitar botón Recibir
+            if estado.upper() == 'RECIBIDO':
+                self.btn_recibir.setEnabled(False)
+                self.btn_recibir.setToolTip("Este pedido ya fue recibido")
 
-            # Cargar productos
+            # Detalle
             query_det = """
-                SELECT p.nombre_producto, df.cantidad, df.precio_unitario, df.subtotal
+                SELECT df.id_detalle_compra, p.nombre_producto, df.cantidad, df.peso_gramos,
+                       df.precio_unitario, df.subtotal
                 FROM detalle_factura_compra df
                 JOIN productos p ON df.id_producto = p.id_producto
                 WHERE df.id_fac_compra = %s
             """
             cursor.execute(query_det, (self.id_fac_compra,))
             detalles = cursor.fetchall()
-            self.tabla_productos.setRowCount(len(detalles))
+            self.productos_detalle = []
+            self.tabla_productos.setRowCount(0)
+
             for fila, det in enumerate(detalles):
                 if isinstance(det, dict):
+                    id_det = det.get('id_detalle_compra')
                     nombre = det.get('nombre_producto') or 'Producto'
                     cantidad = det.get('cantidad') or 0
+                    peso = det.get('peso_gramos') or 0
                     precio = det.get('precio_unitario') or 0
                     subtotal = det.get('subtotal') or 0
                 else:
-                    nombre = det[0] or 'Producto'
-                    cantidad = det[1] or 0
-                    precio = det[2] or 0
-                    subtotal = det[3] or 0
-                self.tabla_productos.setItem(fila, 0, QTableWidgetItem(nombre))
-                self.tabla_productos.setItem(fila, 1, QTableWidgetItem(str(cantidad)))
-                self.tabla_productos.setItem(fila, 2, QTableWidgetItem(f"${int(precio):,}"))
-                self.tabla_productos.setItem(fila, 3, QTableWidgetItem(f"${int(subtotal):,}"))
-                self.tabla_productos.setRowHeight(fila, 40)
+                    id_det = det[0]
+                    nombre = det[1] or 'Producto'
+                    cantidad = det[2] or 0
+                    peso = det[3] or 0
+                    precio = det[4] or 0
+                    subtotal = det[5] or 0
+
+                self._agregar_fila_detalle(id_det, nombre, cantidad, peso, precio, subtotal)
+
+            self._actualizar_total()
 
             cursor.close()
 
@@ -292,6 +349,148 @@ class DialogoDetalleRecibo(QDialog):
             print(f"Error cargando detalle: {e}")
             traceback.print_exc()
             QMessageBox.critical(self, "Error", f"No se pudo cargar el detalle del recibo:\n{str(e)}")
+
+    def _agregar_fila_detalle(self, id_det, nombre, cantidad, peso, precio, subtotal):
+        fila = self.tabla_productos.rowCount()
+        self.tabla_productos.insertRow(fila)
+
+        # Producto (no editable)
+        item_producto = QTableWidgetItem(nombre)
+        item_producto.setFlags(item_producto.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 0, item_producto)
+
+        # Cantidad (editable)
+        item_cant = QTableWidgetItem(str(cantidad))
+        self.tabla_productos.setItem(fila, 1, item_cant)
+
+        # Peso (editable)
+        item_peso = QTableWidgetItem(f"{peso:.2f}")
+        self.tabla_productos.setItem(fila, 2, item_peso)
+
+        # Precio Unit. (no editable)
+        item_precio = QTableWidgetItem(f"${int(precio):,}")
+        item_precio.setFlags(item_precio.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 3, item_precio)
+
+        # Subtotal (no editable, se recalcula)
+        item_subtotal = QTableWidgetItem(f"${int(subtotal):,}")
+        item_subtotal.setFlags(item_subtotal.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 4, item_subtotal)
+
+        # Botón eliminar (acción)
+        btn_eliminar = QPushButton("✕")
+        btn_eliminar.setFixedSize(28, 28)
+        btn_eliminar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_eliminar.setStyleSheet("""
+            QPushButton {
+                background-color: #FEE2E2;
+                border: none;
+                border-radius: 14px;
+                color: #DC2626;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #DC2626;
+                color: #FFFFFF;
+            }
+        """)
+        btn_eliminar.clicked.connect(lambda: self._eliminar_fila(fila, id_det))
+        self.tabla_productos.setCellWidget(fila, 5, btn_eliminar)
+
+        self.tabla_productos.setRowHeight(fila, 40)
+
+        # Guardar en lista interna
+        self.productos_detalle.append({
+            'id_detalle': id_det,
+            'id_producto': None,  # no lo usamos para edición
+            'nombre': nombre,
+            'cantidad': cantidad,
+            'peso': peso,
+            'precio_unitario': precio,
+            'subtotal': subtotal
+        })
+
+    def _on_cell_changed(self, row, column):
+        if column not in (1, 2):
+            return
+        if row >= len(self.productos_detalle):
+            return
+
+        item_cant = self.tabla_productos.item(row, 1)
+        item_peso = self.tabla_productos.item(row, 2)
+        if not item_cant or not item_peso:
+            return
+
+        try:
+            cantidad = float(item_cant.text()) if item_cant.text() else 0
+            peso = float(item_peso.text()) if item_peso.text() else 0
+        except ValueError:
+            return
+
+        precio = self.productos_detalle[row]['precio_unitario']
+        subtotal = cantidad * precio
+
+        self.tabla_productos.item(row, 4).setText(f"${int(subtotal):,}")
+
+        self.productos_detalle[row]['cantidad'] = cantidad
+        self.productos_detalle[row]['peso'] = peso
+        self.productos_detalle[row]['subtotal'] = subtotal
+
+        self._actualizar_total()
+
+    def _eliminar_fila(self, fila, id_detalle):
+        # Confirmar eliminación
+        if QMessageBox.question(self, "Eliminar", "¿Desea eliminar este producto del recibo?",
+                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+            return
+        # Eliminar de la base de datos
+        if self.conexion:
+            try:
+                cursor = self.conexion.cursor()
+                cursor.execute("DELETE FROM detalle_factura_compra WHERE id_detalle_compra = %s", (id_detalle,))
+                self.conexion.commit()
+                cursor.close()
+            except Exception as e:
+                self.conexion.rollback()
+                QMessageBox.critical(self, "Error", f"No se pudo eliminar el producto:\n{str(e)}")
+                return
+        # Eliminar de la lista y la tabla
+        if fila < len(self.productos_detalle):
+            self.productos_detalle.pop(fila)
+        self.tabla_productos.removeRow(fila)
+        self._actualizar_total()
+
+    def _actualizar_total(self):
+        total = sum(p['subtotal'] for p in self.productos_detalle)
+        self.lbl_total.setText(f"TOTAL DE LA COMPRA: ${int(total):,}")
+
+    def _marcar_recibido(self):
+        if not self.conexion:
+            return
+        if self.estado_actual.upper() == 'RECIBIDO':
+            QMessageBox.information(self, "Info", "Este pedido ya está recibido.")
+            return
+
+        # Preguntar confirmación
+        if QMessageBox.question(self, "Confirmar", "¿Desea marcar este pedido como RECIBIDO?",
+                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+            return
+
+        try:
+            cursor = self.conexion.cursor()
+            cursor.execute("UPDATE factura_compra SET estado = 'RECIBIDO' WHERE id_fac_compra = %s", (self.id_fac_compra,))
+            self.conexion.commit()
+            cursor.close()
+            self.estado_actual = 'RECIBIDO'
+            self.btn_recibir.setEnabled(False)
+            self.btn_recibir.setToolTip("Este pedido ya fue recibido")
+            # Actualizar información en el label
+            self.lbl_info.setText(self.lbl_info.text().replace("PENDIENTE", "RECIBIDO"))
+            QMessageBox.information(self, "Éxito", "Pedido marcado como RECIBIDO correctamente.")
+            # Emitir señal para refrescar la vista principal (opcional)
+        except Exception as e:
+            self.conexion.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo actualizar el estado:\n{str(e)}")
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -318,39 +517,38 @@ class DialogoSeleccionProducto(QDialog):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.productos_db = productos_db  # lista de (id, nombre, precio)
+        self.productos_db = productos_db if productos_db else []
         self.producto_seleccionado = None
-        self.cantidad_seleccionada = 1
         self._crear_interfaz()
 
     def _crear_interfaz(self):
-        self.setFixedSize(500, 260)
+        self.setFixedSize(420, 160)
         layout_fondo = QVBoxLayout(self)
         layout_fondo.setContentsMargins(0, 0, 0, 0)
         layout_fondo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(460, 240)
+        self.card.setFixedSize(380, 130)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
-                border-radius: 20px;
-                border: 2px solid #D1E2D9;
+                border-radius: 16px;
+                border: 1px solid #D1E2D9;
             }
         """)
         sombra = QGraphicsDropShadowEffect(self.card)
-        sombra.setBlurRadius(30)
-        sombra.setColor(QColor(0, 0, 0, 50))
-        sombra.setOffset(0, 8)
+        sombra.setBlurRadius(15)
+        sombra.setColor(QColor(0, 0, 0, 25))
+        sombra.setOffset(0, 4)
         self.card.setGraphicsEffect(sombra)
 
         layout_card = QVBoxLayout(self.card)
-        layout_card.setContentsMargins(30, 30, 30, 30)
-        layout_card.setSpacing(15)
+        layout_card.setContentsMargins(20, 16, 20, 16)
+        layout_card.setSpacing(10)
 
         lbl = QLabel("SELECCIONAR PRODUCTO")
-        lbl.setFont(QFont("Montserrat", 14, QFont.Weight.Black))
+        lbl.setFont(QFont("Montserrat", 12, QFont.Weight.Black))
         lbl.setStyleSheet("color: #17813D;")
 
         self.txt_producto = QLineEdit()
@@ -359,147 +557,99 @@ class DialogoSeleccionProducto(QDialog):
             QLineEdit {
                 background-color: #F8FAF9;
                 border: 2px solid #D1E2D9;
-                border-radius: 12px;
-                padding: 0 16px;
+                border-radius: 8px;
+                padding: 0 12px;
                 font-family: 'Montserrat';
-                font-size: 14px;
-                height: 44px;
+                font-size: 13px;
+                height: 34px;
             }
             QLineEdit:focus {
                 border: 2px solid #17813D;
                 background-color: #FFFFFF;
             }
         """)
-        # Autocompletar
-        nombres_prod = [p[1] for p in self.productos_db]
-        modelo = QStringListModel(nombres_prod)
-        completer = QCompleter(modelo, self)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.txt_producto.setCompleter(completer)
 
-        # Precio (solo lectura)
-        lbl_precio = QLabel("Precio Unitario:")
-        lbl_precio.setStyleSheet("color: #1F2937; font-family: 'Montserrat'; font-size: 13px;")
-        self.txt_precio = QLineEdit()
-        self.txt_precio.setReadOnly(True)
-        self.txt_precio.setPlaceholderText("$0.00")
-        self.txt_precio.setStyleSheet("""
-            QLineEdit {
-                background-color: #F3F4F6;
-                border: 2px solid #D1E2D9;
-                border-radius: 8px;
-                padding: 0 12px;
+        # AUTOOMPLETADO: usar los nombres de productos
+        if self.productos_db:
+            nombres = []
+            for p in self.productos_db:
+                if isinstance(p, dict):
+                    nombres.append(p.get('nombre_producto', ''))
+                else:
+                    nombres.append(p[1])
+            modelo = QStringListModel(nombres)
+            completer = QCompleter(modelo, self)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.txt_producto.setCompleter(completer)
+
+        layout_botones = QHBoxLayout()
+        layout_botones.setSpacing(10)
+
+        btn_cancelar = QPushButton("CANCELAR")
+        btn_cancelar.setFixedHeight(32)
+        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #9CA3AF;
+                border: none;
                 font-family: 'Montserrat';
-                font-size: 14px;
-                height: 36px;
-                color: #1F2937;
+                font-weight: bold;
+                font-size: 11px;
             }
+            QPushButton:hover { color: #DC2626; }
         """)
-        # Mostrar precio al seleccionar del completer (o al cambiar texto)
-        self.txt_producto.textChanged.connect(self._actualizar_precio)
+        btn_cancelar.clicked.connect(self.reject)
 
-        # Cantidad
-        lbl_cant = QLabel("Cantidad:")
-        lbl_cant.setStyleSheet("color: #1F2937; font-family: 'Montserrat'; font-size: 13px;")
-        self.spin_cant = QSpinBox()
-        self.spin_cant.setRange(1, 9999)
-        self.spin_cant.setValue(1)
-        self.spin_cant.setStyleSheet("""
-            QSpinBox {
-                background-color: #F8FAF9;
-                border: 2px solid #D1E2D9;
-                border-radius: 8px;
-                padding: 0 10px;
-                font-family: 'Montserrat';
-                font-size: 14px;
-                height: 36px;
-            }
-        """)
-
-        layout_cant = QHBoxLayout()
-        layout_cant.addWidget(lbl_cant)
-        layout_cant.addWidget(self.spin_cant)
-        layout_cant.addStretch()
-
-        # Botones
         btn_seleccionar = QPushButton("SELECCIONAR")
-        btn_seleccionar.setFixedHeight(40)
+        btn_seleccionar.setFixedHeight(32)
         btn_seleccionar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_seleccionar.setStyleSheet("""
             QPushButton {
                 background-color: #17813D;
                 color: #FFFFFF;
                 border: none;
-                border-radius: 12px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 11px;
+                padding: 0 20px;
             }
             QPushButton:hover { background-color: #228E49; }
         """)
         btn_seleccionar.clicked.connect(self._confirmar)
 
-        btn_cancelar = QPushButton("CANCELAR")
-        btn_cancelar.setFixedHeight(40)
-        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cancelar.setStyleSheet("QPushButton { background: transparent; color: #9CA3AF; border: none; } QPushButton:hover { color: #DC2626; }")
-        btn_cancelar.clicked.connect(self.reject)
-
-        layout_botones = QHBoxLayout()
         layout_botones.addStretch()
         layout_botones.addWidget(btn_cancelar)
         layout_botones.addWidget(btn_seleccionar)
 
-        # Distribución
         layout_card.addWidget(lbl)
         layout_card.addWidget(self.txt_producto)
-        layout_precio = QHBoxLayout()
-        layout_precio.addWidget(lbl_precio)
-        layout_precio.addWidget(self.txt_precio)
-        layout_card.addLayout(layout_precio)
-        layout_card.addLayout(layout_cant)
         layout_card.addLayout(layout_botones)
 
         layout_fondo.addWidget(self.card)
-
-    def _actualizar_precio(self, texto):
-        """Busca el producto y muestra su precio en el campo correspondiente."""
-        if not texto:
-            self.txt_precio.setText("")
-            return
-        for prod in self.productos_db:
-            if prod[1].lower() == texto.lower():
-                self.txt_precio.setText(f"${float(prod[2]):.2f}")
-                return
-        # Si no encuentra exacto, buscar por contiene
-        for prod in self.productos_db:
-            if texto.lower() in prod[1].lower():
-                self.txt_precio.setText(f"${float(prod[2]):.2f}")
-                return
-        self.txt_precio.setText("")
 
     def _confirmar(self):
         texto = self.txt_producto.text().strip()
         if not texto:
             QMessageBox.warning(self, "Atención", "Ingresa un nombre de producto.")
             return
-        # Buscar producto exacto
         encontrado = None
-        for prod in self.productos_db:
-            if prod[1].lower() == texto.lower():
-                encontrado = prod
+        for p in self.productos_db:
+            nombre = p[1] if not isinstance(p, dict) else p.get('nombre_producto', '')
+            if nombre.lower() == texto.lower():
+                encontrado = p
                 break
         if not encontrado:
-            # Buscar por contiene
-            for prod in self.productos_db:
-                if texto.lower() in prod[1].lower():
-                    encontrado = prod
+            for p in self.productos_db:
+                nombre = p[1] if not isinstance(p, dict) else p.get('nombre_producto', '')
+                if texto.lower() in nombre.lower():
+                    encontrado = p
                     break
         if not encontrado:
             QMessageBox.warning(self, "Atención", "Producto no encontrado.")
             return
         self.producto_seleccionado = encontrado
-        self.cantidad_seleccionada = self.spin_cant.value()
         self.accept()
 
     def paintEvent(self, event):
@@ -511,15 +661,16 @@ class DialogoSeleccionProducto(QDialog):
 
     def showEvent(self, event):
         super().showEvent(event)
-        if self.parent():
-            pg = self.parent().geometry()
-            self.setGeometry(self.parent().mapToGlobal(QPoint(0,0)).x(),
-                             self.parent().mapToGlobal(QPoint(0,0)).y(),
-                             pg.width(), pg.height())
+        screen = self.screen().geometry()
+        self.setGeometry(
+            (screen.width() - self.width()) // 2,
+            (screen.height() - self.height()) // 2,
+            self.width(), self.height()
+        )
 
 
 # ================================================================
-# DIÁLOGO PARA NUEVO RECIBO (FACTURA DE COMPRA)
+# DIÁLOGO PARA NUEVO RECIBO (con tabla editable)
 # ================================================================
 class DialogoNuevoRecibo(QDialog):
     def __init__(self, conexion=None, empleado_id=None, parent=None):
@@ -530,7 +681,7 @@ class DialogoNuevoRecibo(QDialog):
         self.empleado_id = empleado_id or 1
         self.resultado = None
 
-        self.productos_agregados = []  # lista de dicts {id_producto, nombre, cantidad, precio_unitario, subtotal}
+        self.productos_agregados = []
         self.proveedores = []
         self.productos_db = []
 
@@ -542,25 +693,46 @@ class DialogoNuevoRecibo(QDialog):
             return
         try:
             cursor = self.conexion.cursor()
-            # Proveedores
             cursor.execute("SELECT id_proveedor, nombre_empresa, nit FROM proveedores")
-            self.proveedores = cursor.fetchall()
-            # Productos
+            rows_prov = cursor.fetchall()
+            self.proveedores = []
+            for row in rows_prov:
+                if isinstance(row, dict):
+                    self.proveedores.append((row['id_proveedor'], row['nombre_empresa'], row.get('nit')))
+                else:
+                    self.proveedores.append(row)
+
             cursor.execute("SELECT id_producto, nombre_producto, precio_venta_prod FROM productos WHERE id_estado = 1")
-            self.productos_db = cursor.fetchall()
+            rows_prod = cursor.fetchall()
+            self.productos_db = []
+            for row in rows_prod:
+                if isinstance(row, dict):
+                    self.productos_db.append((row['id_producto'], row['nombre_producto'], row['precio_venta_prod']))
+                else:
+                    self.productos_db.append(row)
+
             cursor.close()
             self._cargar_autocompletados()
         except Exception as e:
             print(f"Error cargando datos iniciales: {e}")
+            traceback.print_exc()
+            self.proveedores = []
+            self.productos_db = []
+            QMessageBox.warning(self, "Error de carga", f"No se pudieron cargar los datos:\n{str(e)}")
 
     def _cargar_autocompletados(self):
-        # Proveedores
-        nombres_prov = [p[1] for p in self.proveedores]
-        modelo_prov = QStringListModel(nombres_prov)
-        completer_prov = QCompleter(modelo_prov, self)
-        completer_prov.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        completer_prov.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.txt_proveedor.setCompleter(completer_prov)
+        if self.proveedores:
+            nombres_prov = []
+            for p in self.proveedores:
+                if isinstance(p, dict):
+                    nombres_prov.append(p.get('nombre_empresa', ''))
+                else:
+                    nombres_prov.append(p[1])
+            modelo_prov = QStringListModel(nombres_prov)
+            completer_prov = QCompleter(modelo_prov, self)
+            completer_prov.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer_prov.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.txt_proveedor.setCompleter(completer_prov)
 
     def _crear_interfaz(self):
         layout_fondo = QVBoxLayout(self)
@@ -569,18 +741,18 @@ class DialogoNuevoRecibo(QDialog):
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(1050, 800)
+        self.card.setFixedSize(1100, 820)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
                 border-radius: 28px;
-                border: 2px solid #D1E2D9;
+                border: 1px solid #D1E2D9;
             }
         """)
         sombra = QGraphicsDropShadowEffect(self.card)
-        sombra.setBlurRadius(40)
-        sombra.setColor(QColor(0, 0, 0, 50))
-        sombra.setOffset(0, 10)
+        sombra.setBlurRadius(20)
+        sombra.setColor(QColor(0, 0, 0, 20))
+        sombra.setOffset(0, 5)
         self.card.setGraphicsEffect(sombra)
 
         layout_card = QVBoxLayout(self.card)
@@ -616,7 +788,7 @@ class DialogoNuevoRecibo(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # --- Datos de la factura ---
+        # Formulario
         form_layout = QFormLayout()
         form_layout.setSpacing(12)
 
@@ -653,7 +825,6 @@ class DialogoNuevoRecibo(QDialog):
         self.date_fecha.setCalendarPopup(True)
         self.date_fecha.setStyleSheet(estilo_input)
 
-        # Botón para agregar producto
         self.btn_agregar_producto = QPushButton("+ AGREGAR PRODUCTO")
         self.btn_agregar_producto.setFixedHeight(40)
         self.btn_agregar_producto.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -679,19 +850,19 @@ class DialogoNuevoRecibo(QDialog):
 
         layout_card.addLayout(form_layout)
 
-        # --- Tabla de productos agregados ---
+        # Tabla de productos
         lbl_productos = QLabel("PRODUCTOS A RECIBIR")
         lbl_productos.setFont(_f(12, QFont.Weight.Black))
         lbl_productos.setStyleSheet("color: #708077;")
         layout_card.addWidget(lbl_productos)
 
-        self.tabla_productos = QTableWidget(0, 5)
-        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Precio Unit.", "Subtotal", "Acción"])
+        self.tabla_productos = QTableWidget(0, 6)
+        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Peso (g)", "Precio Unit.", "Subtotal", "Acción"])
         self.tabla_productos.setShowGrid(False)
         self.tabla_productos.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla_productos.verticalHeader().setVisible(False)
-        self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.EditKeyPressed)
+        self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.tabla_productos.setStyleSheet("""
             QTableWidget {
                 border: 1px solid #D1E2D9;
@@ -709,6 +880,9 @@ class DialogoNuevoRecibo(QDialog):
                 background: #E8F5EE;
                 color: #17813D;
             }
+            QTableWidget::item:editable {
+                background-color: #FDFDFD;
+            }
             QHeaderView::section {
                 background: #F1F5F9;
                 color: #64748B;
@@ -722,12 +896,21 @@ class DialogoNuevoRecibo(QDialog):
         header = self.tabla_productos.horizontalHeader()
         header.setStretchLastSection(False)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.tabla_productos.setColumnWidth(0, 280)
-        self.tabla_productos.setColumnWidth(1, 100)
-        self.tabla_productos.setColumnWidth(2, 130)
-        self.tabla_productos.setColumnWidth(3, 130)
-        self.tabla_productos.setColumnWidth(4, 100)
+        self.tabla_productos.setColumnWidth(0, 250)
+        self.tabla_productos.setColumnWidth(1, 80)
+        self.tabla_productos.setColumnWidth(2, 100)
+        self.tabla_productos.setColumnWidth(3, 120)
+        self.tabla_productos.setColumnWidth(4, 130)
+        self.tabla_productos.setColumnWidth(5, 80)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+
+        self.tabla_productos.cellChanged.connect(self._on_cell_changed_nuevo)
+
         layout_card.addWidget(self.tabla_productos)
 
         # Total
@@ -743,7 +926,7 @@ class DialogoNuevoRecibo(QDialog):
         total_layout.addStretch()
         layout_card.addLayout(total_layout)
 
-        # Botones de acción
+        # Botones
         layout_botones = QHBoxLayout()
         layout_botones.setSpacing(16)
         btn_cancelar = QPushButton("CANCELAR")
@@ -775,9 +958,7 @@ class DialogoNuevoRecibo(QDialog):
 
         layout_fondo.addWidget(self.card)
 
-    # ---- Métodos para manejar productos ----
     def _agregar_producto(self):
-        """Abre el diálogo de selección de producto con autocompletado."""
         if not self.productos_db:
             QMessageBox.warning(self, "Sin productos", "No hay productos disponibles en el inventario.")
             return
@@ -785,29 +966,47 @@ class DialogoNuevoRecibo(QDialog):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             producto = dlg.producto_seleccionado
             if producto:
-                id_prod, nombre, precio = producto
-                cant = dlg.cantidad_seleccionada
-                subtotal = cant * float(precio)
-                self._agregar_fila_producto(id_prod, nombre, precio, cant, subtotal)
+                if isinstance(producto, dict):
+                    id_prod = producto['id_producto']
+                    nombre = producto['nombre_producto']
+                    precio = producto['precio_venta_prod']
+                else:
+                    id_prod, nombre, precio = producto
+                cantidad = 1
+                peso = 0.0
+                subtotal = cantidad * float(precio)
+                self._agregar_fila_producto(id_prod, nombre, precio, cantidad, peso, subtotal)
 
-    def _agregar_fila_producto(self, id_prod, nombre, precio, cantidad, subtotal):
+    def _agregar_fila_producto(self, id_prod, nombre, precio, cantidad, peso, subtotal):
         fila = self.tabla_productos.rowCount()
         self.tabla_productos.insertRow(fila)
 
-        self.tabla_productos.setItem(fila, 0, QTableWidgetItem(nombre))
-        self.tabla_productos.setItem(fila, 1, QTableWidgetItem(str(cantidad)))
-        self.tabla_productos.setItem(fila, 2, QTableWidgetItem(f"${int(precio):,}"))
-        self.tabla_productos.setItem(fila, 3, QTableWidgetItem(f"${int(subtotal):,}"))
+        item_producto = QTableWidgetItem(nombre)
+        item_producto.setFlags(item_producto.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 0, item_producto)
 
-        # Botón eliminar
+        item_cant = QTableWidgetItem(str(cantidad))
+        self.tabla_productos.setItem(fila, 1, item_cant)
+
+        item_peso = QTableWidgetItem(f"{peso:.2f}")
+        self.tabla_productos.setItem(fila, 2, item_peso)
+
+        item_precio = QTableWidgetItem(f"${int(precio):,}")
+        item_precio.setFlags(item_precio.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 3, item_precio)
+
+        item_subtotal = QTableWidgetItem(f"${int(subtotal):,}")
+        item_subtotal.setFlags(item_subtotal.flags() & ~Qt.ItemIsEditable)
+        self.tabla_productos.setItem(fila, 4, item_subtotal)
+
         btn_eliminar = QPushButton("✕")
-        btn_eliminar.setFixedSize(30, 30)
+        btn_eliminar.setFixedSize(28, 28)
         btn_eliminar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_eliminar.setStyleSheet("""
             QPushButton {
                 background-color: #FEE2E2;
                 border: none;
-                border-radius: 15px;
+                border-radius: 14px;
                 color: #DC2626;
                 font-weight: bold;
             }
@@ -816,31 +1015,58 @@ class DialogoNuevoRecibo(QDialog):
                 color: #FFFFFF;
             }
         """)
-        btn_eliminar.clicked.connect(lambda: self._eliminar_fila(fila))
-        self.tabla_productos.setCellWidget(fila, 4, btn_eliminar)
+        btn_eliminar.clicked.connect(lambda: self._eliminar_fila_nuevo(fila))
+        self.tabla_productos.setCellWidget(fila, 5, btn_eliminar)
 
-        self.tabla_productos.setRowHeight(fila, 45)
+        self.tabla_productos.setRowHeight(fila, 40)
 
-        # Guardar en lista interna
         self.productos_agregados.append({
             'id_producto': id_prod,
             'cantidad': cantidad,
+            'peso': peso,
             'precio_unitario': precio,
             'subtotal': subtotal
         })
-        self._actualizar_total()
+        self._actualizar_total_nuevo()
 
-    def _eliminar_fila(self, fila):
+    def _on_cell_changed_nuevo(self, row, column):
+        if column not in (1, 2):
+            return
+        if row >= len(self.productos_agregados):
+            return
+
+        item_cant = self.tabla_productos.item(row, 1)
+        item_peso = self.tabla_productos.item(row, 2)
+        if not item_cant or not item_peso:
+            return
+
+        try:
+            cantidad = float(item_cant.text()) if item_cant.text() else 0
+            peso = float(item_peso.text()) if item_peso.text() else 0
+        except ValueError:
+            return
+
+        precio = self.productos_agregados[row]['precio_unitario']
+        subtotal = cantidad * precio
+
+        self.tabla_productos.item(row, 4).setText(f"${int(subtotal):,}")
+
+        self.productos_agregados[row]['cantidad'] = cantidad
+        self.productos_agregados[row]['peso'] = peso
+        self.productos_agregados[row]['subtotal'] = subtotal
+
+        self._actualizar_total_nuevo()
+
+    def _eliminar_fila_nuevo(self, fila):
         if fila < len(self.productos_agregados):
             self.productos_agregados.pop(fila)
         self.tabla_productos.removeRow(fila)
-        self._actualizar_total()
+        self._actualizar_total_nuevo()
 
-    def _actualizar_total(self):
+    def _actualizar_total_nuevo(self):
         total = sum(p['subtotal'] for p in self.productos_agregados)
         self.lbl_total.setText(f"${int(total):,}")
 
-    # ---- Guardar ----
     def _guardar(self):
         if not self.conexion:
             QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
@@ -860,12 +1086,17 @@ class DialogoNuevoRecibo(QDialog):
             QMessageBox.warning(self, "Atención", "Ingresa el nombre del proveedor.")
             return
 
-        # Buscar proveedor por nombre
         id_proveedor = None
         for p in self.proveedores:
-            if p[1].lower() == nombre_prov.lower():
-                id_proveedor = p[0]
-                break
+            if isinstance(p, dict):
+                if p.get('nombre_empresa', '').lower() == nombre_prov.lower():
+                    id_proveedor = p['id_proveedor']
+                    break
+            else:
+                if p[1].lower() == nombre_prov.lower():
+                    id_proveedor = p[0]
+                    break
+
         if not id_proveedor:
             respuesta = QMessageBox.question(
                 self, "Proveedor no encontrado",
@@ -891,28 +1122,26 @@ class DialogoNuevoRecibo(QDialog):
 
         try:
             cursor = self.conexion.cursor()
-            # Insertar factura_compra con estado 'pendiente'
             sql_cab = """
                 INSERT INTO factura_compra
                 (numero_fac_compra, id_proveedor, id_empleado, fecha_fac_compra, valor_fac_compra, estado)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(sql_cab, (numero, id_proveedor, self.empleado_id, fecha, total, 'pendiente'))
+            cursor.execute(sql_cab, (numero, id_proveedor, self.empleado_id, fecha, total, 'PENDIENTE'))
             id_fac_compra = cursor.lastrowid
 
-            # Insertar detalles
             for prod in self.productos_agregados:
                 sql_det = """
                     INSERT INTO detalle_factura_compra
-                    (id_fac_compra, id_producto, cantidad, precio_unitario, subtotal)
-                    VALUES (%s, %s, %s, %s, %s)
+                    (id_fac_compra, id_producto, cantidad, peso_gramos, precio_unitario, subtotal)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(sql_det, (id_fac_compra, prod['id_producto'], prod['cantidad'],
-                                         prod['precio_unitario'], prod['subtotal']))
+                                         prod['peso'], prod['precio_unitario'], prod['subtotal']))
 
             self.conexion.commit()
             cursor.close()
-            QMessageBox.information(self, "Éxito", f"Pedido N° {numero} creado correctamente (estado: pendiente).")
+            QMessageBox.information(self, "Éxito", f"Pedido N° {numero} creado correctamente (estado: PENDIENTE).")
             self.resultado = {"id": id_fac_compra, "numero": numero}
             self.accept()
 
@@ -939,7 +1168,7 @@ class DialogoNuevoRecibo(QDialog):
 
 
 # ================================================================
-# VISTA PRINCIPAL DE RECIBO DE PROVEEDORES
+# VISTA PRINCIPAL RECIBO DE PROVEEDORES
 # ================================================================
 class ReciboProveedoresVista(QWidget):
     def __init__(self, conexion=None, parent=None):
@@ -947,7 +1176,7 @@ class ReciboProveedoresVista(QWidget):
         self.conexion = conexion
         self.filtro_estado = "todos"  # 'todos', 'pendiente', 'recibido'
         self.filtro_fecha_activo = False
-        self.datos_tabla = []  # cada elemento: (numero, proveedor, fecha, total, id, estado)
+        self.datos_tabla = []
         self.empleado_id = 1
         self.init_ui()
         self.cargar_datos()
@@ -957,12 +1186,11 @@ class ReciboProveedoresVista(QWidget):
         layout_principal.setContentsMargins(20, 20, 20, 0)
         layout_principal.setSpacing(20)
 
-        # ----- Encabezado con título y botón NUEVO PEDIDO -----
+        # Encabezado
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(10, 0, 0, 10)
 
-        # Título y subtítulo
         titulos_layout = QVBoxLayout()
         titulos_layout.setSpacing(2)
         lbl_titulo = QLabel("RECEPCIÓN DE PROVEEDORES")
@@ -979,7 +1207,6 @@ class ReciboProveedoresVista(QWidget):
         header_layout.addLayout(titulos_layout)
         header_layout.addStretch()
 
-        # Botón NUEVO PEDIDO (parte naranja)
         self.btn_nuevo = QPushButton("+ NUEVO PEDIDO")
         self.btn_nuevo.setFixedHeight(46)
         self.btn_nuevo.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1003,7 +1230,7 @@ class ReciboProveedoresVista(QWidget):
 
         layout_principal.addWidget(header_frame)
 
-        # ----- Contenedor blanco (tarjeta) -----
+        # Tarjeta principal
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -1023,11 +1250,11 @@ class ReciboProveedoresVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # ----- Barra de filtros: estado + fecha + buscador -----
+        # Filtros
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(12)
 
-        # Filtros de estado (parte azul)
+        # Botones de filtro de estado
         self.btn_todos = QPushButton("TODOS")
         self.btn_recibidos = QPushButton("RECIBIDOS")
         self.btn_pendientes = QPushButton("PENDIENTES")
@@ -1057,7 +1284,6 @@ class ReciboProveedoresVista(QWidget):
                 }
             """)
 
-        # Grupo para que solo uno esté seleccionado
         self.grupo_estado = QButtonGroup(self)
         self.grupo_estado.addButton(self.btn_todos)
         self.grupo_estado.addButton(self.btn_recibidos)
@@ -1069,14 +1295,13 @@ class ReciboProveedoresVista(QWidget):
         filtros_layout.addWidget(self.btn_recibidos)
         filtros_layout.addWidget(self.btn_pendientes)
 
-        # Separador visual
         separador = QFrame()
         separador.setFrameShape(QFrame.Shape.VLine)
         separador.setFrameShadow(QFrame.Shadow.Sunken)
         separador.setStyleSheet("background-color: #D1D5DB; max-width: 2px;")
         filtros_layout.addWidget(separador)
 
-        # Botón Fecha (parte amarilla)
+        # Botón fecha
         self.btn_fecha = QPushButton("📅 Fecha")
         self.btn_fecha.setFixedHeight(36)
         self.btn_fecha.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1101,7 +1326,6 @@ class ReciboProveedoresVista(QWidget):
         """)
         self.btn_fecha.toggled.connect(self._toggle_fecha)
 
-        # Widget de fechas personalizadas
         self.widget_fechas = QWidget()
         self.widget_fechas.setVisible(False)
         layout_fechas = QHBoxLayout(self.widget_fechas)
@@ -1191,10 +1415,10 @@ class ReciboProveedoresVista(QWidget):
 
         layout_tarjeta.addLayout(filtros_layout)
 
-        # ----- Tabla -----
-        self.tabla = QTableWidget(0, 5)
+        # Tabla principal
+        self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
-            "N° Pedido", "Proveedor", "Fecha", "Total", "Acciones"
+            "N° Pedido", "Proveedor", "Fecha", "Total", "Estado", "Acciones"
         ])
         self.tabla.setShowGrid(False)
         self.tabla.setFrameShape(QFrame.Shape.NoFrame)
@@ -1242,17 +1466,18 @@ class ReciboProveedoresVista(QWidget):
         self.tabla.setColumnWidth(1, 280)
         self.tabla.setColumnWidth(2, 130)
         self.tabla.setColumnWidth(3, 130)
-        self.tabla.setColumnWidth(4, 180)  # más ancho para dos botones
+        self.tabla.setColumnWidth(4, 130)  # ANCHO AMPLIADO para que no se corte "RECIBIDO" o "PENDIENTE"
+        self.tabla.setColumnWidth(5, 180)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
 
         layout_tarjeta.addWidget(self.tabla)
         layout_principal.addWidget(tarjeta_principal)
 
-    # ----- Métodos de filtros -----
     def _cambiar_filtro_estado(self, button):
         if button == self.btn_todos:
             self.filtro_estado = "todos"
@@ -1267,7 +1492,6 @@ class ReciboProveedoresVista(QWidget):
         self.filtro_fecha_activo = checked
         self.filtrar_tabla()
 
-    # ----- Carga y llenado de datos -----
     def cargar_datos(self):
         self.tabla.setRowCount(0)
         self.datos_tabla = []
@@ -1311,8 +1535,8 @@ class ReciboProveedoresVista(QWidget):
                         proveedor,
                         fecha_str,
                         f"${int(total):,}",
-                        id_fac,
-                        estado
+                        estado,
+                        id_fac
                     ))
                 cursor.close()
                 self.llenar_tabla(self.datos_tabla)
@@ -1331,7 +1555,7 @@ class ReciboProveedoresVista(QWidget):
         self.tabla.setRowCount(1)
         item = QTableWidgetItem(mensaje)
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tabla.setSpan(0, 0, 1, 5)
+        self.tabla.setSpan(0, 0, 1, 6)
         self.tabla.setItem(0, 0, item)
 
     def llenar_tabla(self, datos):
@@ -1345,16 +1569,24 @@ class ReciboProveedoresVista(QWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
                 self.tabla.setItem(fila_idx, col_idx, item)
 
-            id_fac = row_data[4]
-            estado = row_data[5]
+            estado = row_data[4]
+            estado_texto = estado.upper()
+            item_estado = QTableWidgetItem(estado_texto)
+            item_estado.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if estado == 'recibido':
+                item_estado.setBackground(QColor("#D1FAE5"))
+                item_estado.setForeground(QColor("#065F46"))
+            else:
+                item_estado.setBackground(QColor("#FEF3C7"))
+                item_estado.setForeground(QColor("#92400E"))
+            self.tabla.setItem(fila_idx, 4, item_estado)
 
-            # Contenedor de botones
+            id_fac = row_data[5]
             contenedor = QWidget()
             layout_acciones = QHBoxLayout(contenedor)
             layout_acciones.setContentsMargins(0, 0, 0, 0)
             layout_acciones.setSpacing(4)
 
-            # Botón Ver
             btn_ver = QPushButton("Ver")
             btn_ver.setFixedSize(50, 28)
             btn_ver.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1373,10 +1605,8 @@ class ReciboProveedoresVista(QWidget):
                 }
             """)
             btn_ver.clicked.connect(lambda checked, fid=id_fac: self.abrir_detalle(fid))
-
             layout_acciones.addWidget(btn_ver)
 
-            # Botón Recibir (solo si está pendiente)
             if estado == 'pendiente':
                 btn_recibir = QPushButton("Recibir")
                 btn_recibir.setFixedSize(60, 28)
@@ -1399,25 +1629,23 @@ class ReciboProveedoresVista(QWidget):
                 layout_acciones.addWidget(btn_recibir)
 
             layout_acciones.addStretch()
-            self.tabla.setCellWidget(fila_idx, 4, contenedor)
+            self.tabla.setCellWidget(fila_idx, 5, contenedor)
             self.tabla.setRowHeight(fila_idx, 45)
 
     def marcar_recibido(self, id_fac):
-        """Cambia el estado del pedido a 'recibido' y recarga la tabla."""
         if not self.conexion:
             return
         try:
             cursor = self.conexion.cursor()
-            cursor.execute("UPDATE factura_compra SET estado = 'recibido' WHERE id_fac_compra = %s", (id_fac,))
+            cursor.execute("UPDATE factura_compra SET estado = 'RECIBIDO' WHERE id_fac_compra = %s", (id_fac,))
             self.conexion.commit()
             cursor.close()
             QMessageBox.information(self, "Éxito", "Pedido marcado como RECIBIDO.")
-            self.cargar_datos()  # recarga la tabla
+            self.cargar_datos()
         except Exception as e:
             self.conexion.rollback()
             QMessageBox.critical(self, "Error", f"No se pudo actualizar el estado:\n{str(e)}")
 
-    # ----- Filtrado combinado -----
     def filtrar_tabla(self):
         texto_busqueda = self.txt_buscador.text().lower()
         filtro_fecha_activo = self.filtro_fecha_activo
@@ -1433,7 +1661,7 @@ class ReciboProveedoresVista(QWidget):
             if fila >= len(self.datos_tabla):
                 continue
             row_data = self.datos_tabla[fila]
-            estado_fila = row_data[5]
+            estado_fila = row_data[4]
 
             # Filtro por estado
             if self.filtro_estado != "todos":
@@ -1443,7 +1671,7 @@ class ReciboProveedoresVista(QWidget):
             # Filtro por texto
             if mostrar and texto_busqueda:
                 coincide = False
-                for col in range(3):  # N° Pedido, Proveedor, Fecha
+                for col in range(3):
                     item = self.tabla.item(fila, col)
                     if item and texto_busqueda in item.text().lower():
                         coincide = True
@@ -1454,7 +1682,7 @@ class ReciboProveedoresVista(QWidget):
             if mostrar and desde and hasta:
                 item_fecha = self.tabla.item(fila, 2)
                 if item_fecha:
-                    fecha_str = item_fecha.text().split()[0]  # dd/mm/yyyy
+                    fecha_str = item_fecha.text().split()[0]
                     try:
                         dia, mes, anio = map(int, fecha_str.split('/'))
                         fecha_obj = QDate(anio, mes, dia)
@@ -1467,7 +1695,6 @@ class ReciboProveedoresVista(QWidget):
 
             self.tabla.setRowHidden(fila, not mostrar)
 
-    # ----- Abrir detalle y nuevo pedido -----
     def abrir_detalle(self, id_fac_compra):
         dlg = DialogoDetalleRecibo(id_fac_compra, self.conexion, self)
         dlg.exec()
