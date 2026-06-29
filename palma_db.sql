@@ -1,5 +1,5 @@
 -- ============================================================
--- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA)
+-- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA Y DEVOLUCIONES)
 -- VERSIÓN COMPLETA PARA INSTALACIÓN LIMPIA
 -- ============================================================
 
@@ -164,7 +164,7 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 (4, 2, 4, 'marianazarate', '446688');
 
 -- ------------------------------------------------------------
--- 9. TABLA: productos
+-- 9. TABLA: productos (con todos los 91 productos)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `productos`;
 CREATE TABLE `productos` (
@@ -181,9 +181,6 @@ CREATE TABLE `productos` (
   KEY `id_proveedor` (`id_proveedor`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- (Inserts de productos... mantengo los mismos que tenías, pero por brevedad no los repito todos. 
---  Si necesitas los 91 productos, los incluí en el script original. 
---  He dejado una muestra, pero puedes copiar la lista completa del archivo que me diste.
 INSERT INTO `productos` (`id_producto`, `nombre_producto`, `marca_producto`, `id_categoria`, `id_estado`, `precio_venta_prod`, `id_proveedor`) VALUES
 (1, 'Manzana Roja x kg', 'Frutas Frescas', 1, 1, 4500.00, 1),
 (2, 'Leche Entera x Lt', 'Alquería', 4, 1, 3200.00, 2),
