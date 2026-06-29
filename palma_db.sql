@@ -1,5 +1,5 @@
 -- ============================================================
--- BASE DE DATOS: PALMA (VERSIÓN COMPLETA CON DETALLE COMPRA)
+-- BASE DE DATOS: PALMA (VERSIÓN COMPLETA CON DETALLE COMPRA Y ESTADO)
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -381,7 +381,7 @@ INSERT INTO `inventarios` (`id_inventario`, `id_producto`, `stock_actual`, `cond
 (91, 91, 75, 'Buena', CURRENT_TIMESTAMP);
 
 -- ------------------------------------------------------------
--- 11. TABLA: factura_compra (cabecera)
+-- 11. TABLA: factura_compra (cabecera) CON COLUMNA estado
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `factura_compra`;
 CREATE TABLE `factura_compra` (
@@ -391,18 +391,19 @@ CREATE TABLE `factura_compra` (
   `id_empleado` INT(11) DEFAULT NULL,
   `fecha_fac_compra` DATETIME DEFAULT NULL,
   `valor_fac_compra` DECIMAL(10,2) DEFAULT NULL,
+  `estado` ENUM('PENDIENTE', 'RECIBIDO') NOT NULL DEFAULT 'PENDIENTE' COMMENT 'Estado del pedido: PENDIENTE (no recibido) o RECIBIDO (ya ingresado)',
   PRIMARY KEY (`id_fac_compra`),
   KEY `id_proveedor` (`id_proveedor`),
   KEY `id_empleado` (`id_empleado`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedor`, `id_empleado`, `fecha_fac_compra`, `valor_fac_compra`) VALUES
-(1, 'FC-2024-001', 1, 4, '2024-01-10 09:00:00', 850000.00),
-(2, 'FC-2024-002', 2, 4, '2024-02-05 10:30:00', 640000.00),
-(3, 'FC-2024-003', 3, 1, '2024-03-12 11:00:00', 1150000.00);
+INSERT INTO `factura_compra` (`id_fac_compra`, `numero_fac_compra`, `id_proveedor`, `id_empleado`, `fecha_fac_compra`, `valor_fac_compra`, `estado`) VALUES
+(1, 'FC-2024-001', 1, 4, '2024-01-10 09:00:00', 850000.00, 'RECIBIDO'),
+(2, 'FC-2024-002', 2, 4, '2024-02-05 10:30:00', 640000.00, 'RECIBIDO'),
+(3, 'FC-2024-003', 3, 1, '2024-03-12 11:00:00', 1150000.00, 'PENDIENTE');
 
 -- ------------------------------------------------------------
--- 12. TABLA: detalle_factura_compra (NUEVA)
+-- 12. TABLA: detalle_factura_compra
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `detalle_factura_compra`;
 CREATE TABLE `detalle_factura_compra` (
