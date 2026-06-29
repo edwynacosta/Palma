@@ -1,6 +1,7 @@
 -- ============================================================
 -- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA Y DEVOLUCIONES)
 -- VERSIÓN COMPLETA CON COLUMNA 'peso' EN TABLAS DE DETALLE
+-- CORREGIDO: Eliminados ALTER TABLE duplicados
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -434,7 +435,7 @@ CREATE TABLE `detalle_factura` (
   `id_detalle` INT(11) NOT NULL AUTO_INCREMENT,
   `id_factura` INT(11) DEFAULT NULL,
   `id_producto` INT(11) DEFAULT NULL,
-  `cantidad_detfac` INT(11) DEFAULT NULL COMMENT 'Cantidad en unidades (0 si es por peso)',
+  `cantidad_detfac` INT(11) DEFAULT NULL,
   `peso` DECIMAL(10,2) DEFAULT 0 COMMENT 'Peso en gramos (0 si es por unidad)',
   `precio_unitario_detfac` DECIMAL(10,2) DEFAULT NULL,
   `subtotal_detfac` DECIMAL(10,2) DEFAULT NULL,
@@ -600,10 +601,7 @@ CREATE TABLE `factura_electronica` (
   PRIMARY KEY (`id_factura_electronica`),
   KEY `id_cliente` (`id_cliente`),
   KEY `id_empleado` (`id_empleado`),
-  KEY `id_factura_base` (`id_factura_base`),
-  CONSTRAINT `factura_electronica_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `clientes` (`id_cliente`),
-  CONSTRAINT `factura_electronica_ibfk_2` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
-  CONSTRAINT `factura_electronica_ibfk_3` FOREIGN KEY (`id_factura_base`) REFERENCES `facturas` (`id_factura`) ON DELETE SET NULL
+  KEY `id_factura_base` (`id_factura_base`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ------------------------------------------------------------
@@ -620,13 +618,11 @@ CREATE TABLE `detalle_factura_electronica` (
   `subtotal` DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (`id_detalle_fe`),
   KEY `id_factura_electronica` (`id_factura_electronica`),
-  KEY `id_producto` (`id_producto`),
-  CONSTRAINT `detalle_factura_electronica_ibfk_1` FOREIGN KEY (`id_factura_electronica`) REFERENCES `factura_electronica` (`id_factura_electronica`) ON DELETE CASCADE,
-  CONSTRAINT `detalle_factura_electronica_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`)
+  KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
--- DECLARACIÓN FINAL DE RESTRICCIONES
+-- DECLARACIÓN DE RESTRICCIONES (SOLO LAS QUE FALTAN)
 -- ============================================================
 
 ALTER TABLE `empleados` 
@@ -636,46 +632,8 @@ ALTER TABLE `usuarios`
   ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
   ADD CONSTRAINT `usuarios_ibfk_2` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 
-ALTER TABLE `productos` 
-  ADD CONSTRAINT `productos_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categoria` (`id_categoria`),
-  ADD CONSTRAINT `productos_ibfk_2` FOREIGN KEY (`id_estado`) REFERENCES `estado_producto` (`id_estado`),
-  ADD CONSTRAINT `productos_ibfk_3` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedores` (`id_proveedor`);
-
-ALTER TABLE `inventarios` 
-  ADD CONSTRAINT `inventarios_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
-
-ALTER TABLE `factura_compra` 
-  ADD CONSTRAINT `factura_compra_ibfk_1` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedores` (`id_proveedor`),
-  ADD CONSTRAINT `factura_compra_ibfk_2` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`);
-
-ALTER TABLE `facturas` 
-  ADD CONSTRAINT `facturas_ibfk_1` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
-  ADD CONSTRAINT `facturas_ibfk_2` FOREIGN KEY (`id_cliente`) REFERENCES `clientes` (`id_cliente`);
-
-ALTER TABLE `detalle_factura` 
-  ADD CONSTRAINT `detalle_factura_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
-  ADD CONSTRAINT `detalle_factura_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
-
-ALTER TABLE `devoluciones` 
-  ADD CONSTRAINT `devoluciones_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `devoluciones_ibfk_2` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `devoluciones_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`);
-
-ALTER TABLE `detalle_devolucion` 
-  ADD CONSTRAINT `detalle_devolucion_ibfk_1` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE CASCADE,
-  ADD CONSTRAINT `detalle_devolucion_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
-
-ALTER TABLE `detalle_factura_electronica` 
-  ADD CONSTRAINT `detalle_factura_electronica_ibfk_1` FOREIGN KEY (`id_factura_electronica`) REFERENCES `factura_electronica` (`id_factura_electronica`) ON DELETE CASCADE,
-  ADD CONSTRAINT `detalle_factura_electronica_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
-
-ALTER TABLE `movimientos` 
-  ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`id_inventario`) REFERENCES `inventarios` (`id_inventario`),
-  ADD CONSTRAINT `movimientos_ibfk_2` FOREIGN KEY (`id_tipo_mov`) REFERENCES `tipo_movimiento` (`id_tipo_mov`),
-  ADD CONSTRAINT `movimientos_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleados` (`id_empleado`),
-  ADD CONSTRAINT `movimientos_ibfk_4` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id_factura`),
-  ADD CONSTRAINT `movimientos_ibfk_5` FOREIGN KEY (`id_fac_compra`) REFERENCES `factura_compra` (`id_fac_compra`),
-  ADD CONSTRAINT `movimientos_ibfk_6` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE SET NULL;
+-- NOTA: Las siguientes tablas ya tienen sus claves foráneas definidas en CREATE TABLE,
+-- por lo que no necesitan ALTER TABLE adicional.
 
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
