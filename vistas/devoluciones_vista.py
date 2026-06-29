@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 
 # ================================================================
-# DIÁLOGO PARA DETALLE DE DEVOLUCIÓN
+# DIÁLOGO PARA DETALLE DE DEVOLUCIÓN (SIN ESTADO)
 # ================================================================
 class DialogoDetalleDevolucion(QDialog):
     def __init__(self, id_devolucion, conexion, parent=None):
@@ -34,7 +34,7 @@ class DialogoDetalleDevolucion(QDialog):
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(820, 680)
+        self.card.setFixedSize(820, 650)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
@@ -120,8 +120,8 @@ class DialogoDetalleDevolucion(QDialog):
         layout_card.addWidget(lbl_productos)
 
         self.tabla_productos = QTableWidget()
-        self.tabla_productos.setColumnCount(6)
-        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Peso (g)", "Precio Unit.", "Subtotal", "Estado"])
+        self.tabla_productos.setColumnCount(5)
+        self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Peso (g)", "Precio Unit.", "Subtotal"])
         self.tabla_productos.setShowGrid(False)
         self.tabla_productos.setFrameShape(QFrame.Shape.NoFrame)
         self.tabla_productos.verticalHeader().setVisible(False)
@@ -166,10 +166,9 @@ class DialogoDetalleDevolucion(QDialog):
         self.tabla_productos.setColumnWidth(2, 80)
         self.tabla_productos.setColumnWidth(3, 120)
         self.tabla_productos.setColumnWidth(4, 120)
-        self.tabla_productos.setColumnWidth(5, 100)
         layout_card.addWidget(self.tabla_productos)
 
-        # Total y estado
+        # Total
         total_frame = QFrame()
         total_frame.setStyleSheet("""
             QFrame {
@@ -179,20 +178,12 @@ class DialogoDetalleDevolucion(QDialog):
                 padding: 8px;
             }
         """)
-        total_layout = QVBoxLayout(total_frame)
+        total_layout = QHBoxLayout(total_frame)
         total_layout.setContentsMargins(20, 12, 20, 12)
-        total_layout.setSpacing(2)
-
-        total_estado_layout = QHBoxLayout()
         self.lbl_total = QLabel()
         self.lbl_total.setFont(_f(16, QFont.Weight.Black))
         self.lbl_total.setStyleSheet("color: #17813D; background: transparent;")
-        self.lbl_estado = QLabel()
-        self.lbl_estado.setFont(_f(12, QFont.Weight.Medium))
-        total_estado_layout.addWidget(self.lbl_total)
-        total_estado_layout.addStretch()
-        total_estado_layout.addWidget(self.lbl_estado)
-        total_layout.addLayout(total_estado_layout)
+        total_layout.addWidget(self.lbl_total, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout_card.addWidget(total_frame)
 
@@ -227,7 +218,7 @@ class DialogoDetalleDevolucion(QDialog):
             query = """
                 SELECT d.id_devolucion, d.tipo_devolucion, d.fecha_devolucion,
                        c.nombre_cliente, c.documento_identidad, c.email, c.ciudad,
-                       d.motivo, d.estado, d.monto_total,
+                       d.motivo, d.monto_total,
                        CASE WHEN d.id_factura IS NOT NULL THEN 'VENTA' ELSE 'COMPRA' END AS tipo
                 FROM devoluciones d
                 LEFT JOIN facturas f ON d.id_factura = f.id_factura
@@ -248,7 +239,6 @@ class DialogoDetalleDevolucion(QDialog):
                 email = row.get('email') or 'N/D'
                 ciudad = row.get('ciudad') or 'N/D'
                 motivo = row.get('motivo') or 'Sin motivo'
-                estado = row.get('estado') or 'Pendiente'
                 total = row.get('monto_total') or 0
                 tipo = row.get('tipo') or 'VENTA'
             else:
@@ -260,9 +250,8 @@ class DialogoDetalleDevolucion(QDialog):
                 email = row[5] or 'N/D'
                 ciudad = row[6] or 'N/D'
                 motivo = row[7] or 'Sin motivo'
-                estado = row[8] or 'Pendiente'
-                total = row[9] or 0
-                tipo = row[10] or 'VENTA'
+                total = row[8] or 0
+                tipo = row[9] or 'VENTA'
 
             fecha_str = fecha.strftime("%d/%m/%Y %H:%M") if fecha else 'N/D'
 
@@ -280,15 +269,6 @@ class DialogoDetalleDevolucion(QDialog):
             self.lbl_motivo.setText(f"<b>Motivo:</b> {motivo}")
 
             self.lbl_total.setText(f"TOTAL REEMBOLSADO: ${int(total):,}")
-            self.lbl_estado.setText(f"Estado: {estado}")
-            if estado == "Aprobada":
-                self.lbl_estado.setStyleSheet("color: #008F39; font-weight: bold; background: transparent;")
-            elif estado == "Pendiente":
-                self.lbl_estado.setStyleSheet("color: #EAB308; font-weight: bold; background: transparent;")
-            elif estado == "Rechazada":
-                self.lbl_estado.setStyleSheet("color: #DC2626; font-weight: bold; background: transparent;")
-            else:
-                self.lbl_estado.setStyleSheet("color: #64748B; font-weight: medium; background: transparent;")
 
             # Cargar productos devueltos
             query_det = """
@@ -318,7 +298,6 @@ class DialogoDetalleDevolucion(QDialog):
                 self.tabla_productos.setItem(fila, 2, QTableWidgetItem(str(peso) if peso else "-"))
                 self.tabla_productos.setItem(fila, 3, QTableWidgetItem(f"${int(precio):,}"))
                 self.tabla_productos.setItem(fila, 4, QTableWidgetItem(f"${int(subtotal):,}"))
-                self.tabla_productos.setItem(fila, 5, QTableWidgetItem('N/A'))
                 self.tabla_productos.setRowHeight(fila, 40)
 
             cursor.close()
@@ -650,7 +629,6 @@ class DialogoNuevaDevolucion(QDialog):
         lbl_productos.setStyleSheet("color: #708077;")
         layout_formulario.addWidget(lbl_productos)
 
-        # Botón para agregar producto (en modo rápido)
         self.btn_agregar_producto = QPushButton("+ AGREGAR PRODUCTO")
         self.btn_agregar_producto.setFixedHeight(40)
         self.btn_agregar_producto.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -670,7 +648,6 @@ class DialogoNuevaDevolucion(QDialog):
         self.btn_agregar_producto.clicked.connect(self._mostrar_dialogo_seleccion_producto)
         layout_formulario.addWidget(self.btn_agregar_producto)
 
-        # Tabla con columnas ajustadas
         self.tabla_productos_devolver = QTableWidget(0, 6)
         self.tabla_productos_devolver.setHorizontalHeaderLabels(
             ["Seleccionar", "Producto", "Cantidad (Und)", "Peso (g)", "Precio Unit.", "Subtotal"]
@@ -712,8 +689,8 @@ class DialogoNuevaDevolucion(QDialog):
         header_prod.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.tabla_productos_devolver.setColumnWidth(0, 70)
         self.tabla_productos_devolver.setColumnWidth(1, 200)
-        self.tabla_productos_devolver.setColumnWidth(2, 140)  # más ancho
-        self.tabla_productos_devolver.setColumnWidth(3, 140)  # más ancho
+        self.tabla_productos_devolver.setColumnWidth(2, 140)
+        self.tabla_productos_devolver.setColumnWidth(3, 140)
         self.tabla_productos_devolver.setColumnWidth(4, 130)
         self.tabla_productos_devolver.setColumnWidth(5, 130)
         layout_formulario.addWidget(self.tabla_productos_devolver)
@@ -873,7 +850,7 @@ class DialogoNuevaDevolucion(QDialog):
         self.filtro_tipo = tipo
         self._actualizar_tabla_facturas()
 
-    # ---- Navegación entre lista y formulario ----
+    # ---- Navegación ----
     def _mostrar_lista(self):
         self.stack_principal.setCurrentIndex(0)
         self.btn_volver.setVisible(False)
@@ -1286,7 +1263,7 @@ class DialogoNuevaDevolucion(QDialog):
 
 
 # ================================================================
-# VISTA PRINCIPAL DE DEVOLUCIONES
+# VISTA PRINCIPAL DE DEVOLUCIONES (SIN ESTADO)
 # ================================================================
 class DevolucionesVista(QWidget):
     def __init__(self, conexion=None, parent=None):
@@ -1304,6 +1281,7 @@ class DevolucionesVista(QWidget):
         layout_principal.setContentsMargins(20, 20, 20, 0)
         layout_principal.setSpacing(20)
 
+        # Encabezado
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(10, 0, 0, 10)
@@ -1325,6 +1303,7 @@ class DevolucionesVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
+        # Contenedor blanco
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -1344,9 +1323,11 @@ class DevolucionesVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
+        # Filtros
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(12)
 
+        # Botones de tipo
         self.btn_todos = QPushButton("TODOS")
         self.btn_empresa = QPushButton("EMPRESA")
         self.btn_cliente = QPushButton("CLIENTE")
@@ -1382,6 +1363,7 @@ class DevolucionesVista(QWidget):
         self.grupo_filtro.addButton(self.btn_empresa)
         self.grupo_filtro.addButton(self.btn_cliente)
 
+        # Buscador
         self.txt_buscador = QLineEdit()
         self.txt_buscador.setPlaceholderText("Buscar devolución por número o cliente...")
         self.txt_buscador.setFixedHeight(46)
@@ -1402,6 +1384,7 @@ class DevolucionesVista(QWidget):
         """)
         self.txt_buscador.textChanged.connect(self.filtrar_tabla)
 
+        # Botón Fecha
         self.btn_fecha = QPushButton("📅 Fecha")
         self.btn_fecha.setFixedHeight(36)
         self.btn_fecha.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1426,6 +1409,7 @@ class DevolucionesVista(QWidget):
         self.btn_fecha.setCheckable(True)
         self.btn_fecha.toggled.connect(self._toggle_fecha)
 
+        # Widget de fechas personalizadas
         self.widget_fechas = QWidget()
         self.widget_fechas.setVisible(False)
         layout_fechas = QHBoxLayout(self.widget_fechas)
@@ -1487,6 +1471,7 @@ class DevolucionesVista(QWidget):
         layout_fechas.addWidget(self.btn_aplicar_fecha)
         layout_fechas.addStretch()
 
+        # Botón nueva devolución
         self.btn_nueva = QPushButton("+ NUEVA DEVOLUCIÓN")
         self.btn_nueva.setFixedHeight(46)
         self.btn_nueva.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1517,9 +1502,10 @@ class DevolucionesVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
-        self.tabla = QTableWidget(0, 6)
+        # Tabla SIN columna Estado
+        self.tabla = QTableWidget(0, 5)
         self.tabla.setHorizontalHeaderLabels([
-            "N° Devolución", "Cliente", "Fecha", "Productos", "Estado", "Acciones"
+            "N° Devolución", "Cliente", "Fecha", "Productos", "Acciones"
         ])
         self.tabla.setShowGrid(False)
         self.tabla.setFrameShape(QFrame.Shape.NoFrame)
@@ -1567,14 +1553,12 @@ class DevolucionesVista(QWidget):
         self.tabla.setColumnWidth(1, 280)
         self.tabla.setColumnWidth(2, 130)
         self.tabla.setColumnWidth(3, 200)
-        self.tabla.setColumnWidth(4, 120)
-        self.tabla.setColumnWidth(5, 100)
+        self.tabla.setColumnWidth(4, 100)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
 
         layout_tarjeta.addWidget(self.tabla)
         layout_principal.addWidget(tarjeta_principal)
@@ -1599,7 +1583,7 @@ class DevolucionesVista(QWidget):
         try:
             cursor = self.conexion.cursor()
             query = """
-                SELECT d.id_devolucion, c.nombre_cliente, d.fecha_devolucion, d.estado, d.monto_total,
+                SELECT d.id_devolucion, c.nombre_cliente, d.fecha_devolucion,
                        (SELECT COUNT(*) FROM detalle_devolucion WHERE id_devolucion = d.id_devolucion) AS num_productos,
                        c.tipo_identificacion
                 FROM devoluciones d
@@ -1616,18 +1600,14 @@ class DevolucionesVista(QWidget):
                         id_dev = row.get('id_devolucion')
                         cliente = row.get('nombre_cliente') or 'Sin cliente'
                         fecha = row.get('fecha_devolucion')
-                        estado = row.get('estado') or 'Pendiente'
-                        total = row.get('monto_total') or 0
                         num_prods = row.get('num_productos') or 0
                         tipo_id = row.get('tipo_identificacion') or 'CC'
                     else:
                         id_dev = row[0]
                         cliente = row[1] or 'Sin cliente'
                         fecha = row[2]
-                        estado = row[3] or 'Pendiente'
-                        total = row[4] or 0
-                        num_prods = row[5] or 0
-                        tipo_id = row[6] if len(row) > 6 else 'CC'
+                        num_prods = row[3] or 0
+                        tipo_id = row[4] if len(row) > 4 else 'CC'
 
                     fecha_str = fecha.strftime("%d/%m/%Y %H:%M") if hasattr(fecha, 'strftime') else str(fecha)
                     self.datos_tabla.append((
@@ -1635,7 +1615,6 @@ class DevolucionesVista(QWidget):
                         cliente,
                         fecha_str,
                         f"{num_prods} productos",
-                        estado,
                         id_dev,
                         tipo_id
                     ))
@@ -1656,7 +1635,7 @@ class DevolucionesVista(QWidget):
         self.tabla.setRowCount(1)
         item = QTableWidgetItem(mensaje)
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tabla.setSpan(0, 0, 1, 6)
+        self.tabla.setSpan(0, 0, 1, 5)
         self.tabla.setItem(0, 0, item)
 
     def llenar_tabla(self, datos):
@@ -1664,21 +1643,13 @@ class DevolucionesVista(QWidget):
         self.tabla.clearSpans()
         for fila_idx, row_data in enumerate(datos):
             self.tabla.insertRow(fila_idx)
-            for col_idx in range(5):
+            for col_idx in range(4):
                 valor = row_data[col_idx]
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-                if col_idx == 4:
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-                    if valor == "Aprobada":
-                        item.setForeground(QColor("#008F39"))
-                    elif valor == "Pendiente":
-                        item.setForeground(QColor("#EAB308"))
-                    elif valor == "Rechazada":
-                        item.setForeground(QColor("#DC2626"))
                 self.tabla.setItem(fila_idx, col_idx, item)
 
-            id_dev = row_data[5]
+            id_dev = row_data[4]
             btn_ver = QPushButton("Ver")
             btn_ver.setFixedSize(60, 28)
             btn_ver.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1697,7 +1668,7 @@ class DevolucionesVista(QWidget):
                 }
             """)
             btn_ver.clicked.connect(lambda checked, fid=id_dev: self.abrir_detalle(fid))
-            self.tabla.setCellWidget(fila_idx, 5, btn_ver)
+            self.tabla.setCellWidget(fila_idx, 4, btn_ver)
             self.tabla.setRowHeight(fila_idx, 45)
 
     def filtrar_tabla(self):
@@ -1716,22 +1687,25 @@ class DevolucionesVista(QWidget):
             if fila >= len(self.datos_tabla):
                 continue
             row_data = self.datos_tabla[fila]
-            tipo = row_data[6] if len(row_data) > 6 else "CC"
+            tipo = row_data[5] if len(row_data) > 5 else "CC"
 
+            # Filtro por tipo de cliente
             if filtro_tipo == "empresa" and tipo.upper() != "NIT":
                 mostrar = False
             elif filtro_tipo == "cliente" and tipo.upper() == "NIT":
                 mostrar = False
 
+            # Filtro por texto
             if mostrar and texto_busqueda:
                 coincide = False
-                for col in range(4):
+                for col in range(3):
                     item = self.tabla.item(fila, col)
                     if item and texto_busqueda in item.text().lower():
                         coincide = True
                         break
                 mostrar = coincide
 
+            # Filtro por fecha
             if mostrar and desde and hasta:
                 item_fecha = self.tabla.item(fila, 2)
                 if item_fecha:
