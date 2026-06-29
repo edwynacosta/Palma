@@ -1,6 +1,6 @@
 -- ============================================================
 -- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA Y DEVOLUCIONES)
--- VERSIÓN COMPLETA CON COLUMNA 'peso' EN DETALLE_DEVOLUCION
+-- VERSIÓN COMPLETA CON COLUMNA 'peso' EN TABLAS DE DETALLE
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -72,7 +72,7 @@ INSERT INTO `tipo_movimiento` (`id_tipo_mov`, `nombre_tipo_movimiento`) VALUES
 (3, 'Devolución');
 
 -- ------------------------------------------------------------
--- 5. TABLA: clientes (MODIFICADA PARA FACTURACIÓN ELECTRÓNICA)
+-- 5. TABLA: clientes
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `clientes`;
 CREATE TABLE `clientes` (
@@ -80,7 +80,7 @@ CREATE TABLE `clientes` (
   `nombre_cliente` VARCHAR(150) NOT NULL,
   `documento_identidad` VARCHAR(20) DEFAULT NULL,
   `tipo_identificacion` VARCHAR(20) DEFAULT NULL COMMENT 'Tipo de identificación (ej. NIT, CC, CE)',
-  `responsabilidad_fiscal` VARCHAR(100) DEFAULT NULL COMMENT 'Responsabilidad fiscal (ej. Régimen común, simplificado)',
+  `responsabilidad_fiscal` VARCHAR(100) DEFAULT NULL,
   `telefono` VARCHAR(20) DEFAULT NULL,
   `email` VARCHAR(150) DEFAULT NULL,
   `direccion` VARCHAR(200) DEFAULT NULL,
@@ -164,7 +164,7 @@ INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `id_empleado`, `username_log`, `
 (4, 2, 4, 'marianazarate', '446688');
 
 -- ------------------------------------------------------------
--- 9. TABLA: productos (con todos los 91 productos)
+-- 9. TABLA: productos
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `productos`;
 CREATE TABLE `productos` (
@@ -427,14 +427,15 @@ INSERT INTO `facturas` (`id_factura`, `id_empleado`, `id_cliente`, `fecha_fac`, 
 (7, 2, 7, '2024-04-08 10:10:00', 19800.00);
 
 -- ------------------------------------------------------------
--- 13. TABLA: detalle_factura
+-- 13. TABLA: detalle_factura (CON PESO Y SUBTOTAL NO GENERADO)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `detalle_factura`;
 CREATE TABLE `detalle_factura` (
   `id_detalle` INT(11) NOT NULL AUTO_INCREMENT,
   `id_factura` INT(11) DEFAULT NULL,
   `id_producto` INT(11) DEFAULT NULL,
-  `cantidad_detfac` INT(11) DEFAULT NULL,
+  `cantidad_detfac` INT(11) DEFAULT NULL COMMENT 'Cantidad en unidades (0 si es por peso)',
+  `peso` DECIMAL(10,2) DEFAULT 0 COMMENT 'Peso en gramos (0 si es por unidad)',
   `precio_unitario_detfac` DECIMAL(10,2) DEFAULT NULL,
   `subtotal_detfac` DECIMAL(10,2) DEFAULT NULL,
   PRIMARY KEY (`id_detalle`),
@@ -442,23 +443,23 @@ CREATE TABLE `detalle_factura` (
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `detalle_factura` (`id_detalle`, `id_factura`, `id_producto`, `cantidad_detfac`, `precio_unitario_detfac`, `subtotal_detfac`) VALUES
-(1, 1, 1, 2, 4500.00, 9000.00),
-(2, 1, 4, 3, 2000.00, 6000.00),
-(3, 1, 6, 4, 2800.00, 11200.00),
-(4, 2, 3, 1, 18500.00, 18500.00),
-(5, 3, 2, 3, 3200.00, 9600.00),
-(6, 3, 5, 2, 3800.00, 7600.00),
-(7, 3, 8, 1, 18900.00, 18900.00),
-(8, 4, 4, 5, 2000.00, 10000.00),
-(9, 4, 5, 3, 3800.00, 11400.00),
-(10, 5, 9, 3, 2200.00, 6600.00),
-(11, 5, 11, 2, 5800.00, 11600.00),
-(12, 5, 5, 4, 3800.00, 15200.00),
-(13, 6, 2, 4, 3200.00, 12800.00),
-(14, 6, 10, 1, 12500.00, 12500.00),
-(15, 7, 4, 3, 2000.00, 6000.00),
-(16, 7, 9, 6, 2200.00, 13200.00);
+INSERT INTO `detalle_factura` (`id_detalle`, `id_factura`, `id_producto`, `cantidad_detfac`, `peso`, `precio_unitario_detfac`, `subtotal_detfac`) VALUES
+(1, 1, 1, 2, 0, 4500.00, 9000.00),
+(2, 1, 4, 3, 0, 2000.00, 6000.00),
+(3, 1, 6, 4, 0, 2800.00, 11200.00),
+(4, 2, 3, 1, 0, 18500.00, 18500.00),
+(5, 3, 2, 3, 0, 3200.00, 9600.00),
+(6, 3, 5, 2, 0, 3800.00, 7600.00),
+(7, 3, 8, 1, 0, 18900.00, 18900.00),
+(8, 4, 4, 5, 0, 2000.00, 10000.00),
+(9, 4, 5, 3, 0, 3800.00, 11400.00),
+(10, 5, 9, 3, 0, 2200.00, 6600.00),
+(11, 5, 11, 2, 0, 5800.00, 11600.00),
+(12, 5, 5, 4, 0, 3800.00, 15200.00),
+(13, 6, 2, 4, 0, 3200.00, 12800.00),
+(14, 6, 10, 1, 0, 12500.00, 12500.00),
+(15, 7, 4, 3, 0, 2000.00, 6000.00),
+(16, 7, 9, 6, 0, 2200.00, 13200.00);
 
 -- ------------------------------------------------------------
 -- 14. TABLA: devoluciones (Cabecera)
@@ -466,10 +467,10 @@ INSERT INTO `detalle_factura` (`id_detalle`, `id_factura`, `id_producto`, `canti
 DROP TABLE IF EXISTS `devoluciones`;
 CREATE TABLE `devoluciones` (
   `id_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
-  `tipo_devolucion` ENUM('venta', 'compra') NOT NULL COMMENT 'Indica si es venta o compra',
-  `id_factura` INT(11) DEFAULT NULL COMMENT 'FK a facturas',
-  `id_fac_compra` INT(11) DEFAULT NULL COMMENT 'FK a factura_compra',
-  `id_empleado` INT(11) NOT NULL COMMENT 'Empleado que registra',
+  `tipo_devolucion` ENUM('venta', 'compra') NOT NULL,
+  `id_factura` INT(11) DEFAULT NULL,
+  `id_fac_compra` INT(11) DEFAULT NULL,
+  `id_empleado` INT(11) NOT NULL,
   `fecha_devolucion` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `motivo` TEXT,
   `estado` ENUM('Pendiente', 'Aprobada', 'Rechazada', 'Completada') DEFAULT 'Pendiente',
@@ -485,27 +486,26 @@ INSERT INTO `devoluciones` (`id_devolucion`, `tipo_devolucion`, `id_factura`, `i
 (2, 'compra', NULL, 2, 4, '2024-02-10 14:30:00', 'Producto vencido al recibir', 'Aprobada', 3200.00);
 
 -- ------------------------------------------------------------
--- 15. TABLA: detalle_devolucion (AHORA CON COLUMNA 'peso' NULL)
+-- 15. TABLA: detalle_devolucion (CON PESO Y SUBTOTAL NO GENERADO)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `detalle_devolucion`;
 CREATE TABLE `detalle_devolucion` (
   `id_detalle_devolucion` INT(11) NOT NULL AUTO_INCREMENT,
   `id_devolucion` INT(11) NOT NULL,
   `id_producto` INT(11) NOT NULL,
-  `cantidad` INT(11) NOT NULL,
+  `cantidad` INT(11) NOT NULL DEFAULT 0,
+  `peso` DECIMAL(10,2) DEFAULT 0 COMMENT 'Peso en gramos (0 si es por unidad)',
   `precio_unitario` DECIMAL(10,2) NOT NULL,
-  `peso` DECIMAL(10,2) NULL DEFAULT NULL COMMENT 'Peso en kg (opcional, para productos que se venden por peso)',
-  `subtotal` DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
+  `subtotal` DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (`id_detalle_devolucion`),
   KEY `id_devolucion` (`id_devolucion`),
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Los inserts existentes no incluyen 'peso' (se quedan NULL automáticamente)
-INSERT INTO `detalle_devolucion` (`id_detalle_devolucion`, `id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
-(1, 1, 1, 1, 4500.00),
-(2, 1, 4, 2, 2000.00),
-(3, 2, 2, 1, 3200.00);
+INSERT INTO `detalle_devolucion` (`id_detalle_devolucion`, `id_devolucion`, `id_producto`, `cantidad`, `peso`, `precio_unitario`, `subtotal`) VALUES
+(1, 1, 1, 1, 0, 4500.00, 4500.00),
+(2, 1, 4, 2, 0, 2000.00, 4000.00),
+(3, 2, 2, 1, 0, 3200.00, 3200.00);
 
 -- ------------------------------------------------------------
 -- 16. TABLA: movimientos
@@ -554,7 +554,7 @@ INSERT INTO `movimientos` (`id_inventario`, `id_tipo_mov`, `id_empleado`, `id_fa
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 17. TABLA: empresa (emisor de factura electrónica)
+-- 17. TABLA: empresa
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `empresa`;
 CREATE TABLE `empresa` (
@@ -567,7 +567,7 @@ CREATE TABLE `empresa` (
   `departamento` VARCHAR(100) DEFAULT NULL,
   `telefono` VARCHAR(20) DEFAULT NULL,
   `email` VARCHAR(150) DEFAULT NULL,
-  `resolucion_facturacion` VARCHAR(100) DEFAULT NULL COMMENT 'Número de resolución de facturación',
+  `resolucion_facturacion` VARCHAR(100) DEFAULT NULL,
   `fecha_resolucion` DATE DEFAULT NULL,
   PRIMARY KEY (`id_empresa`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -576,15 +576,15 @@ INSERT INTO `empresa` (`razon_social`, `nit`, `regimen_contable`, `direccion`, `
 ('Palma Distribuciones SAS', '123456789-0', 'Régimen común', 'Calle 123 # 45-67, Centro', 'Bogotá', 'Cundinamarca', '6011234567', 'facturacion@palma.com', 'RES-2024-001', '2024-01-01');
 
 -- ------------------------------------------------------------
--- 18. TABLA: factura_electronica (cabecera)
+-- 18. TABLA: factura_electronica
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `factura_electronica`;
 CREATE TABLE `factura_electronica` (
   `id_factura_electronica` INT(11) NOT NULL AUTO_INCREMENT,
   `id_cliente` INT(11) NOT NULL,
   `id_empleado` INT(11) NOT NULL,
-  `id_factura_base` INT(11) DEFAULT NULL COMMENT 'Opcional: referencia a factura normal de caja',
-  `prefijo` VARCHAR(5) DEFAULT NULL COMMENT 'Prefijo de facturación (ej. FAC)',
+  `id_factura_base` INT(11) DEFAULT NULL,
+  `prefijo` VARCHAR(5) DEFAULT NULL,
   `consecutivo` INT(11) NOT NULL,
   `numero_resolucion` VARCHAR(50) DEFAULT NULL,
   `fecha_emision` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -592,7 +592,7 @@ CREATE TABLE `factura_electronica` (
   `total` DECIMAL(10,2) NOT NULL,
   `subtotal` DECIMAL(10,2) DEFAULT NULL,
   `iva` DECIMAL(10,2) DEFAULT NULL,
-  `cufe` VARCHAR(255) UNIQUE DEFAULT NULL COMMENT 'Código único de factura electrónica',
+  `cufe` VARCHAR(255) UNIQUE DEFAULT NULL,
   `estado` ENUM('Generada', 'Enviada', 'Aceptada', 'Rechazada', 'Anulada') DEFAULT 'Generada',
   `xml_enviado` TEXT DEFAULT NULL,
   `respuesta_dian` TEXT DEFAULT NULL,
@@ -607,14 +607,15 @@ CREATE TABLE `factura_electronica` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ------------------------------------------------------------
--- 19. TABLA: detalle_factura_electronica
+-- 19. TABLA: detalle_factura_electronica (CON PESO)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `detalle_factura_electronica`;
 CREATE TABLE `detalle_factura_electronica` (
   `id_detalle_fe` INT(11) NOT NULL AUTO_INCREMENT,
   `id_factura_electronica` INT(11) NOT NULL,
   `id_producto` INT(11) NOT NULL,
-  `cantidad` INT(11) NOT NULL,
+  `cantidad` INT(11) NOT NULL DEFAULT 0,
+  `peso` DECIMAL(10,2) DEFAULT 0 COMMENT 'Peso en gramos (0 si es por unidad)',
   `precio_unitario` DECIMAL(10,2) NOT NULL,
   `subtotal` DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (`id_detalle_fe`),
@@ -625,7 +626,7 @@ CREATE TABLE `detalle_factura_electronica` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
--- DECLARACIÓN FINAL DE RESTRICCIONES (CONSTRAINTS) EXISTENTES
+-- DECLARACIÓN FINAL DE RESTRICCIONES
 -- ============================================================
 
 ALTER TABLE `empleados` 
@@ -663,6 +664,10 @@ ALTER TABLE `devoluciones`
 ALTER TABLE `detalle_devolucion` 
   ADD CONSTRAINT `detalle_devolucion_ibfk_1` FOREIGN KEY (`id_devolucion`) REFERENCES `devoluciones` (`id_devolucion`) ON DELETE CASCADE,
   ADD CONSTRAINT `detalle_devolucion_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
+
+ALTER TABLE `detalle_factura_electronica` 
+  ADD CONSTRAINT `detalle_factura_electronica_ibfk_1` FOREIGN KEY (`id_factura_electronica`) REFERENCES `factura_electronica` (`id_factura_electronica`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detalle_factura_electronica_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
 
 ALTER TABLE `movimientos` 
   ADD CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`id_inventario`) REFERENCES `inventarios` (`id_inventario`),
