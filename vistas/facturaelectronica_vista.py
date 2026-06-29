@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 
 
 # ================================================================
-# DIÁLOGO PARA DETALLE DE FACTURA ELECTRÓNICA (ESTILO IMAGEN 1)
+# DIÁLOGO PARA DETALLE DE FACTURA ELECTRÓNICA (ESTILO FINANZAS)
 # ================================================================
 class DialogoDetalleFacturaElectronica(QDialog):
     def __init__(self, id_factura_electronica, conexion, parent=None):
@@ -33,7 +33,7 @@ class DialogoDetalleFacturaElectronica(QDialog):
 
         self.card = QFrame()
         self.card.setObjectName("MainCard")
-        self.card.setFixedSize(820, 680)  # Tamaño similar a la imagen 1
+        self.card.setFixedSize(820, 680)
         self.card.setStyleSheet("""
             QFrame#MainCard {
                 background-color: #FFFFFF;
@@ -49,14 +49,14 @@ class DialogoDetalleFacturaElectronica(QDialog):
 
         layout_card = QVBoxLayout(self.card)
         layout_card.setContentsMargins(40, 32, 40, 32)
-        layout_card.setSpacing(20)
+        layout_card.setSpacing(16)
 
         def _f(size, weight):
             font = QFont("Montserrat", size, weight)
             font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
             return font
 
-        # === Encabezado (título + botón cerrar) ===
+        # === ENCABEZADO ===
         layout_header = QHBoxLayout()
         lbl_titulo = QLabel("DETALLE DE FACTURA ELECTRÓNICA")
         lbl_titulo.setFont(_f(18, QFont.Weight.Black))
@@ -80,101 +80,142 @@ class DialogoDetalleFacturaElectronica(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # === Línea de información: N° Factura y Fecha ===
-        info_layout = QHBoxLayout()
-        info_layout.setSpacing(20)
+        # === INFO FRAME (Nº, fecha, tipo y cliente) ===
+        info_frame = QFrame()
+        info_frame.setStyleSheet("""
+            QFrame {
+                background: #F8FAF9;
+                border-radius: 14px;
+                border: 1px solid #D1E2D9;
+                padding: 10px;
+            }
+        """)
+        info_layout = QVBoxLayout(info_frame)
+        info_layout.setSpacing(4)
 
-        self.lbl_numero = QLabel()
-        self.lbl_numero.setFont(_f(14, QFont.Weight.Bold))
-        self.lbl_numero.setStyleSheet("color: #1F2937;")
+        # Primera línea: Nº, fecha, tipo
+        self.lbl_info = QLabel()
+        self.lbl_info.setFont(_f(11, QFont.Weight.Medium))
+        self.lbl_info.setStyleSheet("color: #1F2937; background: transparent;")
+        info_layout.addWidget(self.lbl_info)
 
-        self.lbl_fecha = QLabel()
-        self.lbl_fecha.setFont(_f(14, QFont.Weight.Medium))
-        self.lbl_fecha.setStyleSheet("color: #64748B;")
-
-        info_layout.addWidget(self.lbl_numero)
-        info_layout.addStretch()
-        info_layout.addWidget(self.lbl_fecha)
-        layout_card.addLayout(info_layout)
-
-        # === Datos del cliente ===
+        # Segunda línea: Cliente, documento, email, ciudad
         self.lbl_cliente = QLabel()
-        self.lbl_cliente.setFont(_f(13, QFont.Weight.Medium))
-        self.lbl_cliente.setStyleSheet("color: #1F2937;")
+        self.lbl_cliente.setFont(_f(10, QFont.Weight.Medium))
+        self.lbl_cliente.setStyleSheet("color: #6B7280; background: transparent;")
         self.lbl_cliente.setWordWrap(True)
-        layout_card.addWidget(self.lbl_cliente)
+        info_layout.addWidget(self.lbl_cliente)
+        layout_card.addWidget(info_frame)
 
-        # === Tabla de productos ===
+        # === TABLA DE PRODUCTOS ===
         lbl_productos = QLabel("PRODUCTOS DE LA FACTURA")
-        lbl_productos.setFont(_f(13, QFont.Weight.Black))
-        lbl_productos.setStyleSheet("color: #708077;")
+        lbl_productos.setFont(_f(11, QFont.Weight.Black))
+        lbl_productos.setStyleSheet("color: #17813D; background: transparent;")
         layout_card.addWidget(lbl_productos)
 
-        self.tabla_productos = QTableWidget(0, 4)
+        self.tabla_productos = QTableWidget()
+        self.tabla_productos.setColumnCount(4)
         self.tabla_productos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Precio Unit.", "Subtotal"])
         self.tabla_productos.setShowGrid(False)
         self.tabla_productos.setFrameShape(QFrame.Shape.NoFrame)
+        self.tabla_productos.verticalHeader().setVisible(False)
         self.tabla_productos.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.tabla_productos.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.tabla_productos.verticalHeader().setVisible(False)
-        self.tabla_productos.verticalHeader().setDefaultSectionSize(40)
         self.tabla_productos.setStyleSheet("""
             QTableWidget {
-                background-color: transparent;
-                border: none;
-                outline: none;
+                border: 1px solid #D1E2D9;
+                border-radius: 12px;
+                background: transparent;
                 font-family: 'Montserrat';
-                font-size: 13px;
-                color: #1B4314;
+                font-size: 11px;
             }
             QTableWidget::item {
-                border-bottom: 1px solid #E2E8F0;
-                padding: 6px 8px;
+                border-bottom: 1px solid #F0F2F0;
+                padding: 8px 12px;
+                color: #1F2937;
+            }
+            QTableWidget::item:selected {
+                background: #E8F5EE;
+                color: #17813D;
             }
             QHeaderView::section {
-                background-color: #F1F5F9;
+                background: #F1F5F9;
                 color: #64748B;
                 font-weight: 800;
-                font-size: 11px;
+                font-size: 10px;
                 border: none;
-                padding: 8px;
+                padding: 10px 12px;
                 font-family: 'Montserrat';
+            }
+            QTableWidget QTableCornerButton::section {
+                background: transparent;
+                border: none;
             }
         """)
         header = self.tabla_productos.horizontalHeader()
         header.setStretchLastSection(True)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.tabla_productos.setColumnWidth(0, 300)
+        self.tabla_productos.setColumnWidth(0, 280)
         self.tabla_productos.setColumnWidth(1, 100)
         self.tabla_productos.setColumnWidth(2, 130)
         self.tabla_productos.setColumnWidth(3, 130)
-
         layout_card.addWidget(self.tabla_productos)
 
-        # === Total y Estado ===
-        total_layout = QHBoxLayout()
-        total_layout.setSpacing(20)
+        # === TOTAL, ESTADO Y CUFE ===
+        total_frame = QFrame()
+        total_frame.setStyleSheet("""
+            QFrame {
+                background: #EDF7F1;
+                border-radius: 12px;
+                border: 2px dashed #A9DDBC;
+                padding: 8px;
+            }
+        """)
+        total_layout = QVBoxLayout(total_frame)
+        total_layout.setContentsMargins(20, 12, 20, 12)
+        total_layout.setSpacing(2)
 
+        # Línea superior: total y estado
+        total_estado_layout = QHBoxLayout()
         self.lbl_total = QLabel()
-        self.lbl_total.setFont(_f(16, QFont.Weight.Bold))
-        self.lbl_total.setStyleSheet("color: #17813D;")
-
+        self.lbl_total.setFont(_f(16, QFont.Weight.Black))
+        self.lbl_total.setStyleSheet("color: #17813D; background: transparent;")
         self.lbl_estado = QLabel()
-        self.lbl_estado.setFont(_f(14, QFont.Weight.Medium))
+        self.lbl_estado.setFont(_f(12, QFont.Weight.Medium))
+        total_estado_layout.addWidget(self.lbl_total)
+        total_estado_layout.addStretch()
+        total_estado_layout.addWidget(self.lbl_estado)
+        total_layout.addLayout(total_estado_layout)
 
-        total_layout.addWidget(self.lbl_total)
-        total_layout.addStretch()
-        total_layout.addWidget(self.lbl_estado)
-        layout_card.addLayout(total_layout)
-
-        # === CUFE (opcional, en la imagen 1 no aparece pero lo dejamos) ===
+        # Línea inferior: CUFE
         self.lbl_cufe = QLabel()
-        self.lbl_cufe.setFont(_f(11, QFont.Weight.Medium))
-        self.lbl_cufe.setStyleSheet("color: #9CA3AF;")
+        self.lbl_cufe.setFont(_f(10, QFont.Weight.Medium))
+        self.lbl_cufe.setStyleSheet("color: #6B7280; background: transparent;")
         self.lbl_cufe.setWordWrap(True)
-        layout_card.addWidget(self.lbl_cufe)
+        total_layout.addWidget(self.lbl_cufe)
 
-        # Ya no hay botón "ACEPTAR" porque se cierra con la X
+        layout_card.addWidget(total_frame)
+
+        # === BOTÓN CERRAR ===
+        btn_cerrar_dialog = QPushButton("CERRAR")
+        btn_cerrar_dialog.setFixedHeight(50)
+        btn_cerrar_dialog.setFont(_f(13, QFont.Weight.Black))
+        btn_cerrar_dialog.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cerrar_dialog.setStyleSheet("""
+            QPushButton {
+                background-color: #17813D;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 16px;
+                letter-spacing: 0.5px;
+                font-family: 'Montserrat';
+                font-size: 13px;
+                font-weight: 900;
+            }
+            QPushButton:hover { background-color: #228E49; }
+        """)
+        btn_cerrar_dialog.clicked.connect(self.accept)
+        layout_card.addWidget(btn_cerrar_dialog)
 
         layout_fondo.addWidget(self.card)
 
@@ -183,6 +224,7 @@ class DialogoDetalleFacturaElectronica(QDialog):
             return
         try:
             cursor = self.conexion.cursor()
+            # Obtener datos de la factura electrónica
             query = """
                 SELECT fe.prefijo, fe.consecutivo, c.nombre_cliente, c.documento_identidad,
                        c.email, c.ciudad, fe.fecha_emision, fe.total, fe.estado, fe.cufe,
@@ -221,28 +263,33 @@ class DialogoDetalleFacturaElectronica(QDialog):
                 cufe = row[9] or 'Sin CUFE'
                 id_factura_base = row[10]
 
-            # Formatear datos
             numero = f"{prefijo}-{str(consecutivo).zfill(8)}"
             fecha_str = fecha.strftime("%d/%m/%Y %H:%M") if fecha else 'N/D'
 
-            self.lbl_numero.setText(f"Factura N°: {numero}")
-            self.lbl_fecha.setText(f"Fecha: {fecha_str}")
-
-            # Cliente
-            cliente_texto = f"Cliente: {cliente}  |  Documento: {documento}  |  Email: {email}  |  Ciudad: {ciudad}"
-            self.lbl_cliente.setText(cliente_texto)
+            # Llenar info_frame
+            self.lbl_info.setText(
+                f"<b>Factura N°:</b> {numero} &nbsp;&nbsp;|&nbsp;&nbsp; "
+                f"<b>Fecha:</b> {fecha_str} &nbsp;&nbsp;|&nbsp;&nbsp; "
+                f"<b>Tipo:</b> ELECTRÓNICA"
+            )
+            self.lbl_cliente.setText(
+                f"<b>Cliente:</b> {cliente} &nbsp;&nbsp;|&nbsp;&nbsp; "
+                f"<b>Documento:</b> {documento} &nbsp;&nbsp;|&nbsp;&nbsp; "
+                f"<b>Email:</b> {email} &nbsp;&nbsp;|&nbsp;&nbsp; "
+                f"<b>Ciudad:</b> {ciudad}"
+            )
 
             # Total y estado
             self.lbl_total.setText(f"TOTAL DE LA FACTURA: ${int(total):,}")
             self.lbl_estado.setText(f"Estado: {estado}")
             if estado == "Pagada":
-                self.lbl_estado.setStyleSheet("color: #008F39; font-weight: bold;")
+                self.lbl_estado.setStyleSheet("color: #008F39; font-weight: bold; background: transparent;")
             elif estado == "Pendiente":
-                self.lbl_estado.setStyleSheet("color: #EAB308; font-weight: bold;")
+                self.lbl_estado.setStyleSheet("color: #EAB308; font-weight: bold; background: transparent;")
             elif estado == "Anulada":
-                self.lbl_estado.setStyleSheet("color: #DC2626; font-weight: bold;")
+                self.lbl_estado.setStyleSheet("color: #DC2626; font-weight: bold; background: transparent;")
             else:
-                self.lbl_estado.setStyleSheet("color: #64748B; font-weight: medium;")
+                self.lbl_estado.setStyleSheet("color: #64748B; font-weight: medium; background: transparent;")
 
             self.lbl_cufe.setText(f"CUFE: {cufe}")
 
@@ -256,6 +303,7 @@ class DialogoDetalleFacturaElectronica(QDialog):
                 """
                 cursor.execute(query_detalle, (id_factura_base,))
                 detalles = cursor.fetchall()
+
                 self.tabla_productos.setRowCount(len(detalles))
                 for fila, det in enumerate(detalles):
                     if isinstance(det, dict):
@@ -275,6 +323,12 @@ class DialogoDetalleFacturaElectronica(QDialog):
                     self.tabla_productos.setRowHeight(fila, 40)
             else:
                 self.tabla_productos.setRowCount(0)
+                # Mensaje de sin productos
+                self.tabla_productos.setRowCount(1)
+                item = QTableWidgetItem("No hay productos asociados a esta factura electrónica")
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.tabla_productos.setSpan(0, 0, 1, 4)
+                self.tabla_productos.setItem(0, 0, item)
 
             cursor.close()
 
