@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 
 # ================================================================
-# DIÁLOGO PARA DETALLE DE DEVOLUCIÓN (ESTILO FINANZAS)
+# DIÁLOGO PARA DETALLE DE DEVOLUCIÓN
 # ================================================================
 class DialogoDetalleDevolucion(QDialog):
     def __init__(self, id_devolucion, conexion, parent=None):
@@ -133,7 +133,7 @@ class DialogoDetalleDevolucion(QDialog):
                 border-radius: 12px;
                 background: transparent;
                 font-family: 'Montserrat';
-                font-size: 11px;
+                font-size: 13px;
             }
             QTableWidget::item {
                 border-bottom: 1px solid #F0F2F0;
@@ -148,7 +148,7 @@ class DialogoDetalleDevolucion(QDialog):
                 background: #F1F5F9;
                 color: #64748B;
                 font-weight: 800;
-                font-size: 10px;
+                font-size: 11px;
                 border: none;
                 padding: 10px 12px;
                 font-family: 'Montserrat';
@@ -290,7 +290,7 @@ class DialogoDetalleDevolucion(QDialog):
             else:
                 self.lbl_estado.setStyleSheet("color: #64748B; font-weight: medium; background: transparent;")
 
-            # Cargar productos devueltos (incluyendo peso si existe)
+            # Cargar productos devueltos
             query_det = """
                 SELECT p.nombre_producto, dd.cantidad, dd.peso, dd.precio_unitario, dd.subtotal
                 FROM detalle_devolucion dd
@@ -346,7 +346,7 @@ class DialogoDetalleDevolucion(QDialog):
 
 
 # ================================================================
-# DIÁLOGO PARA NUEVA DEVOLUCIÓN (CON DEVOLUCIÓN RÁPIDA)
+# DIÁLOGO PARA NUEVA DEVOLUCIÓN
 # ================================================================
 class DialogoNuevaDevolucion(QDialog):
     def __init__(self, conexion=None, empleado_id=None, parent=None):
@@ -360,8 +360,8 @@ class DialogoNuevaDevolucion(QDialog):
         self.factura_seleccionada_id = None
         self.datos_facturas = []
         self.filtro_tipo = "todos"
-        self.detalles_factura = []  # productos de la factura seleccionada
-        self.modo_rapido = False    # si es devolución rápida sin factura
+        self.detalles_factura = []
+        self.modo_rapido = False
 
         self._crear_interfaz()
         self._cargar_facturas_recientes()
@@ -435,7 +435,7 @@ class DialogoNuevaDevolucion(QDialog):
         layout_header.addWidget(btn_cerrar)
         layout_card.addLayout(layout_header)
 
-        # Stack principal (lista / formulario)
+        # Stack principal
         self.stack_principal = QStackedWidget()
         self.stack_principal.setStyleSheet("QStackedWidget { background: transparent; border: none; }")
 
@@ -586,7 +586,7 @@ class DialogoNuevaDevolucion(QDialog):
 
         self.stack_principal.addWidget(widget_lista)
 
-        # ---- Widget FORMULARIO (productos a devolver) ----
+        # ---- Widget FORMULARIO ----
         widget_formulario = QWidget()
         layout_formulario = QVBoxLayout(widget_formulario)
         layout_formulario.setContentsMargins(0, 0, 0, 0)
@@ -670,10 +670,10 @@ class DialogoNuevaDevolucion(QDialog):
         self.btn_agregar_producto.clicked.connect(self._mostrar_dialogo_seleccion_producto)
         layout_formulario.addWidget(self.btn_agregar_producto)
 
-        # Tabla con columnas: Seleccionar, Producto, Cantidad (Und), Peso (g), Precio Unit., Estado, Subtotal
-        self.tabla_productos_devolver = QTableWidget(0, 7)
+        # Tabla con columnas ajustadas
+        self.tabla_productos_devolver = QTableWidget(0, 6)
         self.tabla_productos_devolver.setHorizontalHeaderLabels(
-            ["Seleccionar", "Producto", "Cantidad (Und)", "Peso (g)", "Precio Unit.", "Estado", "Subtotal"]
+            ["Seleccionar", "Producto", "Cantidad (Und)", "Peso (g)", "Precio Unit.", "Subtotal"]
         )
         self.tabla_productos_devolver.setShowGrid(False)
         self.tabla_productos_devolver.setFrameShape(QFrame.Shape.NoFrame)
@@ -686,11 +686,11 @@ class DialogoNuevaDevolucion(QDialog):
                 border-radius: 12px;
                 background: transparent;
                 font-family: 'Montserrat';
-                font-size: 12px;
+                font-size: 15px;
             }
             QTableWidget::item {
                 border-bottom: 1px solid #F0F2F0;
-                padding: 6px 8px;
+                padding: 10px 12px;
                 color: #1F2937;
             }
             QTableWidget::item:selected {
@@ -701,9 +701,9 @@ class DialogoNuevaDevolucion(QDialog):
                 background: #F1F5F9;
                 color: #64748B;
                 font-weight: 800;
-                font-size: 10px;
+                font-size: 12px;
                 border: none;
-                padding: 8px;
+                padding: 10px 12px;
                 font-family: 'Montserrat';
             }
         """)
@@ -711,12 +711,11 @@ class DialogoNuevaDevolucion(QDialog):
         header_prod.setStretchLastSection(True)
         header_prod.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.tabla_productos_devolver.setColumnWidth(0, 70)
-        self.tabla_productos_devolver.setColumnWidth(1, 180)
-        self.tabla_productos_devolver.setColumnWidth(2, 100)
-        self.tabla_productos_devolver.setColumnWidth(3, 100)
-        self.tabla_productos_devolver.setColumnWidth(4, 120)
-        self.tabla_productos_devolver.setColumnWidth(5, 120)
-        self.tabla_productos_devolver.setColumnWidth(6, 120)
+        self.tabla_productos_devolver.setColumnWidth(1, 200)
+        self.tabla_productos_devolver.setColumnWidth(2, 140)  # más ancho
+        self.tabla_productos_devolver.setColumnWidth(3, 140)  # más ancho
+        self.tabla_productos_devolver.setColumnWidth(4, 130)
+        self.tabla_productos_devolver.setColumnWidth(5, 130)
         layout_formulario.addWidget(self.tabla_productos_devolver)
 
         # Total a reembolsar
@@ -768,8 +767,6 @@ class DialogoNuevaDevolucion(QDialog):
         layout_fondo.addWidget(self.card)
 
         self._mostrar_lista()
-
-        # Cargar nombres de clientes para autocompletado
         self._cargar_clientes_autocompletado()
 
     def _cargar_clientes_autocompletado(self):
@@ -915,7 +912,6 @@ class DialogoNuevaDevolucion(QDialog):
             return
         try:
             cursor = self.conexion.cursor()
-            # Obtener cliente de la factura
             cursor.execute("""
                 SELECT c.nombre_cliente, c.documento_identidad, c.email, c.ciudad,
                        c.id_cliente
@@ -939,10 +935,8 @@ class DialogoNuevaDevolucion(QDialog):
             else:
                 self.txt_cliente.setText("Cliente no encontrado")
 
-            # Obtener productos de la factura
             query_detalle = """
-                SELECT p.id_producto, p.nombre_producto, df.cantidad_detfac, df.precio_unitario_detfac,
-                       (df.cantidad_detfac * df.precio_unitario_detfac) AS subtotal
+                SELECT p.id_producto, p.nombre_producto, df.cantidad_detfac, df.precio_unitario_detfac
                 FROM detalle_factura df
                 JOIN productos p ON df.id_producto = p.id_producto
                 WHERE df.id_factura = %s
@@ -982,23 +976,19 @@ class DialogoNuevaDevolucion(QDialog):
         fila = self.tabla_productos_devolver.rowCount()
         self.tabla_productos_devolver.insertRow(fila)
 
-        # Checkbox
         chk = QCheckBox()
         chk.setChecked(False)
         chk.stateChanged.connect(self._calcular_reembolso)
         self.tabla_productos_devolver.setCellWidget(fila, 0, chk)
 
-        # Nombre producto
         self.tabla_productos_devolver.setItem(fila, 1, QTableWidgetItem(nombre))
 
-        # Cantidad (Und)
         spin_cant = QSpinBox()
         spin_cant.setRange(0, int(cantidad_max))
         spin_cant.setValue(0)
         spin_cant.valueChanged.connect(self._calcular_reembolso)
         self.tabla_productos_devolver.setCellWidget(fila, 2, spin_cant)
 
-        # Peso (g)
         spin_peso = QSpinBox()
         spin_peso.setRange(0, 99999)
         spin_peso.setValue(0)
@@ -1006,38 +996,21 @@ class DialogoNuevaDevolucion(QDialog):
         spin_peso.valueChanged.connect(self._calcular_reembolso)
         self.tabla_productos_devolver.setCellWidget(fila, 3, spin_peso)
 
-        # Precio unitario
         item_precio = QTableWidgetItem(f"${int(precio):,}")
         item_precio.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.tabla_productos_devolver.setItem(fila, 4, item_precio)
 
-        # Estado del producto
-        cmb_estado = QComboBox()
-        cmb_estado.addItems(["Disponible", "Vencido", "Dañado"])
-        cmb_estado.setStyleSheet("""
-            QComboBox {
-                background-color: #F8FAF9;
-                border: 1px solid #D1E2D9;
-                border-radius: 6px;
-                padding: 2px 8px;
-                font-family: 'Montserrat';
-                font-size: 11px;
-            }
-        """)
-        self.tabla_productos_devolver.setCellWidget(fila, 5, cmb_estado)
-
-        # Subtotal
         item_subtotal = QTableWidgetItem("$0")
         item_subtotal.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.tabla_productos_devolver.setItem(fila, 6, item_subtotal)
+        self.tabla_productos_devolver.setItem(fila, 5, item_subtotal)
 
-        self.tabla_productos_devolver.setRowHeight(fila, 45)
+        self.tabla_productos_devolver.setRowHeight(fila, 55)
 
-        # Conectar lógica de exclusión mutua entre cantidad y peso
+        # Lógica de exclusión mutua
         spin_cant.valueChanged.connect(lambda v, s=spin_peso: s.setValue(0) if v > 0 else None)
         spin_peso.valueChanged.connect(lambda v, s=spin_cant: s.setValue(0) if v > 0 else None)
 
-    # ---- Diálogo de selección de producto con autocompletado ----
+    # ---- Diálogo de selección de producto ----
     def _mostrar_dialogo_seleccion_producto(self):
         dlg = QDialog(self, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         dlg.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -1090,7 +1063,6 @@ class DialogoNuevaDevolucion(QDialog):
             }
         """)
 
-        # Autocompletado de productos con filtrado
         if self.conexion:
             try:
                 cursor = self.conexion.cursor()
@@ -1123,14 +1095,12 @@ class DialogoNuevaDevolucion(QDialog):
             if not texto:
                 QMessageBox.warning(dlg, "Atención", "Ingresa un nombre de producto.")
                 return
-            # Buscar el producto seleccionado (por coincidencia exacta o por el primer que coincida)
             encontrado = None
             for nombre, id_prod, precio in self.productos_busqueda:
                 if nombre.lower() == texto.lower():
                     encontrado = (id_prod, nombre, precio)
                     break
             if not encontrado:
-                # Si no hay coincidencia exacta, buscar por contiene (tomar el primero)
                 for nombre, id_prod, precio in self.productos_busqueda:
                     if texto.lower() in nombre.lower():
                         encontrado = (id_prod, nombre, precio)
@@ -1138,11 +1108,9 @@ class DialogoNuevaDevolucion(QDialog):
             if not encontrado:
                 QMessageBox.warning(dlg, "Atención", "Producto no encontrado.")
                 return
-            # Agregar a la tabla
             self._agregar_fila_producto(encontrado[0], encontrado[1], encontrado[2])
             dlg.accept()
 
-        # Permitir Enter para confirmar
         txt_producto.returnPressed.connect(confirmar)
 
         btn_seleccionar = QPushButton("SELECCIONAR")
@@ -1191,20 +1159,20 @@ class DialogoNuevaDevolucion(QDialog):
                 if precio_item:
                     precio_text = precio_item.text().replace('$', '').replace(',', '')
                     try:
-                        precio = int(precio_text)
+                        precio = float(precio_text)
                     except:
                         precio = 0
                     subtotal = (cant * precio) + (peso / 1000.0 * precio)
-                    item_subtotal = self.tabla_productos_devolver.item(fila, 6)
+                    item_subtotal = self.tabla_productos_devolver.item(fila, 5)
                     if item_subtotal:
                         item_subtotal.setText(f"${int(subtotal):,}")
                     total += subtotal
                 else:
-                    item_subtotal = self.tabla_productos_devolver.item(fila, 6)
+                    item_subtotal = self.tabla_productos_devolver.item(fila, 5)
                     if item_subtotal:
                         item_subtotal.setText("$0")
             else:
-                item_subtotal = self.tabla_productos_devolver.item(fila, 6)
+                item_subtotal = self.tabla_productos_devolver.item(fila, 5)
                 if item_subtotal:
                     item_subtotal.setText("$0")
         self.lbl_total_reembolso.setText(f"${int(total):,}")
@@ -1215,7 +1183,6 @@ class DialogoNuevaDevolucion(QDialog):
             QMessageBox.critical(self, "Error", "No hay conexión a la base de datos.")
             return
 
-        # Verificar que al menos un producto esté seleccionado con cantidad > 0 o peso > 0
         productos_a_devolver = []
         for fila in range(self.tabla_productos_devolver.rowCount()):
             chk = self.tabla_productos_devolver.cellWidget(fila, 0)
@@ -1228,14 +1195,11 @@ class DialogoNuevaDevolucion(QDialog):
                     continue
                 id_prod = self.detalles_factura[fila]['id_producto'] if fila < len(self.detalles_factura) else 0
                 precio = self.detalles_factura[fila]['precio_unitario'] if fila < len(self.detalles_factura) else 0
-                estado_combo = self.tabla_productos_devolver.cellWidget(fila, 5)
-                estado = estado_combo.currentText() if estado_combo else "Disponible"
                 productos_a_devolver.append({
                     'id_producto': id_prod,
                     'cantidad': cant,
                     'peso': peso,
-                    'precio_unitario': precio,
-                    'estado': estado
+                    'precio_unitario': precio
                 })
 
         if not productos_a_devolver:
@@ -1247,13 +1211,12 @@ class DialogoNuevaDevolucion(QDialog):
             QMessageBox.warning(self, "Atención", "Debes escribir un motivo para la devolución.")
             return
 
-        # Calcular total a reembolsar
         monto_total = 0
         for p in productos_a_devolver:
-            subtotal = (p['cantidad'] * p['precio_unitario']) + (p['peso'] / 1000.0 * p['precio_unitario'])
+            precio = float(p['precio_unitario'])
+            subtotal = (p['cantidad'] * precio) + (p['peso'] / 1000.0 * precio)
             monto_total += subtotal
 
-        # Verificar cliente (opcional)
         nombre_cliente = self.txt_cliente.text().strip()
         id_cliente = None
         if nombre_cliente:
@@ -1284,7 +1247,8 @@ class DialogoNuevaDevolucion(QDialog):
             id_devolucion = cursor.lastrowid
 
             for prod in productos_a_devolver:
-                subtotal = (prod['cantidad'] * prod['precio_unitario']) + (prod['peso'] / 1000.0 * prod['precio_unitario'])
+                precio = float(prod['precio_unitario'])
+                subtotal = (prod['cantidad'] * precio) + (prod['peso'] / 1000.0 * precio)
                 sql_det = """
                     INSERT INTO detalle_devolucion
                     (id_devolucion, id_producto, cantidad, peso, precio_unitario, subtotal)
@@ -1340,7 +1304,6 @@ class DevolucionesVista(QWidget):
         layout_principal.setContentsMargins(20, 20, 20, 0)
         layout_principal.setSpacing(20)
 
-        # Encabezado
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(10, 0, 0, 10)
@@ -1362,7 +1325,6 @@ class DevolucionesVista(QWidget):
         header_layout.addStretch()
         layout_principal.addWidget(header_frame)
 
-        # Contenedor blanco
         tarjeta_principal = QFrame()
         tarjeta_principal.setStyleSheet("""
             QFrame {
@@ -1382,11 +1344,9 @@ class DevolucionesVista(QWidget):
         layout_tarjeta.setContentsMargins(30, 30, 30, 30)
         layout_tarjeta.setSpacing(20)
 
-        # Filtros
         filtros_layout = QHBoxLayout()
         filtros_layout.setSpacing(12)
 
-        # Botones de tipo
         self.btn_todos = QPushButton("TODOS")
         self.btn_empresa = QPushButton("EMPRESA")
         self.btn_cliente = QPushButton("CLIENTE")
@@ -1422,7 +1382,6 @@ class DevolucionesVista(QWidget):
         self.grupo_filtro.addButton(self.btn_empresa)
         self.grupo_filtro.addButton(self.btn_cliente)
 
-        # Buscador
         self.txt_buscador = QLineEdit()
         self.txt_buscador.setPlaceholderText("Buscar devolución por número o cliente...")
         self.txt_buscador.setFixedHeight(46)
@@ -1443,7 +1402,6 @@ class DevolucionesVista(QWidget):
         """)
         self.txt_buscador.textChanged.connect(self.filtrar_tabla)
 
-        # Botón Fecha
         self.btn_fecha = QPushButton("📅 Fecha")
         self.btn_fecha.setFixedHeight(36)
         self.btn_fecha.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1468,7 +1426,6 @@ class DevolucionesVista(QWidget):
         self.btn_fecha.setCheckable(True)
         self.btn_fecha.toggled.connect(self._toggle_fecha)
 
-        # Widget de fechas personalizadas
         self.widget_fechas = QWidget()
         self.widget_fechas.setVisible(False)
         layout_fechas = QHBoxLayout(self.widget_fechas)
@@ -1530,7 +1487,6 @@ class DevolucionesVista(QWidget):
         layout_fechas.addWidget(self.btn_aplicar_fecha)
         layout_fechas.addStretch()
 
-        # Botón nueva devolución
         self.btn_nueva = QPushButton("+ NUEVA DEVOLUCIÓN")
         self.btn_nueva.setFixedHeight(46)
         self.btn_nueva.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1561,7 +1517,6 @@ class DevolucionesVista(QWidget):
         filtros_layout.addWidget(self.btn_nueva)
         layout_tarjeta.addLayout(filtros_layout)
 
-        # Tabla
         self.tabla = QTableWidget(0, 6)
         self.tabla.setHorizontalHeaderLabels([
             "N° Devolución", "Cliente", "Fecha", "Productos", "Estado", "Acciones"

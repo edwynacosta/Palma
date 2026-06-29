@@ -1,6 +1,6 @@
 -- ============================================================
 -- BASE DE DATOS: PALMA (CON FACTURACIÓN ELECTRÓNICA Y DEVOLUCIONES)
--- VERSIÓN COMPLETA PARA INSTALACIÓN LIMPIA
+-- VERSIÓN COMPLETA CON COLUMNA 'peso' EN DETALLE_DEVOLUCION
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -485,7 +485,7 @@ INSERT INTO `devoluciones` (`id_devolucion`, `tipo_devolucion`, `id_factura`, `i
 (2, 'compra', NULL, 2, 4, '2024-02-10 14:30:00', 'Producto vencido al recibir', 'Aprobada', 3200.00);
 
 -- ------------------------------------------------------------
--- 15. TABLA: detalle_devolucion
+-- 15. TABLA: detalle_devolucion (AHORA CON COLUMNA 'peso' NULL)
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `detalle_devolucion`;
 CREATE TABLE `detalle_devolucion` (
@@ -494,12 +494,14 @@ CREATE TABLE `detalle_devolucion` (
   `id_producto` INT(11) NOT NULL,
   `cantidad` INT(11) NOT NULL,
   `precio_unitario` DECIMAL(10,2) NOT NULL,
+  `peso` DECIMAL(10,2) NULL DEFAULT NULL COMMENT 'Peso en kg (opcional, para productos que se venden por peso)',
   `subtotal` DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
   PRIMARY KEY (`id_detalle_devolucion`),
   KEY `id_devolucion` (`id_devolucion`),
   KEY `id_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Los inserts existentes no incluyen 'peso' (se quedan NULL automáticamente)
 INSERT INTO `detalle_devolucion` (`id_detalle_devolucion`, `id_devolucion`, `id_producto`, `cantidad`, `precio_unitario`) VALUES
 (1, 1, 1, 1, 4500.00),
 (2, 1, 4, 2, 2000.00),
