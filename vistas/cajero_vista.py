@@ -115,6 +115,7 @@ class CajeroDashboardQt(QWidget):
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
         self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
+        self.mod_finanzas.clicked.connect(self.abrir_modulo_facturacion)  # ← NUEVO
 
         self.lbl_avatar = QLabel("", self)
         self.lbl_avatar.setStyleSheet("""
@@ -273,6 +274,13 @@ class CajeroDashboardQt(QWidget):
         if self.controlador:
             self.controlador.cambiar_pantalla(
                 "Inventario",
+                datos_usuario=self.datos_usuario
+            )
+
+    def abrir_modulo_facturacion(self):  # ← NUEVO
+        if self.controlador:
+            self.controlador.cambiar_pantalla(
+                "Facturacion",
                 datos_usuario=self.datos_usuario
             )
 

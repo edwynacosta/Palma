@@ -27,10 +27,11 @@ from modelos.inventario_modelo import InventarioModelo
 
 
 class InventarioVista(QWidget):
-    def __init__(self, controlador_flujo, conexion):
+    def __init__(self, controlador_flujo, conexion, modo="admin"):  # ← modo añadido
         super().__init__()
         self.controlador = controlador_flujo
         self.modelo = InventarioModelo(conexion)
+        self.modo = modo  # ← "admin" muestra el formulario; "cajero" lo oculta
         self.productos = []
         self.sugerencias_busqueda = []
         self.producto_actual = None
@@ -480,6 +481,10 @@ class InventarioVista(QWidget):
         form_layout.addLayout(acciones)
 
         cuerpo.addWidget(form_panel)
+ 
+        # Ocultar panel de detalle/edición para el rol cajero  ← NUEVO
+        if self.modo == "cajero":
+            form_panel.setVisible(False)
         layout_contenido.addLayout(cuerpo, stretch=1)
 
         layout_contenedor.addWidget(contenido, 1)

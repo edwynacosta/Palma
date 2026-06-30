@@ -50,6 +50,7 @@ class MainWindow(QMainWindow):
         self.caja_view = CajaVista(self)
         self.factura_view = FacturaElectronicaVista(conexion=self.conexion)
         self.inventario_view = InventarioVista(self, conexion)
+        self.inventario_cajero_view = InventarioVista(self, conexion, modo="cajero")  # ← NUEVO
         self.proveedores_view = ProveedoresVista(self, conexion)
         self.finanzas_view = FinanzasVista(self, conexion)
 
@@ -59,6 +60,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.caja_view)
         self.stack.addWidget(self.factura_view)
         self.stack.addWidget(self.inventario_view)
+        self.stack.addWidget(self.inventario_cajero_view)  # ← NUEVO
         self.stack.addWidget(self.proveedores_view)
         self.stack.addWidget(self.finanzas_view)
 
@@ -114,7 +116,11 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(self.factura_view)
             
         elif nombre_pantalla == "Inventario":
-            self.stack.setCurrentWidget(self.inventario_view)
+            # El cajero (id_rol 2) ve la vista sin panel de edición  ← NUEVO
+            if str(id_rol) == "2":
+                self.stack.setCurrentWidget(self.inventario_cajero_view)
+            else:
+                self.stack.setCurrentWidget(self.inventario_view)
  
         elif nombre_pantalla == "Proveedores":
             self.stack.setCurrentWidget(self.proveedores_view)

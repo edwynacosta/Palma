@@ -13,7 +13,7 @@ import unicodedata
 import traceback
 
 from vistas.facturaelectronica_vista import FacturaElectronicaVista
-from vistas.reciboproveedores_vista import ReciboProveedoresVista
+from vistas.ReciboProveedores_vista import ReciboProveedoresVista
 from vistas.devoluciones_vista import DevolucionesVista
 
 
