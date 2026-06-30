@@ -1,4 +1,3 @@
-
 import os
 import sys
 from datetime import datetime
@@ -115,7 +114,7 @@ class CajeroDashboardQt(QWidget):
 
         self.mod_ventas.clicked.connect(self.abrir_modulo_caja)
         self.mod_inventarios.clicked.connect(self.abrir_modulo_inventario)
-        self.mod_finanzas.clicked.connect(self.abrir_modulo_facturacion)  # ← NUEVO
+        self.mod_finanzas.clicked.connect(self.abrir_modulo_finanzas)  # ← CORREGIDO
 
         self.lbl_avatar = QLabel("", self)
         self.lbl_avatar.setStyleSheet("""
@@ -270,6 +269,7 @@ class CajeroDashboardQt(QWidget):
                 "Caja",
                 datos_usuario=self.datos_usuario
             )
+
     def abrir_modulo_inventario(self):
         if self.controlador:
             self.controlador.cambiar_pantalla(
@@ -277,10 +277,10 @@ class CajeroDashboardQt(QWidget):
                 datos_usuario=self.datos_usuario
             )
 
-    def abrir_modulo_facturacion(self):  # ← NUEVO
+    def abrir_modulo_finanzas(self):  # ← CORREGIDO (antes abria "Facturacion")
         if self.controlador:
             self.controlador.cambiar_pantalla(
-                "Facturacion",
+                "Finanzas",
                 datos_usuario=self.datos_usuario
             )
 
